@@ -17,10 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import incomedy.composeapp.generated.resources.Res
-import incomedy.composeapp.generated.resources.compose_multiplatform
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 @Preview
@@ -43,7 +41,7 @@ fun App() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
+                    Image(painterResource(R.drawable.compose_multiplatform), null)
                     Text("Compose: $greeting")
                 }
             }
