@@ -20,7 +20,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":feature:chats"))
+
         }
     }
 }

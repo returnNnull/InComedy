@@ -35,6 +35,5 @@ dependencyResolutionManagement {
 include(":composeApp")
 include(":shared")
 include(":core:common")
-include(":data:chats")
-include(":feature:chats")
+
 include(":feature:auth")
