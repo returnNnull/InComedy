@@ -24,7 +24,7 @@ kotlin {
     
     sourceSets {
         commonMain.dependencies {
-            // put your Multiplatform dependencies here
+            implementation(project(":feature:chats"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
