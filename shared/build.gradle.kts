@@ -1,6 +1,7 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidKotlinMultiplatformLibrary)
+    id("incomedy.kmp.library")
 }
 
 kotlin {
@@ -10,11 +11,8 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+    targets.withType<KotlinNativeTarget>().configureEach {
+        binaries.framework {
             baseName = "Shared"
             isStatic = true
         }
@@ -23,9 +21,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":feature:chats"))
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
         }
     }
 }

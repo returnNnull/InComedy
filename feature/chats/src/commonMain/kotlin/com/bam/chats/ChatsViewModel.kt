@@ -1,6 +1,9 @@
 package com.bam.chats
 
-class ChatsViewModel {
+import com.bam.incomedy.data.chats.ChatsRepository
 
-    fun getContent() = "Work"
+class ChatsViewModel {
+    private val repository = ChatsRepository()
+
+    fun getContent(): String = repository.getStatus()
 }

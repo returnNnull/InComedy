@@ -1,17 +1,16 @@
 plugins {
-    id("incomedy.feature")
+    id("incomedy.data")
 }
 
 kotlin {
     androidLibrary {
-        namespace = "com.bam.chats"
+        namespace = "com.bam.incomedy.data.chats"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
-
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.data.chats)
+
         }
     }
 }

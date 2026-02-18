@@ -4,14 +4,14 @@ plugins {
 
 kotlin {
     androidLibrary {
-        namespace = "com.bam.chats"
+        namespace = "com.bam.auth"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
 
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.data.chats)
+
         }
     }
 }

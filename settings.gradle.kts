@@ -2,6 +2,7 @@ rootProject.name = "InComedy"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
@@ -33,4 +34,7 @@ dependencyResolutionManagement {
 
 include(":composeApp")
 include(":shared")
+include(":core:common")
+include(":data:chats")
 include(":feature:chats")
+include(":feature:auth")
