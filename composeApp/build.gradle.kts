@@ -44,5 +44,6 @@ dependencies {
     implementation(projects.shared)
 
     debugImplementation(libs.compose.uiTooling)
+    testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
 }
