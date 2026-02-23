@@ -13,11 +13,16 @@ Status labels:
 - Mobile app: `Kotlin Multiplatform` (Android + iOS)
 - Dependency Injection: `Koin` (KMP-first, shared across mobile/server layers)
 - Android navigation: `androidx.navigation:navigation-compose`
+- Database: `PostgreSQL`
+- CI/CD: `GitHub Actions`
+- Server packaging/runtime: `Docker` + `Docker Compose`
 
 ## Candidate
 
-- Database: TBD
-- Authentication provider: TBD
+- Authentication providers:
+  - Telegram login (server verify + mobile callback wiring) in progress
+  - VK: TBD (next)
+  - Google: TBD (next)
 - Payments provider: TBD
 - Push notifications provider: TBD
 - Analytics stack: TBD

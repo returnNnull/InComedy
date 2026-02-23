@@ -160,3 +160,31 @@
 - Changes: Removed `@MainActor` isolation from `AuthScreenModel` class; main-thread UI updates remain explicitly wrapped in `Task { @MainActor ... }`.
 - Decisions: For this wrapper, avoid class-level actor isolation to keep synchronous cleanup in `deinit` compile-safe.
 - Next: Rebuild iOS target and continue remaining compile fixes, if any.
+
+## 2026-02-23 18:31
+
+- Context: Need to start real backend auth completion from P0 scope with provider-side verification and persistent sessions.
+- Changes: Added new `server` module in repo with Ktor runtime, PostgreSQL datasource/schema bootstrap, Telegram auth verify endpoint (`POST /api/v1/auth/telegram/verify`), Telegram hash/auth_date verification service, user upsert + refresh token storage, JWT access token issuance, `.env` template, and verifier tests.
+- Decisions: Accepted backend bootstrap and Telegram-first auth rollout in `D-025`; confirmed `PostgreSQL` as database stack choice.
+- Next: Wire mobile deep-link callback flow to backend Telegram verify endpoint and then implement Google/VK backend exchange endpoints in the same server module.
+
+## 2026-02-23 18:49
+
+- Context: Need to complete mobile auth side for Telegram and keep provider/networking logic in data layer.
+- Changes: Added new `data/auth` KMP module with provider implementations and Telegram backend API client; moved provider implementations out of `feature/auth`; wired shared DI to include `authDataModule`; added Android deep-link intent filters and callback handling in `MainActivity`; added iOS URL scheme + callback handling via `onOpenURL`; updated shared bridge with callback-url completion helper.
+- Decisions: Accepted data-layer placement rule for auth integrations in `D-026`.
+- Next: Validate Telegram auth end-to-end against running local server and then implement Google/VK backend exchange in `server` + `data/auth`.
+
+## 2026-02-23 19:24
+
+- Context: Need delivery automation for new server module.
+- Changes: Added server CI workflow (`ci-server.yml`) with Gradle test/build checks, CD workflow (`cd-server.yml`) with GHCR image publishing and staging deploy over SSH + Docker Compose, added `server/Dockerfile`, deploy compose manifest (`deploy/server/docker-compose.yml`), and CI/CD setup docs in `server/README.md`.
+- Decisions: Accepted server CI/CD rollout approach in `D-027`.
+- Next: Configure staging GitHub environment secrets and perform first deployment from `main`.
+
+## 2026-02-23 19:35
+
+- Context: Need ready-to-run PostgreSQL container for server deployment.
+- Changes: Extended `deploy/server/docker-compose.yml` with `postgres` service (healthcheck + persistent volume) and server `depends_on` DB wiring; added `deploy/server/.env.example`; updated `server/README.md` with compose startup instructions.
+- Decisions: Accepted compose-based PostgreSQL bootstrap strategy in `D-028`.
+- Next: Fill `deploy/server/.env` (or `STAGING_SERVER_DOTENV`) and run first compose deployment.

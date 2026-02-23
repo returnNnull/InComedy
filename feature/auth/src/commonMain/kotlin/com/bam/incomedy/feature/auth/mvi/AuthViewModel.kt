@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
@@ -73,7 +73,11 @@ class AuthViewModel(
     private fun completeAuth(provider: AuthProviderType, code: String, state: String) {
         scope.launch {
             val expectedState = pendingStates[provider]
-            if (expectedState == null || expectedState != state) {
+            val validState = when (provider) {
+                AuthProviderType.TELEGRAM -> expectedState != null && (state.isBlank() || expectedState == state)
+                else -> expectedState != null && expectedState == state
+            }
+            if (!validState) {
                 _state.update {
                     it.copy(
                         isLoading = false,

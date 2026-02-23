@@ -76,23 +76,6 @@ fun AuthScreen(
             onClick = { viewModel.onIntent(AuthIntent.OnProviderClick(AuthProviderType.GOOGLE)) },
         )
 
-        // Debug callback to validate MVI flow before platform deep-link is wired.
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !state.isLoading && state.selectedProvider != null,
-            onClick = {
-                val provider = state.selectedProvider ?: return@Button
-                viewModel.onIntent(
-                    AuthIntent.OnAuthCallback(
-                        provider = provider,
-                        code = "demo_code",
-                        state = "invalid_state",
-                    ),
-                )
-            },
-        ) {
-            Text("Проверить callback (debug)")
-        }
     }
 }
 

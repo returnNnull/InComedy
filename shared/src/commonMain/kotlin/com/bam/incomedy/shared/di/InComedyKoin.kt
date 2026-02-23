@@ -1,5 +1,6 @@
 package com.bam.incomedy.shared.di
 
+import com.bam.incomedy.data.auth.di.authDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import org.koin.core.KoinApplication
@@ -10,6 +11,7 @@ object InComedyKoin {
     private var koinApp: KoinApplication? = null
 
     private val baseModules: List<Module> = listOf(
+        authDataModule,
         authFeatureModule,
     )
 

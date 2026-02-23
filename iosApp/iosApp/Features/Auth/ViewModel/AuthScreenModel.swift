@@ -32,6 +32,10 @@ final class AuthScreenModel: ObservableObject {
         pendingOpenURL = nil
     }
 
+    func onIncomingCallback(url: URL) {
+        bridge.completeAuthFromCallbackUrl(callbackUrl: url.absoluteString)
+    }
+
     private func bind() {
         setBinding(
             bridge.bind(

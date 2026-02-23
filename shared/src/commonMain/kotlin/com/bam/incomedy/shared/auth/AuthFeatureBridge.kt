@@ -5,6 +5,7 @@ import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthState
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
+import com.bam.incomedy.feature.auth.providers.AuthCallbackParser
 import com.bam.incomedy.shared.bridge.BaseFeatureBridge
 import com.bam.incomedy.shared.bridge.BridgeHandle
 import com.bam.incomedy.shared.bridge.CompositeBridgeHandle
@@ -52,6 +53,17 @@ class AuthFeatureBridge(
     fun completeAuth(providerKey: String, code: String, state: String) {
         val provider = providerKey.toProviderType() ?: return
         viewModel.onIntent(AuthIntent.OnAuthCallback(provider = provider, code = code, state = state))
+    }
+
+    fun completeAuthFromCallbackUrl(callbackUrl: String) {
+        val parsed = AuthCallbackParser.parse(callbackUrl) ?: return
+        viewModel.onIntent(
+            AuthIntent.OnAuthCallback(
+                provider = parsed.provider,
+                code = parsed.code,
+                state = parsed.state,
+            ),
+        )
     }
 
     fun clearError() {

@@ -13,8 +13,9 @@ import com.bam.incomedy.navigation.AppNavHost
 
 @Composable
 @Preview
-fun App() {
-    val authViewModel: AuthAndroidViewModel = viewModel()
+fun App(
+    authViewModel: AuthAndroidViewModel = viewModel(),
+) {
 
     MaterialTheme {
         AppNavHost(

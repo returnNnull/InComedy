@@ -71,3 +71,35 @@
 - Decision: Standardize KMP ViewModel consumption via native platform wrappers (AndroidX ViewModel on Android, ObservableObject on iOS).
 - Rationale: Native wrappers provide lifecycle-safe flow collection and keep shared ViewModels platform-agnostic.
 - Consequences: Android UI must not bind directly to shared ViewModel instances; iOS UI must observe shared state/events through wrapper/adapter objects with explicit subscription disposal.
+
+## D-025
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Add in-repo `server` module on Ktor with PostgreSQL persistence and implement Telegram server-side auth verification as first production auth backend step.
+- Rationale: P0 requires real backend auth completion (`code/session` flow) and secure provider data verification on server side.
+- Consequences: Telegram auth payload verification (`hash` + `auth_date`) and app session token issuance now live in backend; next increments should add Google and VK exchange endpoints in the same server module.
+
+## D-026
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Keep auth provider integrations in dedicated mobile data layer (`data/auth`) and route Telegram completion through backend verify endpoint from that layer.
+- Rationale: Preserves Clean dependency direction (`presentation -> domain -> data`) and avoids networking/provider coupling inside `feature/auth` domain/mvi module.
+- Consequences: Provider implementations moved from `feature/auth` to `data/auth`; deep-link callbacks on Android/iOS now pass Telegram payload to shared auth flow which completes via backend API call.
+
+## D-027
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Standardize server delivery on GitHub Actions CI/CD with Docker image publishing to GHCR and staging deploy via SSH + Docker Compose.
+- Rationale: Provides reproducible build, automated validation, and low-friction deployments for initial server rollout.
+- Consequences: Repository now includes server CI/CD workflows, Dockerfile, and deploy compose manifest; staging secrets must be configured in GitHub environment before first deployment.
+
+## D-028
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Provide PostgreSQL as a first-class containerized dependency in deploy stack (`deploy/server/docker-compose.yml`) for staging/bootstrap environments.
+- Rationale: Simplifies first deployment and reduces manual infrastructure setup for backend auth rollout.
+- Consequences: Deploy env now includes Postgres credentials and persisted volume; server DB connection is wired to compose `postgres` service by default.

@@ -258,6 +258,244 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (Ktor Auth Backend: Plan)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: social auth + real backend completion)
+  - `docs/context/engineering/tooling-stack.md` (`Ktor` backend confirmed)
+  - `D-011` (auth feature module and provider abstraction)
+- Current constraints:
+  - Existing mobile flow currently builds provider launch URLs in client and uses placeholder `exchangeCode`.
+  - Real provider token/session exchange must be moved to backend.
+
+## Goal
+
+- What should be delivered:
+  - Produce implementation plan for Ktor auth backend for Telegram, VK, Google based on official provider APIs.
+
+## Scope
+
+- In scope:
+  - Provider flow selection and backend endpoint design.
+  - Validation/security/session issuance plan.
+  - Required configuration/secrets list and rollout order.
+- Out of scope:
+  - Full coding implementation in this step.
+  - Final provider credential setup in production consoles.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep current product P0 priorities and existing auth UX entry points.
+  - Follow `MVI`, quality rules, and secure token/session handling.
+- Deadlines or milestones:
+  - First deliver actionable technical plan; implementation starts after data/credentials confirmation.
+
+## Definition of Done
+
+- Functional result:
+  - Concrete phased plan for Ktor auth backend accepted.
+- Required tests:
+  - Test plan includes happy/error/edge cases per provider and session issuance.
+- Required docs updates:
+  - `docs/context/handoff/task-request-template.md` (this entry),
+  - and then governance docs in implementation phase.
+
+---
+
+## Latest Formalized Request (Telegram Auth Backend Implementation)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: real auth completion via Ktor backend)
+  - `D-011` (auth feature architecture), `D-025` (server module + Telegram-first rollout)
+  - `docs/context/engineering/tooling-stack.md` (`PostgreSQL` confirmed)
+- Current constraints:
+  - Start with Telegram provider first.
+  - Keep bot token out of repository and use environment variables.
+
+## Goal
+
+- What should be delivered:
+  - Create `server` module in current repository.
+  - Implement Ktor Telegram auth verify endpoint with server-side signature validation and DB-backed session issuance.
+
+## Scope
+
+- In scope:
+  - `server` Gradle module setup.
+  - Endpoint `POST /api/v1/auth/telegram/verify`.
+  - Telegram payload verification (`hash`, `auth_date`).
+  - PostgreSQL persistence for users/refresh tokens.
+  - JWT access token + refresh token issuance.
+- Out of scope:
+  - Google/VK backend exchange implementation.
+  - Full mobile callback wiring in this change.
+
+## Constraints
+
+- Tech/business constraints:
+  - Use Ktor on backend and PostgreSQL for storage.
+  - No hardcoded secrets in source control.
+- Deadlines or milestones:
+  - Complete Telegram backend slice first, then move to Google/VK.
+
+## Definition of Done
+
+- Functional result:
+  - Telegram auth payload can be verified by backend and returns app session tokens.
+- Required tests:
+  - Backend verifier tests for happy/error/edge cases.
+- Required docs updates:
+  - `tooling-stack`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Mobile Telegram Callback + Data Layer)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: real auth completion)
+  - `D-025` (Telegram backend verify endpoint)
+  - `D-026` (auth provider integrations in mobile data layer)
+- Current constraints:
+  - Keep `feature/auth` focused on domain/mvi contracts.
+  - Do not place provider networking logic in feature/presentation layer.
+
+## Goal
+
+- What should be delivered:
+  - Implement Telegram callback handling on Android/iOS and complete mobile auth through backend verify endpoint.
+  - Add/organize mobile `data` layer for auth providers and backend API calls.
+
+## Scope
+
+- In scope:
+  - `data/auth` module with provider implementations and Telegram backend API client.
+  - Android deep-link callback wiring (`incomedy://auth/*`).
+  - iOS callback wiring (`onOpenURL` + URL scheme setup).
+  - Shared DI wiring to include data auth module.
+- Out of scope:
+  - Google/VK real backend exchange.
+  - Production environment config and deployment.
+
+## Constraints
+
+- Tech/business constraints:
+  - Maintain Clean dependency direction and existing shared MVI flow.
+  - Telegram bot token stays server-side only.
+- Deadlines or milestones:
+  - Complete in current iteration as Telegram E2E mobile slice.
+
+## Definition of Done
+
+- Functional result:
+  - Mobile app accepts Telegram callback URL and completes auth via backend verification.
+- Required tests:
+  - `:feature:auth:allTests`
+  - `:composeApp:assembleDebug`
+- Required docs updates:
+  - `tooling-stack`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Server CI/CD Bootstrap)
+
+## Context
+
+- Related docs/decisions:
+  - `D-025` (server module exists),
+  - `D-027` (CI/CD approach),
+  - `docs/context/engineering/quality-rules.md` (CI gates required).
+- Current constraints:
+  - Keep deployment simple and reproducible for early stage.
+  - Use environment secrets for credentials and runtime config.
+
+## Goal
+
+- What should be delivered:
+  - Add CI for server test/build.
+  - Add CD for Docker image publish and staging deploy.
+
+## Scope
+
+- In scope:
+  - GitHub Actions workflows for `server`.
+  - Dockerfile and deploy compose manifest.
+  - Documentation of required secrets/setup.
+- Out of scope:
+  - Production rollout approval flow.
+  - Cloud-specific IaC beyond compose-based staging.
+
+## Constraints
+
+- Tech/business constraints:
+  - No secrets in repository.
+  - Keep rollback path simple (`docker compose up -d` with previous image tag).
+- Deadlines or milestones:
+  - Deliver in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - PRs run server CI.
+  - `main` pushes can publish image and deploy staging after secrets setup.
+- Required tests:
+  - `:server:build`.
+- Required docs updates:
+  - `tooling-stack`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (PostgreSQL Docker Container for Deploy)
+
+## Context
+
+- Related docs/decisions:
+  - `D-025` (server + PostgreSQL persistence)
+  - `D-027` (server CI/CD baseline)
+  - `D-028` (compose-based PostgreSQL bootstrap)
+- Current constraints:
+  - Need ready deployment stack with minimal manual DB setup.
+
+## Goal
+
+- What should be delivered:
+  - Add ready-to-run PostgreSQL container in deploy compose stack for server.
+
+## Scope
+
+- In scope:
+  - `deploy/server/docker-compose.yml` postgres service with persistence and healthcheck.
+  - `deploy/server/.env.example` with DB/server variables.
+  - Docs update for startup flow.
+- Out of scope:
+  - Managed database provisioning.
+  - Production HA/backup automation.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep secrets out of repository.
+  - Keep deployment compatible with existing CD workflow.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - `docker compose up -d` can run both PostgreSQL and server with shared env.
+- Required tests:
+  - compose syntax validation in target environment (`docker compose config`).
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`, `server/README.md`.
+
+---
+
 ## Latest Formalized Request (KMP Native VM Wrappers)
 
 ## Context

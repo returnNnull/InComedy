@@ -39,6 +39,9 @@ struct AuthRootView: View {
             guard isAuthorized else { return }
             onAuthorized?()
         }
+        .onOpenURL { url in
+            model.onIncomingCallback(url: url)
+        }
     }
 }
 
