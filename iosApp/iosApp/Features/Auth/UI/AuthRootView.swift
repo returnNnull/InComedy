@@ -22,7 +22,8 @@ struct AuthRootView: View {
             }
 
             ForEach(AuthProvider.allCases) { provider in
-                AuthProviderLinkButton(provider: provider, isLoading: model.isLoading) {
+                AuthProviderLinkButton(provider: provider, isLoading: model.isLoading
+                ) {
                     model.onTap(provider: provider)
                 }
             }

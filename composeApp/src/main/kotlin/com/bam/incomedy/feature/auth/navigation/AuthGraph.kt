@@ -5,12 +5,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
-import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.feature.auth.ui.AuthScreen
+import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.navigation.AppGraph
 
 fun NavGraphBuilder.authGraph(
-    authViewModel: AuthViewModel,
+    authViewModel: AuthAndroidViewModel,
 ) {
     navigation(
         route = AppGraph.AUTH,

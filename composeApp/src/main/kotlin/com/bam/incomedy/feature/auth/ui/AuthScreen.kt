@@ -9,22 +9,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
-import com.bam.incomedy.feature.auth.mvi.AuthViewModel
+import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 
 @Composable
 fun AuthScreen(
-    viewModel: AuthViewModel,
+    viewModel: AuthAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(viewModel) {

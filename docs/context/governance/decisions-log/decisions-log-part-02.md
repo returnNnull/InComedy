@@ -63,3 +63,11 @@
 - Decision: Standardize iOS navigation architecture as root app graph container + feature-owned graph views.
 - Rationale: Direct root-screen switching in `ContentView` does not scale; graph decomposition keeps iOS feature boundaries explicit and maintainable.
 - Consequences: iOS navigation should be coordinated in app/graph layer (`Navigation/*`), while features expose dedicated navigation views under `Features/<Feature>/Navigation/*`.
+
+## D-024
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Standardize KMP ViewModel consumption via native platform wrappers (AndroidX ViewModel on Android, ObservableObject on iOS).
+- Rationale: Native wrappers provide lifecycle-safe flow collection and keep shared ViewModels platform-agnostic.
+- Consequences: Android UI must not bind directly to shared ViewModel instances; iOS UI must observe shared state/events through wrapper/adapter objects with explicit subscription disposal.

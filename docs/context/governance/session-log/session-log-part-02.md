@@ -139,3 +139,24 @@
 - Changes: Removed actor-isolated call from `init` default parameter in `AuthScreenModel`; bridge default is now resolved inside `@MainActor` initializer body.
 - Decisions: Avoid main-actor static calls in default argument expressions.
 - Next: Continue incremental compile-error cleanup until iOS target compiles.
+
+## 2026-02-23 14:06
+
+- Context: Need to align auth feature with recommended KMP ViewModel integration recipe.
+- Changes: Added Android native wrapper (`AuthAndroidViewModel`), switched Android app/auth navigation to consume wrapper instead of shared VM directly, and migrated state collection to `collectAsStateWithLifecycle()`. Documented platform-wrapper rule and registered decision `D-024`.
+- Decisions: KMP ViewModels must be consumed through native platform wrappers (`D-024`).
+- Next: Stabilize iOS build/export issues and finalize iOS wrapper flow verification under the same rule.
+
+## 2026-02-23 14:22
+
+- Context: iOS implementation became harder to follow due to extra adapter layers.
+- Changes: Simplified iOS auth wrapper by removing `BridgeBackedObservableObject`, inlining binding/dispose logic in `AuthScreenModel`, and simplifying auth graph navigation (`AuthGraphView`) to a direct stack without placeholder route type.
+- Decisions: For current scope, prefer the simplest explicit iOS wrapper implementation that preserves lifecycle cleanup and readability.
+- Next: Validate iOS compile in Xcode and keep this simpler style for next iOS feature wrappers.
+
+## 2026-02-23 14:33
+
+- Context: Swift compiler still reported actor-isolation issue in `deinit` for `AuthScreenModel`.
+- Changes: Removed `@MainActor` isolation from `AuthScreenModel` class; main-thread UI updates remain explicitly wrapped in `Task { @MainActor ... }`.
+- Decisions: For this wrapper, avoid class-level actor isolation to keep synchronous cleanup in `deinit` compile-safe.
+- Next: Rebuild iOS target and continue remaining compile fixes, if any.

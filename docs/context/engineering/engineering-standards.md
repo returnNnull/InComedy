@@ -24,6 +24,10 @@ This document defines mandatory engineering rules for InComedy.
   - shared bridge exposes `observeState`, `observeEffect`, `dispose`
   - Swift adapter owns bridge lifecycle and publishes UI-friendly state
   - bridge implementations should reuse shared base abstractions (`BaseFeatureBridge`, `BridgeHandle`)
+- KMP ViewModel integration pattern is mandatory:
+  - `commonMain`: shared ViewModel is a plain class exposing `StateFlow<State>` + `SharedFlow/Flow<Event>`
+  - Android: wrap shared ViewModel in native AndroidX `ViewModel`; observe state via `collectAsStateWithLifecycle()`
+  - iOS: wrap shared ViewModel in native `ObservableObject`; map state to `@Published` and keep explicit subscription disposal in lifecycle (`deinit`/view lifecycle)
 - Each feature should define explicit:
   - `Intent` (user/action inputs),
   - `State` (single source of truth for UI),

@@ -25,6 +25,12 @@
 - `presentation -> domain -> data`
 - External frameworks/providers are accessed through adapters/interfaces.
 
+## ViewModel Integration (KMP)
+
+- Shared ViewModels live in `commonMain` and expose state/events via coroutines flows.
+- Android consumes shared ViewModels through native AndroidX `ViewModel` wrappers.
+- iOS consumes shared ViewModels through native Swift `ObservableObject` wrappers/bridges.
+
 ## Navigation (Android)
 
 - Root navigation host is centralized in app layer (`composeApp`) and owns top-level graph boundaries.

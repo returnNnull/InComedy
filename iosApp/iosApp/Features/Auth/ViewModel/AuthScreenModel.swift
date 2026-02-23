@@ -1,8 +1,7 @@
 import Foundation
 import Shared
 
-@MainActor
-final class AuthScreenModel: BridgeBackedObservableObject {
+final class AuthScreenModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var isAuthorized: Bool = false
@@ -11,13 +10,17 @@ final class AuthScreenModel: BridgeBackedObservableObject {
 
     private let bridge: AuthFeatureBridge
 
+    private var bindingHandle: NSObject?
+
     init(bridge: AuthFeatureBridge? = nil) {
-        self.bridge = bridge ?? AuthScreenModel.makeDefaultBridge()
-        super.init()
+        self.bridge = bridge ?? AuthFeatureBridge(
+            viewModel: InComedyKoin.shared.getAuthViewModel()
+        )
         bind()
     }
 
     deinit {
+        disposeBindingIfNeeded()
         bridge.dispose()
     }
 
@@ -59,9 +62,17 @@ final class AuthScreenModel: BridgeBackedObservableObject {
         )
     }
 
-    private static func makeDefaultBridge() -> AuthFeatureBridge {
-        AuthFeatureBridge(
-            viewModel: InComedyKoin.shared.getAuthViewModel()
-        )
+    private func setBinding(_ handle: Any) {
+        disposeBindingIfNeeded()
+        bindingHandle = handle as? NSObject
+    }
+
+    private func disposeBindingIfNeeded() {
+        guard let bindingHandle else { return }
+        let disposeSelector = NSSelectorFromString("dispose")
+        if bindingHandle.responds(to: disposeSelector) {
+            _ = bindingHandle.perform(disposeSelector)
+        }
+        self.bindingHandle = nil
     }
 }

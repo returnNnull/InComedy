@@ -258,6 +258,94 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (KMP Native VM Wrappers)
+
+## Context
+
+- Related docs/decisions:
+  - Existing shared auth ViewModel in `commonMain`.
+  - User-approved integration recipe for KMP VM usage on Android/iOS.
+- Current constraints:
+  - Preserve shared MVI contracts (`StateFlow` + `Event Flow`).
+  - Add native platform wrappers for lifecycle-safe consumption.
+
+## Goal
+
+- What should be delivered:
+  - Implement Android native ViewModel wrapper around shared auth VM.
+  - Keep/align iOS ObservableObject wrapper pattern for shared VM consumption.
+  - Register this pattern as explicit engineering rule.
+
+## Scope
+
+- In scope:
+  - Android auth wrapper + UI wiring changes.
+  - Context governance updates for new rule/decision.
+- Out of scope:
+  - Full iOS flow refactor beyond compile stabilization.
+
+## Constraints
+
+- Tech/business constraints:
+  - Shared VM remains platform-agnostic and framework-free.
+  - Lifecycle cleanup must be explicit in native wrappers.
+- Deadlines or milestones:
+  - Apply in current auth feature iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Android auth UI consumes native ViewModel wrapper and lifecycle-aware state collection.
+  - Rule is documented and traceable in governance docs.
+- Required tests:
+  - `:composeApp:assembleDebug`.
+- Required docs updates:
+  - `engineering-standards`, `architecture-overview`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (iOS Wrapper Simplification)
+
+## Context
+
+- Related docs/decisions:
+  - Ongoing `D-023`/`D-024` rollout for iOS graph and native wrapper patterns.
+- Current constraints:
+  - Keep lifecycle-safe cleanup.
+  - Reduce accidental complexity in iOS layer.
+
+## Goal
+
+- What should be delivered:
+  - Make iOS auth wrapper/navigation code easier to read and maintain while preserving behavior.
+
+## Scope
+
+- In scope:
+  - Remove extra base wrapper class in iOS auth stack.
+  - Simplify auth graph view structure for current single-screen flow.
+- Out of scope:
+  - New post-auth feature implementation.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep explicit binding disposal.
+  - Keep platform-specific iOS wrapper pattern.
+- Deadlines or milestones:
+  - Immediate cleanup in current session.
+
+## Definition of Done
+
+- Functional result:
+  - iOS auth wrapper is self-contained and easier to reason about.
+- Required tests:
+  - iOS compile check in Xcode environment.
+- Required docs updates:
+  - `session-log`.
+
+---
+
 ## Пример (на русском)
 
 ## Context
