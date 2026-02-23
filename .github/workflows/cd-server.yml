@@ -1,0 +1,112 @@
+name: CD Server
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "server/**"
+      - "deploy/server/**"
+      - ".github/workflows/cd-server.yml"
+      - "gradle/**"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+  workflow_dispatch:
+
+concurrency:
+  group: cd-server-main
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./server/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/incomedy-server:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/incomedy-server:latest
+
+      - name: Export image name
+        id: meta
+        run: echo "image=ghcr.io/${{ github.repository_owner }}/incomedy-server:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: staging
+    if: ${{ github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare remote directories
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT }}
+          script: |
+            mkdir -p /opt/incomedy/deploy/server
+            mkdir -p /opt/incomedy/server
+
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT }}
+          source: "deploy/server/docker-compose.yml"
+          target: "/opt/incomedy/"
+          overwrite: true
+
+      - name: Deploy with docker compose
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          DOTENV: ${{ secrets.STAGING_SERVER_DOTENV }}
+          GHCR_USER: ${{ secrets.STAGING_GHCR_USER }}
+          GHCR_TOKEN: ${{ secrets.STAGING_GHCR_TOKEN }}
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT }}
+          envs: IMAGE,DOTENV,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            mkdir -p /opt/incomedy/server
+            cp /opt/incomedy/deploy/server/docker-compose.yml /opt/incomedy/server/docker-compose.yml
+            printf "%s" "$DOTENV" > /opt/incomedy/server/.env
+            docker login ghcr.io -u "$GHCR_USER" -p "$GHCR_TOKEN"
+            cd /opt/incomedy/server
+            IMAGE="$IMAGE" docker compose -f docker-compose.yml pull
+            IMAGE="$IMAGE" docker compose -f docker-compose.yml up -d --remove-orphans
+            docker image prune -f

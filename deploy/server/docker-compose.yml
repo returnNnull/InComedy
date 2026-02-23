@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: incomedy-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-incomedy}
+      POSTGRES_USER: ${POSTGRES_USER:-incomedy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-incomedy} -d ${POSTGRES_DB:-incomedy}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    image: ${IMAGE}
+    container_name: incomedy-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-incomedy}
+      DB_USER: ${POSTGRES_USER:-incomedy}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "curl", "-fsS", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:

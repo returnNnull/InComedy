@@ -1,0 +1,38 @@
+package com.bam.incomedy.data.auth.di
+
+import com.bam.incomedy.data.auth.backend.TelegramBackendApi
+import com.bam.incomedy.data.auth.providers.GoogleAuthProvider
+import com.bam.incomedy.data.auth.providers.TelegramAuthProvider
+import com.bam.incomedy.data.auth.providers.VkAuthProvider
+import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
+import org.koin.dsl.bind
+import org.koin.dsl.module
+
+val authDataModule = module {
+    single {
+        TelegramBackendApi()
+    }
+
+    single {
+        VkAuthProvider(
+            clientId = "VK_CLIENT_ID",
+            redirectUri = "incomedy://auth/vk",
+        )
+    } bind SocialAuthProvider::class
+
+    single {
+        TelegramAuthProvider(
+            botId = "TELEGRAM_BOT_ID",
+            redirectUri = "incomedy://auth/telegram",
+            backendApi = get(),
+        )
+    } bind SocialAuthProvider::class
+
+    single {
+        GoogleAuthProvider(
+            clientId = "GOOGLE_CLIENT_ID",
+            redirectUri = "incomedy://auth/google",
+        )
+    } bind SocialAuthProvider::class
+}
+
