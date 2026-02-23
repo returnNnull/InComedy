@@ -48,12 +48,12 @@ jobs:
           file: ./server/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/incomedy-server:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/incomedy-server:latest
+            ghcr.io/returnnnull/incomedy-server:${{ github.sha }}
+            ghcr.io/returnnnull/incomedy-server:latest
 
       - name: Export image name
         id: meta
-        run: echo "image=ghcr.io/${{ github.repository_owner }}/incomedy-server:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+        run: echo "image=ghcr.io/returnnnull/incomedy-server:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
   deploy-staging:
     runs-on: ubuntu-latest
