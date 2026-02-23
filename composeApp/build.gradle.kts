@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodelCompose)
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(projects.shared)
+    implementation(projects.feature.auth)
 
     debugImplementation(libs.compose.uiTooling)
     testImplementation(libs.junit)

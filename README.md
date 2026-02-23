@@ -37,3 +37,26 @@ in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and r
 ---
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+
+## Project Memory
+
+To avoid losing product context across long iterations, project knowledge is stored in:
+
+- `docs/context/README.md`
+- `docs/context/product/product-brief.md`
+- `docs/context/product/backlog.md`
+- `docs/context/product/glossary.md`
+- `docs/context/product/non-functional-requirements.md`
+- `docs/context/product/risk-log.md`
+- `docs/context/engineering/tooling-stack.md`
+- `docs/context/engineering/engineering-standards.md`
+- `docs/context/engineering/quality-rules.md`
+- `docs/context/engineering/architecture-overview.md`
+- `docs/context/engineering/test-strategy.md`
+- `docs/context/engineering/api-contracts/README.md`
+- `docs/context/governance/decisions-log.md`
+- `docs/context/governance/session-log.md`
+- `docs/context/handoff/context-protocol.md`
+- `docs/context/handoff/chat-handoff-template.md`
+
+When scope or decisions change, update these files in the same PR as code changes.
