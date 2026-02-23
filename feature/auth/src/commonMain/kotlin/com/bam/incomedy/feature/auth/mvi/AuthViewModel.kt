@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
@@ -109,5 +110,9 @@ class AuthViewModel(
 
     private fun clearError() {
         _state.update { it.copy(errorMessage = null) }
+    }
+
+    fun clear() {
+        scope.cancel()
     }
 }

@@ -14,6 +14,10 @@ This document defines mandatory engineering rules for InComedy.
   - Android: Jetpack Compose
   - iOS: SwiftUI
 - Shared feature modules should contain platform-agnostic logic (domain/use-cases/ViewModel/contracts), not platform UI widgets.
+- iOS integration with shared `ViewModel` must use a bridge + Swift `ObservableObject` adapter pattern:
+  - shared bridge exposes `observeState`, `observeEffect`, `dispose`
+  - Swift adapter owns bridge lifecycle and publishes UI-friendly state
+  - bridge implementations should reuse shared base abstractions (`BaseFeatureBridge`, `BridgeHandle`)
 - Each feature should define explicit:
   - `Intent` (user/action inputs),
   - `State` (single source of truth for UI),

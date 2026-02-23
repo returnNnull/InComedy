@@ -105,3 +105,19 @@ Format:
 - Decision: Keep UI platform-specific: Android screens on Compose, iOS screens on SwiftUI; shared modules contain only platform-agnostic logic.
 - Rationale: Preserves native UX quality per platform and prevents coupling shared feature modules to UI frameworks.
 - Consequences: Compose UI was moved out of `feature/auth` into Android app layer; iOS auth screen is implemented separately in SwiftUI.
+
+## D-013
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Standardize iOS integration of shared ViewModels via a shared bridge + Swift ObservableObject adapter pattern.
+- Rationale: Provides one scalable and repeatable integration strategy for many ViewModels without duplicating business logic.
+- Consequences: Added `AuthFeatureBridge` in shared module and `AuthScreenModel` adapter in iOS feature layer as reference implementation.
+
+## D-014
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Introduce reusable base bridge primitives (`BaseFeatureBridge`, `BridgeHandle`, `CompositeBridgeHandle`) and require feature bridges to build on them.
+- Rationale: Reduces boilerplate and enforces consistent lifecycle/scope handling across many ViewModels.
+- Consequences: `AuthFeatureBridge` migrated to base bridge pattern; iOS gained reusable `BridgeBackedObservableObject` for binding lifecycle management.

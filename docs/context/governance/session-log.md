@@ -89,3 +89,24 @@ Entry template:
 - Changes: Moved Compose auth screen from shared feature module to Android app layer and replaced iOS starter UI with dedicated SwiftUI auth screen.
 - Decisions: Accepted platform-specific UI rule in `D-012`.
 - Next: Implement Ktor `code -> token/session` backend exchange and connect deep-link callbacks to ViewModel on both Android and iOS.
+
+## 2026-02-23 12:30
+
+- Context: Need iOS UI structure by feature files instead of large `ContentView`.
+- Changes: Split iOS auth UI into separate files (`AuthRootView`, `AuthProviderLinkButton`, `AuthProvider`) under `iosApp/iosApp/Features/Auth/*`; `ContentView` now acts as root container only.
+- Decisions: Keep SwiftUI screens modular with feature subfolders, similar to Android package organization.
+- Next: Continue iOS auth flow wiring with callback handling in dedicated feature files.
+
+## 2026-02-23 12:41
+
+- Context: Need one scalable way to use many shared ViewModels in SwiftUI.
+- Changes: Added shared `AuthFeatureBridge` (state/effect observation + lifecycle) and iOS `AuthScreenModel` ObservableObject adapter; wired SwiftUI auth screen to shared ViewModel through this bridge.
+- Decisions: Accepted bridge + adapter strategy as project standard in `D-013`.
+- Next: Reuse this pattern for next features and optionally evaluate KMP-NativeCoroutines/KMP-ObservableViewModel for reducing adapter boilerplate.
+
+## 2026-02-23 12:44
+
+- Context: Need reusable base pattern instead of per-feature bridge boilerplate.
+- Changes: Added shared bridge primitives (`BaseFeatureBridge`, `BridgeHandle`, `CompositeBridgeHandle`) and iOS base class (`BridgeBackedObservableObject`); refactored `AuthFeatureBridge` and `AuthScreenModel` to use them.
+- Decisions: Accepted base bridge policy in `D-014`.
+- Next: Apply same base pattern when adding next feature bridge.

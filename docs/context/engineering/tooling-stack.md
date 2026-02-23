@@ -19,6 +19,9 @@ Status labels:
 - Payments provider: TBD
 - Push notifications provider: TBD
 - Analytics stack: TBD
+- KMP iOS interop helpers:
+  - KMP-NativeCoroutines (bridge Flow/suspend to Swift async/Combine)
+  - KMP-ObservableViewModel (optional ViewModel bridge convenience)
 
 ## Decision Rule
 
