@@ -1,7 +1,10 @@
 FROM gradle:8.10.2-jdk17 AS build
 WORKDIR /workspace
 COPY . .
-RUN gradle :server:installDist --no-daemon
+USER root
+RUN chown -R gradle:gradle /workspace
+USER gradle
+RUN ./gradlew :server:installDist --no-daemon --stacktrace
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
