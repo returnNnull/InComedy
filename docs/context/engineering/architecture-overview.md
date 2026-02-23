@@ -25,6 +25,12 @@
 - `presentation -> domain -> data`
 - External frameworks/providers are accessed through adapters/interfaces.
 
+## Navigation (Android)
+
+- Root navigation host is centralized in app layer (`composeApp`) and owns top-level graph boundaries.
+- Each feature contributes a dedicated nested subgraph from its navigation package.
+- Cross-feature navigation is orchestrated via graph callbacks/events; `ViewModel` stays platform-agnostic and does not depend on `NavController`.
+
 ## Notes
 
 - Keep module boundaries aligned with feature domains and Clean architecture rules.

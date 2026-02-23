@@ -12,6 +12,7 @@ Status labels:
 - Backend server: `Ktor` (Kotlin)
 - Mobile app: `Kotlin Multiplatform` (Android + iOS)
 - Dependency Injection: `Koin` (KMP-first, shared across mobile/server layers)
+- Android navigation: `androidx.navigation:navigation-compose`
 
 ## Candidate
 
