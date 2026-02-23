@@ -89,7 +89,10 @@ Required GitHub secrets for `staging` environment:
 - `STAGING_SSH_KEY`
 - `STAGING_GHCR_USER`
 - `STAGING_GHCR_TOKEN`
-- `STAGING_SERVER_DOTENV` (full `.env` file content from `deploy/server/.env`)
+
+Runtime `.env` is managed directly on the server at:
+
+- `/opt/incomedy/server/.env`
 
 - Response body:
 

@@ -188,3 +188,10 @@
 - Changes: Extended `deploy/server/docker-compose.yml` with `postgres` service (healthcheck + persistent volume) and server `depends_on` DB wiring; added `deploy/server/.env.example`; updated `server/README.md` with compose startup instructions.
 - Decisions: Accepted compose-based PostgreSQL bootstrap strategy in `D-028`.
 - Next: Fill `deploy/server/.env` (or `STAGING_SERVER_DOTENV`) and run first compose deployment.
+
+## 2026-02-23 21:38
+
+- Context: CD deploy repeatedly failed due to malformed multiline `STAGING_SERVER_DOTENV` secret overwriting runtime env.
+- Changes: Updated CD workflow to stop using dotenv secret injection and require existing `/opt/incomedy/server/.env` on host; updated server README staging secret list accordingly.
+- Decisions: Accepted server-local env strategy in `D-029`.
+- Next: Re-run `CD Server` with updated workflow and verify end-to-end deployment.

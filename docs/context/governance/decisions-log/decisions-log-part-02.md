@@ -103,3 +103,11 @@
 - Decision: Provide PostgreSQL as a first-class containerized dependency in deploy stack (`deploy/server/docker-compose.yml`) for staging/bootstrap environments.
 - Rationale: Simplifies first deployment and reduces manual infrastructure setup for backend auth rollout.
 - Consequences: Deploy env now includes Postgres credentials and persisted volume; server DB connection is wired to compose `postgres` service by default.
+
+## D-029
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Staging deployment must use server-local runtime env file (`/opt/incomedy/server/.env`) and no longer rely on `STAGING_SERVER_DOTENV` secret injection.
+- Rationale: Prevents repeated deploy failures caused by malformed multiline secret payloads and keeps env management explicit on host.
+- Consequences: CD workflow now validates only file existence and uses existing server env; GitHub staging secrets list excludes `STAGING_SERVER_DOTENV`.

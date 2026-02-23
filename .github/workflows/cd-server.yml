@@ -91,7 +91,6 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE: ${{ needs.build-and-push.outputs.image }}
-          DOTENV: ${{ secrets.STAGING_SERVER_DOTENV }}
           GHCR_USER: ${{ secrets.STAGING_GHCR_USER }}
           GHCR_TOKEN: ${{ secrets.STAGING_GHCR_TOKEN }}
         with:
@@ -99,12 +98,12 @@ jobs:
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           port: ${{ secrets.STAGING_SSH_PORT }}
-          envs: IMAGE,DOTENV,GHCR_USER,GHCR_TOKEN
+          envs: IMAGE,GHCR_USER,GHCR_TOKEN
           script: |
             set -euo pipefail
             mkdir -p /opt/incomedy/server
             cp /opt/incomedy/deploy/server/docker-compose.yml /opt/incomedy/server/docker-compose.yml
-            printf "%s" "$DOTENV" > /opt/incomedy/server/.env
+            test -f /opt/incomedy/server/.env
             docker login ghcr.io -u "$GHCR_USER" -p "$GHCR_TOKEN"
             cd /opt/incomedy/server
             IMAGE="$IMAGE" docker compose -f docker-compose.yml pull
