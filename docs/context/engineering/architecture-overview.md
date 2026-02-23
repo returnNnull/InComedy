@@ -31,6 +31,12 @@
 - Each feature contributes a dedicated nested subgraph from its navigation package.
 - Cross-feature navigation is orchestrated via graph callbacks/events; `ViewModel` stays platform-agnostic and does not depend on `NavController`.
 
+## Navigation (iOS)
+
+- Root app navigation is centralized in app layer (`iosApp`) via app graph container + navigator state.
+- Each feature contributes a dedicated SwiftUI graph view (`Features/<Feature>/Navigation/*`).
+- Cross-feature transitions are coordinated by app/graph layer; shared `ViewModel` remains platform-agnostic and does not depend on navigation framework types.
+
 ## Notes
 
 - Keep module boundaries aligned with feature domains and Clean architecture rules.

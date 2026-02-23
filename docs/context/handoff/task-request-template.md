@@ -171,6 +171,93 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (iOS Navigation Graphs)
+
+## Context
+
+- Related docs/decisions:
+  - `D-022` (Android subgraph rule),
+  - current iOS app starts directly from auth screen via `ContentView`.
+- Current constraints:
+  - Keep iOS UI platform-specific and SwiftUI-based.
+  - Preserve existing auth UI behavior.
+
+## Goal
+
+- What should be delivered:
+  - Add scalable iOS navigation architecture with root graph container and feature graphs.
+  - Route current auth flow through feature-owned graph view.
+
+## Scope
+
+- In scope:
+  - iOS navigation container in app layer.
+  - Auth graph and placeholder post-auth graph.
+  - Documentation updates with explicit iOS navigation rule.
+- Out of scope:
+  - Full implementation of post-auth screens.
+
+## Constraints
+
+- Tech/business constraints:
+  - Shared ViewModel stays navigation-framework-agnostic.
+  - Cross-feature transitions handled in app/graph layer.
+- Deadlines or milestones:
+  - Complete in current iteration as structural foundation.
+
+## Definition of Done
+
+- Functional result:
+  - `ContentView` renders root graph, auth is hosted in feature graph, and auth success can transition to main graph placeholder.
+- Required tests:
+  - `xcodebuild` iOS compile check (if environment allows).
+- Required docs updates:
+  - `engineering-standards`, `architecture-overview`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (iOS BridgeHandle Compile Fix)
+
+## Context
+
+- Related docs/decisions:
+  - existing iOS bridge adapter base (`BridgeBackedObservableObject`),
+  - `D-023` iOS navigation structure rollout.
+- Current constraints:
+  - Fix must not change shared Kotlin bridge contracts.
+  - Keep iOS bridge lifecycle disposal behavior.
+
+## Goal
+
+- What should be delivered:
+  - Remove compile-time dependency on unresolved `BridgeHandle` Swift type in iOS app target.
+
+## Scope
+
+- In scope:
+  - `iosApp/iosApp/Common/Bridge/BridgeBackedObservableObject.swift` type handling update.
+- Out of scope:
+  - Kotlin bridge API redesign.
+  - Navigation flow changes.
+
+## Constraints
+
+- Tech/business constraints:
+  - Maintain safe disposal of active binding handle.
+- Deadlines or milestones:
+  - Immediate unblock for iOS run/build.
+
+## Definition of Done
+
+- Functional result:
+  - iOS code no longer references unknown `BridgeHandle` type and compiles past this point.
+- Required tests:
+  - iOS compile check in Xcode environment.
+- Required docs updates:
+  - `session-log`.
+
+---
+
 ## Пример (на русском)
 
 ## Context

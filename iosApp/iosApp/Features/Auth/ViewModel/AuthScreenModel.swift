@@ -11,8 +11,8 @@ final class AuthScreenModel: BridgeBackedObservableObject {
 
     private let bridge: AuthFeatureBridge
 
-    init(bridge: AuthFeatureBridge = AuthFeatureBridge()) {
-        self.bridge = bridge
+    init(bridge: AuthFeatureBridge? = nil) {
+        self.bridge = bridge ?? AuthScreenModel.makeDefaultBridge()
         super.init()
         bind()
     }
@@ -56,6 +56,12 @@ final class AuthScreenModel: BridgeBackedObservableObject {
                     }
                 }
             )
+        )
+    }
+
+    private static func makeDefaultBridge() -> AuthFeatureBridge {
+        AuthFeatureBridge(
+            viewModel: InComedyKoin.shared.getAuthViewModel()
         )
     }
 }

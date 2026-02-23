@@ -55,3 +55,11 @@
 - Decision: Standardize Android navigation architecture as root graph + feature-owned nested subgraphs.
 - Rationale: Flat navigation becomes hard to maintain as feature count grows; subgraphs preserve modular boundaries and predictable ownership.
 - Consequences: New Android features must expose navigation registration via dedicated `feature/<name>/navigation/*` graph files and integrate through root app graph.
+
+## D-023
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Standardize iOS navigation architecture as root app graph container + feature-owned graph views.
+- Rationale: Direct root-screen switching in `ContentView` does not scale; graph decomposition keeps iOS feature boundaries explicit and maintainable.
+- Consequences: iOS navigation should be coordinated in app/graph layer (`Navigation/*`), while features expose dedicated navigation views under `Features/<Feature>/Navigation/*`.

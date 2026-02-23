@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AuthRootView: View {
+    var onAuthorized: (() -> Void)? = nil
+
     @Environment(\.openURL) private var openURL
     @StateObject private var model = AuthScreenModel()
 
@@ -31,6 +33,10 @@ struct AuthRootView: View {
             guard let url else { return }
             openURL(url)
             model.onOpenURLHandled()
+        }
+        .onChange(of: model.isAuthorized) { isAuthorized in
+            guard isAuthorized else { return }
+            onAuthorized?()
         }
     }
 }

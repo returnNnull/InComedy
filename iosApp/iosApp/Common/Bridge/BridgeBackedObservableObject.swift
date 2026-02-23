@@ -1,16 +1,23 @@
 import Foundation
-import Shared
 
-@MainActor
 class BridgeBackedObservableObject: ObservableObject {
-    private var bindingHandle: BridgeHandle?
+    private var bindingHandle: NSObject?
 
-    func setBinding(_ handle: BridgeHandle) {
-        bindingHandle?.dispose()
-        bindingHandle = handle
+    func setBinding(_ handle: Any) {
+        disposeBindingIfNeeded()
+        bindingHandle = handle as? NSObject
     }
 
     deinit {
-        bindingHandle?.dispose()
+        disposeBindingIfNeeded()
+    }
+
+    private func disposeBindingIfNeeded() {
+        guard let bindingHandle else { return }
+        let disposeSelector = NSSelectorFromString("dispose")
+        if bindingHandle.responds(to: disposeSelector) {
+            _ = bindingHandle.perform(disposeSelector)
+        }
+        self.bindingHandle = nil
     }
 }

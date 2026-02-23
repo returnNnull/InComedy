@@ -104,3 +104,38 @@
 - Changes: Added subgraph architecture rule in engineering context docs, registered decision `D-022`, updated traceability, and prepared full workspace commit including script migration changes.
 - Decisions: Android navigation graph decomposition is now mandatory for scalable feature growth (`D-022`).
 - Next: Build next `main` feature graph and route auth success transition through graph-level callback.
+
+## 2026-02-23 13:39
+
+- Context: Need iOS-side scalable navigation structure similar to Android subgraphs.
+- Changes: Added iOS root graph container/navigation state (`Navigation/*`), introduced feature-owned auth graph and placeholder main graph, rewired `ContentView` through app graph, and connected auth success callback to graph transition.
+- Decisions: Accepted iOS navigation graph standard in `D-023`.
+- Next: Replace placeholder main graph with real post-auth feature graphs and deep-link entry routing.
+
+## 2026-02-23 13:43
+
+- Context: iOS run/build blocked by Swift compile error `Cannot find type 'BridgeHandle' in scope`.
+- Changes: Refactored `BridgeBackedObservableObject` to avoid hard compile-time dependency on exported Kotlin handle type and dispose active handle via runtime selector (`dispose`) on bridged NSObject.
+- Decisions: Keep current Kotlin bridge API unchanged; compatibility fix applied in iOS adapter layer.
+- Next: Re-run iOS build in full Xcode environment and confirm no further bridge-symbol export issues.
+
+## 2026-02-23 13:45
+
+- Context: iOS compile still failed on unresolved `AuthFeatureBridge` symbol.
+- Changes: Updated `AuthScreenModel` to use stable exported ObjC names from Shared framework (`SharedAuthFeatureBridge`, `SharedInComedyKoin`) and explicit bridge initialization via `SharedInComedyKoin.shared.getAuthViewModel()`.
+- Decisions: iOS bridge adapter layer should reference Shared exported symbols in their stable generated form when Swift name mapping is inconsistent.
+- Next: Rebuild iOS target and verify no further unresolved Shared symbol errors.
+
+## 2026-02-23 13:47
+
+- Context: ObjC-prefixed symbol names were unresolved in Swift target.
+- Changes: Switched `AuthScreenModel` back to Swift-visible KMP names (`AuthFeatureBridge`, `InComedyKoin`) while keeping explicit `init(viewModel:)` construction.
+- Decisions: Prefer `swift_name` aliases for Shared types in Swift files; avoid ObjC-prefixed names unless Swift aliases are unavailable.
+- Next: Re-run iOS build and continue with next unresolved symbol if any.
+
+## 2026-02-23 13:49
+
+- Context: Swift compile error from actor isolation in default initializer argument.
+- Changes: Removed actor-isolated call from `init` default parameter in `AuthScreenModel`; bridge default is now resolved inside `@MainActor` initializer body.
+- Decisions: Avoid main-actor static calls in default argument expressions.
+- Next: Continue incremental compile-error cleanup until iOS target compiles.

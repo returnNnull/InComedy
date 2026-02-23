@@ -18,6 +18,8 @@ This document defines mandatory engineering rules for InComedy.
 - Shared feature modules should contain platform-agnostic logic (domain/use-cases/ViewModel/contracts), not platform UI widgets.
 - Android navigation must be organized as a root `NavHost` with feature-owned nested subgraphs (`NavGraphBuilder` extensions), not a single flat route list.
 - Each Android feature should keep its own navigation package (`.../feature/<name>/navigation/*`) with graph and destination declarations.
+- iOS navigation must be organized as a root app graph container (app-level navigator) with feature-owned graph views, not direct screen switching in `ContentView`.
+- Each iOS feature should keep navigation artifacts inside `iosApp/iosApp/Features/<Feature>/Navigation/*`.
 - iOS integration with shared `ViewModel` must use a bridge + Swift `ObservableObject` adapter pattern:
   - shared bridge exposes `observeState`, `observeEffect`, `dispose`
   - Swift adapter owns bridge lifecycle and publishes UI-friendly state
