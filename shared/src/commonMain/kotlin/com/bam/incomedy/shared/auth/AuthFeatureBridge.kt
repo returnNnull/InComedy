@@ -1,6 +1,5 @@
 package com.bam.incomedy.shared.auth
 
-import com.bam.incomedy.feature.auth.AuthModule
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
@@ -9,9 +8,10 @@ import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.shared.bridge.BaseFeatureBridge
 import com.bam.incomedy.shared.bridge.BridgeHandle
 import com.bam.incomedy.shared.bridge.CompositeBridgeHandle
+import com.bam.incomedy.shared.di.InComedyKoin
 
 class AuthFeatureBridge(
-    private val viewModel: AuthViewModel = AuthModule.createViewModel(),
+    private val viewModel: AuthViewModel = InComedyKoin.getAuthViewModel(),
 ) : BaseFeatureBridge() {
 
     fun currentState(): AuthUiStateSnapshot = viewModel.state.value.toSnapshot()

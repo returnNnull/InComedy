@@ -110,3 +110,10 @@ Entry template:
 - Changes: Added shared bridge primitives (`BaseFeatureBridge`, `BridgeHandle`, `CompositeBridgeHandle`) and iOS base class (`BridgeBackedObservableObject`); refactored `AuthFeatureBridge` and `AuthScreenModel` to use them.
 - Decisions: Accepted base bridge policy in `D-014`.
 - Next: Apply same base pattern when adding next feature bridge.
+
+## 2026-02-23 12:54
+
+- Context: Need a single DI standard for scaling feature modules.
+- Changes: Added Koin dependencies, introduced auth feature Koin module, added shared `InComedyKoin` entry point, and migrated auth wiring from manual factory to DI resolution.
+- Decisions: Accepted Koin as DI standard in `D-015`.
+- Next: Add Koin modules for next features and wire backend/service modules using the same container conventions.

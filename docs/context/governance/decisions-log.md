@@ -121,3 +121,11 @@ Format:
 - Decision: Introduce reusable base bridge primitives (`BaseFeatureBridge`, `BridgeHandle`, `CompositeBridgeHandle`) and require feature bridges to build on them.
 - Rationale: Reduces boilerplate and enforces consistent lifecycle/scope handling across many ViewModels.
 - Consequences: `AuthFeatureBridge` migrated to base bridge pattern; iOS gained reusable `BridgeBackedObservableObject` for binding lifecycle management.
+
+## D-015
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Standardize dependency injection on `Koin` across shared/mobile layers.
+- Rationale: Koin provides a practical KMP-first DI model and keeps wiring consistent between shared logic and platform apps.
+- Consequences: Auth feature wiring moved from manual object factory to Koin modules and shared `InComedyKoin` entry point.

@@ -1,14 +1,15 @@
-package com.bam.incomedy.feature.auth
+package com.bam.incomedy.feature.auth.di
 
 import com.bam.incomedy.feature.auth.domain.SocialAuthService
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.feature.auth.providers.GoogleAuthProvider
 import com.bam.incomedy.feature.auth.providers.TelegramAuthProvider
 import com.bam.incomedy.feature.auth.providers.VkAuthProvider
+import org.koin.dsl.module
 
-object AuthModule {
-    fun createViewModel(): AuthViewModel {
-        val service = SocialAuthService(
+val authFeatureModule = module {
+    single {
+        SocialAuthService(
             providers = listOf(
                 VkAuthProvider(
                     clientId = "VK_CLIENT_ID",
@@ -24,6 +25,9 @@ object AuthModule {
                 ),
             ),
         )
-        return AuthViewModel(service)
+    }
+
+    factory {
+        AuthViewModel(socialAuthService = get())
     }
 }

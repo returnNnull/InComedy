@@ -9,13 +9,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.bam.incomedy.feature.auth.AuthModule
 import com.bam.incomedy.feature.auth.ui.AuthScreen
+import com.bam.incomedy.shared.di.InComedyKoin
 
 @Composable
 @Preview
 fun App() {
-    val authViewModel = remember { AuthModule.createViewModel() }
+    val authViewModel = remember {
+        InComedyKoin.getAuthViewModel()
+    }
 
     MaterialTheme {
         Box(

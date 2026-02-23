@@ -22,6 +22,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":feature:auth"))
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.koin.core)
         }
     }
 }

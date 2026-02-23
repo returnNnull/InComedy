@@ -6,6 +6,8 @@ This document defines mandatory engineering rules for InComedy.
 
 - Project architecture style: `Clean` (layered boundaries and dependency direction from outer layers to domain abstractions).
 - Feature modules should keep clear separation of concerns (presentation/domain/data).
+- Dependency injection standard: `Koin`.
+- Dependencies should be wired via feature modules and resolved through shared DI entry points (no ad-hoc object factories).
 
 ## Presentation
 
