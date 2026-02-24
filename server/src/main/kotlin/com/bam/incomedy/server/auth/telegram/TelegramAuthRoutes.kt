@@ -3,27 +3,45 @@ package com.bam.incomedy.server.auth.telegram
 import com.bam.incomedy.server.ErrorResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
+import io.ktor.server.plugins.callid.callId
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 
 object TelegramAuthRoutes {
+    private val logger = LoggerFactory.getLogger(TelegramAuthRoutes::class.java)
+
     fun register(route: Route, authService: TelegramAuthService) {
         route.post("/api/v1/auth/telegram/verify") {
+            val requestId = call.callId ?: "n/a"
             val request = runCatching { call.receive<TelegramVerifyRequest>() }.getOrElse {
+                logger.warn("auth.telegram.verify.invalid_payload requestId={}", requestId)
                 call.respond(
                     HttpStatusCode.BadRequest,
                     ErrorResponse("bad_request", "Invalid Telegram auth payload"),
                 )
                 return@post
             }
+            logger.info(
+                "auth.telegram.verify.received requestId={} telegramId={} hasUsername={} hasPhoto={}",
+                requestId,
+                request.id,
+                !request.username.isNullOrBlank(),
+                !request.photoUrl.isNullOrBlank(),
+            )
 
             val result = authService.verifyAndCreateSession(request)
             result.fold(
                 onSuccess = { auth ->
+                    logger.info(
+                        "auth.telegram.verify.success requestId={} userId={}",
+                        requestId,
+                        auth.user.id,
+                    )
                     call.respond(
                         HttpStatusCode.OK,
                         TelegramAuthResponse(
@@ -47,6 +65,12 @@ object TelegramAuthRoutes {
                     } else {
                         HttpStatusCode.BadRequest
                     }
+                    logger.warn(
+                        "auth.telegram.verify.failed requestId={} status={} reason={}",
+                        requestId,
+                        status.value,
+                        error.message ?: "unknown",
+                    )
                     call.respond(
                         status,
                         ErrorResponse("telegram_auth_failed", error.message ?: "Telegram auth failed"),

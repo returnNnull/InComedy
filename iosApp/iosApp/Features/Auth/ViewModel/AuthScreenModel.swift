@@ -25,6 +25,7 @@ final class AuthScreenModel: ObservableObject {
     }
 
     func onTap(provider: AuthProvider) {
+        print("AUTH_FLOW stage=ios.start_auth.requested provider=\(provider.rawValue)")
         bridge.startAuth(providerKey: provider.rawValue)
     }
 
@@ -33,6 +34,7 @@ final class AuthScreenModel: ObservableObject {
     }
 
     func onIncomingCallback(url: URL) {
+        print("AUTH_FLOW stage=ios.callback_url.received hasUrl=true")
         bridge.completeAuthFromCallbackUrl(callbackUrl: url.absoluteString)
     }
 
@@ -58,6 +60,7 @@ final class AuthScreenModel: ObservableObject {
                 },
                 onOpenUrl: { [weak self] urlString in
                     guard let self, let url = URL(string: urlString) else { return }
+                    print("AUTH_FLOW stage=ios.launch_url.received")
                     Task { @MainActor in
                         self.pendingOpenURL = url
                     }

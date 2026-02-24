@@ -202,3 +202,17 @@
 - Changes: Added `deploy/server/Caddyfile`, extended deploy compose with `caddy` service (80/443), switched app container to internal `expose` only, and updated CD workflow to copy Caddyfile to server before compose up.
 - Decisions: Accepted Caddy-based TLS/domain routing strategy in `D-030`.
 - Next: Re-run `CD Server` and verify `https://incomedy.ru/health` and `https://api.incomedy.ru/health`.
+
+## 2026-02-24 13:06
+
+- Context: Need to finish Telegram authorization on mobile against deployed backend/domain.
+- Changes: Updated mobile auth data layer Telegram config to use real bot id and domain origin (`https://incomedy.ru`), switched backend base URL on Android/iOS to `https://api.incomedy.ru`, added `return_to` in Telegram launch URL, and improved Telegram callback parser to read params from both query and fragment.
+- Decisions: Accepted mobile Telegram domain wiring rule in `D-031`.
+- Next: Validate Telegram auth flow on physical Android/iOS device with real callback payload from Telegram and confirm token issuance end-to-end.
+
+## 2026-02-24 13:32
+
+- Context: Need mandatory observability for auth flow debugging across server and mobile.
+- Changes: Added backend auth logs with request-id/call-id, added structured auth-stage logs in shared/auth Android/iOS entry points, enabled backend `CallId` plugin with `X-Request-ID`, and documented mandatory auth logging rules in engineering and quality context docs.
+- Decisions: Accepted cross-layer auth logging rule in `D-032`.
+- Next: Deploy updated server build and validate logs on real Telegram login attempt (`requestId` + auth stage sequence).

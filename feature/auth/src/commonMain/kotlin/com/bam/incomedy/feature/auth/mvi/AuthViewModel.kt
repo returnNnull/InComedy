@@ -42,6 +42,7 @@ class AuthViewModel(
 
     private fun startAuth(provider: AuthProviderType) {
         scope.launch {
+            AuthFlowLogger.event(stage = "start_auth.requested", provider = provider)
             _state.update {
                 it.copy(
                     isLoading = true,
@@ -54,11 +55,17 @@ class AuthViewModel(
             val result = socialAuthService.requestLaunch(provider, stateToken)
             result.fold(
                 onSuccess = { launchRequest ->
+                    AuthFlowLogger.event(stage = "start_auth.launch_url_ready", provider = provider)
                     pendingStates[provider] = launchRequest.state
                     _effects.emit(AuthEffect.OpenExternalAuth(provider, launchRequest.url))
                     _state.update { current -> current.copy(isLoading = false) }
                 },
                 onFailure = { error ->
+                    AuthFlowLogger.event(
+                        stage = "start_auth.failed",
+                        provider = provider,
+                        details = "reason=${error.message ?: "unknown"}",
+                    )
                     _state.update { current ->
                         current.copy(
                             isLoading = false,
@@ -72,12 +79,18 @@ class AuthViewModel(
 
     private fun completeAuth(provider: AuthProviderType, code: String, state: String) {
         scope.launch {
+            AuthFlowLogger.event(
+                stage = "complete_auth.callback_received",
+                provider = provider,
+                details = "statePresent=${state.isNotBlank()}",
+            )
             val expectedState = pendingStates[provider]
             val validState = when (provider) {
                 AuthProviderType.TELEGRAM -> expectedState != null && (state.isBlank() || expectedState == state)
                 else -> expectedState != null && expectedState == state
             }
             if (!validState) {
+                AuthFlowLogger.event(stage = "complete_auth.invalid_state", provider = provider)
                 _state.update {
                     it.copy(
                         isLoading = false,
@@ -91,6 +104,11 @@ class AuthViewModel(
             val result = socialAuthService.complete(provider, code, state)
             result.fold(
                 onSuccess = { session ->
+                    AuthFlowLogger.event(
+                        stage = "complete_auth.success",
+                        provider = provider,
+                        details = "userId=${session.userId}",
+                    )
                     pendingStates.remove(provider)
                     _state.update { current ->
                         current.copy(
@@ -101,6 +119,11 @@ class AuthViewModel(
                     }
                 },
                 onFailure = { error ->
+                    AuthFlowLogger.event(
+                        stage = "complete_auth.failed",
+                        provider = provider,
+                        details = "reason=${error.message ?: "unknown"}",
+                    )
                     _state.update { current ->
                         current.copy(
                             isLoading = false,

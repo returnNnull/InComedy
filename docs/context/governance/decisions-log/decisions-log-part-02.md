@@ -119,3 +119,19 @@
 - Decision: Serve public traffic through `Caddy` in deploy stack with automatic HTTPS for `incomedy.ru` and `api.incomedy.ru`.
 - Rationale: Provides TLS termination and stable domain routing without exposing app container port directly.
 - Consequences: Deploy compose now includes `caddy` service and `deploy/server/Caddyfile`; CD copies Caddyfile to server during deployment.
+
+## D-031
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Complete mobile Telegram auth integration against deployed domain endpoints (`origin=https://incomedy.ru`, backend API `https://api.incomedy.ru`) and support callback parsing from both query and fragment parts.
+- Rationale: Localhost-based mobile config and incorrect Telegram `origin` prevent real device authentication flow from completing.
+- Consequences: `data/auth` Telegram provider now generates launch URL with `return_to=incomedy://auth/telegram`, parses callback from query/fragment, and exchanges payload against deployed backend domain.
+
+## D-032
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Make structured auth-flow logging mandatory across backend and mobile layers with request trace id on backend.
+- Rationale: Auth issues are high-impact and hard to debug without consistent cross-layer telemetry.
+- Consequences: Server now emits request-id based auth logs, mobile auth entry points emit flow-stage logs, and engineering/quality standards explicitly require this for future features.

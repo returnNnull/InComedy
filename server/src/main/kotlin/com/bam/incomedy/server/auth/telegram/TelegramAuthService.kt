@@ -3,6 +3,7 @@ package com.bam.incomedy.server.auth.telegram
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.SessionUser
 import com.bam.incomedy.server.db.TelegramUserRepository
+import org.slf4j.LoggerFactory
 import java.time.Instant
 
 class TelegramAuthService(
@@ -10,6 +11,8 @@ class TelegramAuthService(
     private val repository: TelegramUserRepository,
     private val tokenService: JwtSessionTokenService,
 ) {
+    private val logger = LoggerFactory.getLogger(TelegramAuthService::class.java)
+
     fun verifyAndCreateSession(request: TelegramVerifyRequest): Result<TelegramAuthResult> {
         val verified = verifier.verify(request).getOrElse { return Result.failure(it) }
         val storedUser = repository.upsert(verified.user)
@@ -22,6 +25,12 @@ class TelegramAuthService(
             userId = storedUser.id,
             tokenHash = tokenService.refreshTokenHash(tokens.refreshToken),
             expiresAt = tokenService.refreshExpiryInstant(Instant.now()),
+        )
+        logger.info(
+            "auth.telegram.session.issued userId={} telegramId={} accessTtlSeconds={}",
+            storedUser.id,
+            storedUser.telegramId,
+            tokens.expiresInSeconds,
         )
 
         val displayName = listOfNotNull(storedUser.firstName, storedUser.lastName).joinToString(" ").trim()
@@ -47,4 +56,3 @@ data class TelegramAuthResult(
     val expiresInSeconds: Long,
     val user: SessionUser,
 )
-

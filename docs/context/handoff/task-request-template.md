@@ -541,6 +541,103 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (Mobile Telegram Auth Completion)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: real social auth completion)
+  - `D-025` (server Telegram verify), `D-026` (auth in data layer), `D-031` (domain wiring)
+- Current constraints:
+  - Domain stack is live (`https://incomedy.ru`, `https://api.incomedy.ru`).
+  - Mobile auth must stop using localhost callbacks/backend URLs.
+
+## Goal
+
+- What should be delivered:
+  - Complete Telegram auth in mobile apps (Android/iOS) against deployed backend/domain.
+
+## Scope
+
+- In scope:
+  - Telegram launch URL config (`origin`, `return_to`, bot id).
+  - Mobile backend base URL for Telegram verify call.
+  - Callback parsing compatibility for query/fragment formats.
+- Out of scope:
+  - VK/Google backend completion.
+  - Additional auth UI redesign.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep auth network/provider implementation in `data/auth`.
+  - Keep feature/auth module domain+mvi only.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Mobile Telegram callback is processed and exchanged to backend session using deployed API domain.
+- Required tests:
+  - `:data:auth:compileKotlinIosSimulatorArm64`
+  - `:feature:auth:allTests`
+  - `:composeApp:assembleDebug`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Auth Logging Rule + Implementation)
+
+## Context
+
+- Related docs/decisions:
+  - `D-031` (mobile telegram auth completion),
+  - `D-032` (mandatory auth logging),
+  - `docs/context/engineering/quality-rules.md` Observability section.
+- Current constraints:
+  - Need logs in both server and mobile for debugging callback/exchange problems.
+  - Logs must not contain secrets.
+
+## Goal
+
+- What should be delivered:
+  - Add structured auth logging in server and mobile app.
+  - Document this as mandatory engineering rule for future work.
+
+## Scope
+
+- In scope:
+  - backend request-id logging for auth endpoint,
+  - server auth stage logs (received/success/failure),
+  - mobile auth stage logs for provider click, callback received, parse/success/failure,
+  - context docs update with observability rule.
+- Out of scope:
+  - external log aggregation stack (ELK, Loki, etc.)
+  - full metrics/tracing platform setup.
+
+## Constraints
+
+- Tech/business constraints:
+  - No token/secret leakage in logs.
+  - Keep implementation minimal and compatible with current stack.
+- Deadlines or milestones:
+  - Complete in current auth stabilization iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Auth flow can be debugged end-to-end from logs on backend and mobile.
+- Required tests:
+  - `:server:build`
+  - `:feature:auth:allTests`
+  - `:composeApp:assembleDebug`
+- Required docs updates:
+  - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
 ## Latest Formalized Request (KMP Native VM Wrappers)
 
 ## Context

@@ -9,6 +9,7 @@ import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
 
 class TelegramAuthProvider(
     private val botId: String,
+    private val origin: String,
     private val redirectUri: String,
     private val backendApi: TelegramBackendApi,
 ) : SocialAuthProvider {
@@ -19,7 +20,8 @@ class TelegramAuthProvider(
             base = "https://oauth.telegram.org/auth",
             params = mapOf(
                 "bot_id" to botId,
-                "origin" to redirectUri,
+                "origin" to origin,
+                "return_to" to redirectUri,
                 "request_access" to "write",
                 "state" to state,
             ),
@@ -41,14 +43,10 @@ class TelegramAuthProvider(
     }
 
     private fun parseTelegramPayload(callbackUrl: String): TelegramVerifyPayload? {
-        val params = callbackUrl.substringAfter('?', "")
-            .split('&')
-            .mapNotNull { pair ->
-                val index = pair.indexOf('=')
-                if (index <= 0) return@mapNotNull null
-                pair.substring(0, index) to decodePercent(pair.substring(index + 1))
-            }
-            .toMap()
+        val params = buildMap {
+            putAll(parseKeyValuePart(callbackUrl.substringAfter('?', "").substringBefore('#')))
+            putAll(parseKeyValuePart(callbackUrl.substringAfter('#', "")))
+        }
 
         val id = params["id"]?.toLongOrNull() ?: return null
         val firstName = params["first_name"]?.takeIf { it.isNotBlank() } ?: return null
@@ -64,6 +62,18 @@ class TelegramAuthProvider(
             authDate = authDate,
             hash = hash,
         )
+    }
+
+    private fun parseKeyValuePart(value: String): Map<String, String> {
+        if (value.isBlank()) return emptyMap()
+        return value
+            .split('&')
+            .mapNotNull { pair ->
+                val index = pair.indexOf('=')
+                if (index <= 0) return@mapNotNull null
+                pair.substring(0, index) to decodePercent(pair.substring(index + 1))
+            }
+            .toMap()
     }
 
     private fun decodePercent(value: String): String {
@@ -86,4 +96,3 @@ class TelegramAuthProvider(
         return sb.toString()
     }
 }
-

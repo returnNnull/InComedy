@@ -22,8 +22,9 @@ val authDataModule = module {
 
     single {
         TelegramAuthProvider(
-            botId = "TELEGRAM_BOT_ID",
-            redirectUri = "incomedy://auth/telegram",
+            botId = "8649746631",
+            origin = "https://incomedy.ru",
+            redirectUri = "https://incomedy.ru/auth/telegram/callback",
             backendApi = get(),
         )
     } bind SocialAuthProvider::class
@@ -35,4 +36,3 @@ val authDataModule = module {
         )
     } bind SocialAuthProvider::class
 }
-

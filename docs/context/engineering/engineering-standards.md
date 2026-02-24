@@ -39,6 +39,16 @@ This document defines mandatory engineering rules for InComedy.
 - Business logic should be isolated from framework code when possible.
 - Side effects (network, storage, time, random) must be abstracted behind interfaces.
 
+## Observability
+
+- Auth and payment-related flows must emit structured logs on every critical stage:
+  - flow started,
+  - external callback received,
+  - verification/exchange success,
+  - verification/exchange failure.
+- Every backend auth request log must include request trace identifier (`X-Request-ID`/call-id).
+- Logs must never include secrets or raw auth tokens.
+
 ## Testing Policy
 
 - Every delivered feature must include corresponding automated tests.

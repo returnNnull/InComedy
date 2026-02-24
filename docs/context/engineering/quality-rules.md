@@ -52,10 +52,11 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - Log key business and technical events with consistent structure.
 - Include trace identifiers where applicable to simplify diagnostics.
+- For auth callbacks/exchange, logs are mandatory on both backend and mobile entry points.
+- Auth logs must include provider and stage, but must not include access/refresh tokens, bot tokens, or other secrets.
 
 ## Security and Privacy
 
 - Never store secrets in repository.
 - Mask or avoid logging personal/sensitive user data.
 - Apply secure token/session handling in all auth flows.
-
