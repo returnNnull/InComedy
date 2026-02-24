@@ -91,30 +91,7 @@ data class ErrorResponse(
 )
 
 private fun telegramMobileBridgeHtml(): String {
-    return """
-        <!doctype html>
-        <html lang="en">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>InComedy Auth</title>
-        </head>
-        <body>
-          <p>Returning to InComedy app...</p>
-          <script>
-            (function () {
-              var search = window.location.search || "";
-              var hash = window.location.hash || "";
-              var parts = [];
-              if (search.length > 1) parts.push(search.substring(1));
-              if (hash.length > 1) parts.push(hash.substring(1));
-              var query = parts.filter(Boolean).join("&");
-              var target = "incomedy://auth/telegram";
-              if (query.length > 0) target += "?" + query;
-              window.location.replace(target);
-            })();
-          </script>
-        </body>
-        </html>
-    """.trimIndent()
+    val stream = Application::class.java.classLoader.getResourceAsStream("static/telegram-callback.html")
+        ?: error("Missing static/telegram-callback.html resource")
+    return stream.bufferedReader().use { it.readText() }
 }
