@@ -496,6 +496,51 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (Domain Routing with Caddy)
+
+## Context
+
+- Related docs/decisions:
+  - `D-027` (CI/CD baseline),
+  - `D-028` (compose Postgres),
+  - `D-030` (Caddy TLS/domain routing).
+- Current constraints:
+  - Domain `incomedy.ru` must be reachable externally over HTTPS.
+
+## Goal
+
+- What should be delivered:
+  - Add Caddy reverse-proxy/TLS layer for domain-based access to server API.
+
+## Scope
+
+- In scope:
+  - `deploy/server/Caddyfile` for `incomedy.ru`, `www.incomedy.ru`, `api.incomedy.ru`.
+  - `deploy/server/docker-compose.yml` update with `caddy` service.
+  - CD workflow update to copy Caddyfile to target host.
+- Out of scope:
+  - DNS registrar automation.
+  - Advanced WAF/rate-limit edge policies.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep server runtime in Docker Compose.
+  - Avoid exposing app container port publicly.
+- Deadlines or milestones:
+  - Complete in current deployment iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Domain requests are served over HTTPS and proxied to backend app container.
+- Required tests:
+  - Live checks: `https://incomedy.ru/health`, `https://api.incomedy.ru/health`.
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`, `server/README.md`.
+
+---
+
 ## Latest Formalized Request (KMP Native VM Wrappers)
 
 ## Context

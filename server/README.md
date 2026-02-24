@@ -40,6 +40,21 @@ docker compose up -d
 docker compose ps
 ```
 
+### Domain + HTTPS (Caddy)
+
+`deploy/server/Caddyfile` is used for TLS termination and reverse proxy:
+
+- `incomedy.ru` -> `server:8080`
+- `www.incomedy.ru` -> redirect to `https://incomedy.ru`
+- `api.incomedy.ru` -> `server:8080`
+
+For production domain use:
+
+```bash
+cd /opt/incomedy/server
+docker compose --env-file .env up -d
+```
+
 ## Required Environment Variables
 
 - `DB_URL`

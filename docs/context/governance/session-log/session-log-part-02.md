@@ -195,3 +195,10 @@
 - Changes: Updated CD workflow to stop using dotenv secret injection and require existing `/opt/incomedy/server/.env` on host; updated server README staging secret list accordingly.
 - Decisions: Accepted server-local env strategy in `D-029`.
 - Next: Re-run `CD Server` with updated workflow and verify end-to-end deployment.
+
+## 2026-02-23 22:10
+
+- Context: Need domain-based HTTPS access for public API endpoints.
+- Changes: Added `deploy/server/Caddyfile`, extended deploy compose with `caddy` service (80/443), switched app container to internal `expose` only, and updated CD workflow to copy Caddyfile to server before compose up.
+- Decisions: Accepted Caddy-based TLS/domain routing strategy in `D-030`.
+- Next: Re-run `CD Server` and verify `https://incomedy.ru/health` and `https://api.incomedy.ru/health`.

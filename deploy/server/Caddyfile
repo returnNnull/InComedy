@@ -1,0 +1,12 @@
+incomedy.ru {
+    reverse_proxy server:8080
+}
+
+www.incomedy.ru {
+    redir https://incomedy.ru{uri}
+}
+
+api.incomedy.ru {
+    reverse_proxy server:8080
+}
+

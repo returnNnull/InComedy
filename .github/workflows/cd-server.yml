@@ -83,7 +83,7 @@ jobs:
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           port: ${{ secrets.STAGING_SSH_PORT }}
-          source: "deploy/server/docker-compose.yml"
+          source: "deploy/server/docker-compose.yml,deploy/server/Caddyfile"
           target: "/opt/incomedy/"
           overwrite: true
 
@@ -103,6 +103,7 @@ jobs:
             set -euo pipefail
             mkdir -p /opt/incomedy/server
             cp /opt/incomedy/deploy/server/docker-compose.yml /opt/incomedy/server/docker-compose.yml
+            cp /opt/incomedy/deploy/server/Caddyfile /opt/incomedy/server/Caddyfile
             test -f /opt/incomedy/server/.env
             docker login ghcr.io -u "$GHCR_USER" -p "$GHCR_TOKEN"
             cd /opt/incomedy/server

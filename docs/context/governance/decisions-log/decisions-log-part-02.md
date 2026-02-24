@@ -111,3 +111,11 @@
 - Decision: Staging deployment must use server-local runtime env file (`/opt/incomedy/server/.env`) and no longer rely on `STAGING_SERVER_DOTENV` secret injection.
 - Rationale: Prevents repeated deploy failures caused by malformed multiline secret payloads and keeps env management explicit on host.
 - Consequences: CD workflow now validates only file existence and uses existing server env; GitHub staging secrets list excludes `STAGING_SERVER_DOTENV`.
+
+## D-030
+
+- Date: 2026-02-23
+- Status: accepted
+- Decision: Serve public traffic through `Caddy` in deploy stack with automatic HTTPS for `incomedy.ru` and `api.incomedy.ru`.
+- Rationale: Provides TLS termination and stable domain routing without exposing app container port directly.
+- Consequences: Deploy compose now includes `caddy` service and `deploy/server/Caddyfile`; CD copies Caddyfile to server during deployment.
