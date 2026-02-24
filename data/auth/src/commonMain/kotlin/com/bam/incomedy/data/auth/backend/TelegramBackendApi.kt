@@ -7,12 +7,16 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class TelegramBackendApi(
     private val baseUrl: String = AuthBackendConfig.baseUrl,
@@ -22,13 +26,19 @@ class TelegramBackendApi(
         }
     },
 ) {
+    private val parser = Json { ignoreUnknownKeys = true }
+
     suspend fun verifyTelegram(payload: TelegramVerifyPayload): Result<TelegramBackendSession> {
         return runCatching {
-            httpClient
+            val response = httpClient
                 .post("$baseUrl/api/v1/auth/telegram/verify") {
                     contentType(ContentType.Application.Json)
                     setBody(payload)
                 }
+            if (!response.status.isSuccess()) {
+                throw IllegalStateException(parseBackendError(response))
+            }
+            response
                 .body<TelegramBackendSessionResponse>()
                 .toSession()
         }
@@ -36,13 +46,27 @@ class TelegramBackendApi(
 
     suspend fun getSessionUser(accessToken: String): Result<SessionUser> {
         return runCatching {
-            httpClient
+            val response = httpClient
                 .get("$baseUrl/api/v1/auth/session/me") {
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }
+            if (!response.status.isSuccess()) {
+                throw IllegalStateException(parseBackendError(response))
+            }
+            response
                 .body<SessionMeResponse>()
                 .user
                 .toDomain()
+        }
+    }
+
+    private suspend fun parseBackendError(response: HttpResponse): String {
+        val body = response.bodyAsText()
+        return runCatching {
+            val error = parser.decodeFromString(BackendErrorResponse.serializer(), body)
+            error.message ?: "Request failed with status ${response.status.value}"
+        }.getOrElse {
+            "Request failed with status ${response.status.value}"
         }
     }
 }
@@ -103,3 +127,9 @@ private data class SessionUserResponse(
         return SessionUser(id = id)
     }
 }
+
+@Serializable
+private data class BackendErrorResponse(
+    val code: String? = null,
+    val message: String? = null,
+)

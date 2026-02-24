@@ -91,7 +91,7 @@ class AuthViewModel(
             )
             val expectedState = pendingStates[provider]
             val validState = when (provider) {
-                AuthProviderType.TELEGRAM -> expectedState != null && (state.isBlank() || expectedState == state)
+                AuthProviderType.TELEGRAM -> state.isBlank() || (expectedState != null && expectedState == state)
                 else -> expectedState != null && expectedState == state
             }
             if (!validState) {

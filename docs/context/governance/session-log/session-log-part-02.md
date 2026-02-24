@@ -265,3 +265,24 @@
 - Changes: Reworked callback HTML to conditionally deep-link only when Telegram payload exists, and served the same bridge HTML on `/` as fallback.
 - Decisions: No new decision; bugfix within existing Telegram callback flow.
 - Next: Deploy updated server container and retest Telegram login from emulator/device.
+
+## 2026-02-24 16:09
+
+- Context: Telegram callback payload arrived without `state`, causing `Invalid auth state for TELEGRAM` despite successful deep-link return.
+- Changes: Updated shared auth state validation rule for Telegram to accept callbacks without `state` and rely on Telegram signature verification in backend.
+- Decisions: No new decision; compatibility fix for Telegram callback behavior.
+- Next: Deploy updated client build and re-run Telegram auth flow end-to-end.
+
+## 2026-02-24 16:15
+
+- Context: Android app crashed during Telegram auth completion with `SecurityException: missing INTERNET permission`.
+- Changes: Added `android.permission.INTERNET` to `composeApp` Android manifest.
+- Decisions: No new decision; required Android networking permission fix.
+- Next: Install updated Android build and re-test Telegram auth flow.
+
+## 2026-02-24 16:20
+
+- Context: Runtime error `Unable to resolve host api.incomedy.ru` blocked auth requests from mobile.
+- Changes: Switched mobile backend base URL to `https://incomedy.ru` for Android/iOS (`AuthBackendConfig`) to match active DNS setup.
+- Decisions: No new decision; environment compatibility fix.
+- Next: Re-run Telegram auth flow and add `api` DNS record later if dedicated API subdomain is required.
