@@ -638,6 +638,52 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (OpenAPI Contract for Current Server API)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/api-contracts/README.md`
+  - `D-033` (OpenAPI maintenance rule)
+- Current constraints:
+  - Server already exposes health and Telegram auth endpoints.
+  - Contract must match current DTOs/routes.
+
+## Goal
+
+- What should be delivered:
+  - Add current backend API contract in OpenAPI format under `api-contracts/v1`.
+
+## Scope
+
+- In scope:
+  - `GET /health`
+  - `GET /auth/telegram/callback`
+  - `POST /api/v1/auth/telegram/verify`
+  - request/response schemas and status codes
+- Out of scope:
+  - Future VK/Google contracts.
+  - Auto-generated swagger UI wiring in server runtime.
+
+## Constraints
+
+- Tech/business constraints:
+  - Contract file must be human-readable and versioned in repo.
+  - Keep it aligned with current implementation.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - OpenAPI file exists and documents current auth/health endpoints.
+- Required tests:
+  - Manual contract review against route and DTO definitions.
+- Required docs updates:
+  - `api-contracts/README.md`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
 ## Latest Formalized Request (KMP Native VM Wrappers)
 
 ## Context

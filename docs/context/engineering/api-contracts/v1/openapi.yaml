@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: InComedy Server API
+  version: "1.0.0"
+  description: |
+    Current backend API contract for auth and service health endpoints.
+servers:
+  - url: https://api.incomedy.ru
+    description: Production
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: Health
+  - name: Auth
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Service health probe
+      operationId: getHealth
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /auth/telegram/callback:
+    get:
+      tags: [Auth]
+      summary: Telegram web callback bridge page
+      description: |
+        Returns HTML page that redirects from web callback to deep link
+        `incomedy://auth/telegram?...` for mobile app continuation.
+      operationId: getTelegramCallbackBridge
+      responses:
+        "200":
+          description: HTML bridge page
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/v1/auth/telegram/verify:
+    post:
+      tags: [Auth]
+      summary: Verify Telegram login payload and issue app session
+      operationId: postTelegramVerify
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided request id for tracing.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramVerifyRequest"
+      responses:
+        "200":
+          description: Telegram verification succeeded
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramAuthResponse"
+        "400":
+          description: Invalid payload or bad request
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Verification failed (expired/invalid hash)
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server failure
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    TelegramVerifyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - first_name
+        - auth_date
+        - hash
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 123456789
+        first_name:
+          type: string
+          minLength: 1
+          example: John
+        last_name:
+          type: string
+          nullable: true
+          example: Doe
+        username:
+          type: string
+          nullable: true
+          example: johndoe
+        photo_url:
+          type: string
+          nullable: true
+          example: https://t.me/i/userpic/320/johndoe.jpg
+        auth_date:
+          type: integer
+          format: int64
+          example: 1700000000
+        hash:
+          type: string
+          minLength: 1
+          example: 84e3cf9be4e4a0087d2ce0f3f9385cbf1f4ce3bd5c32f5e6a00c88cba8f66ef6
+    TelegramAuthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - access_token
+        - refresh_token
+        - expires_in
+        - user
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          format: int64
+          example: 3600
+        user:
+          $ref: "#/components/schemas/TelegramAuthUser"
+    TelegramAuthUser:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - display_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          example: John Doe
+        username:
+          type: string
+          nullable: true
+        photo_url:
+          type: string
+          nullable: true
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: telegram_auth_failed
+        message:
+          type: string
+          example: Telegram auth failed
+

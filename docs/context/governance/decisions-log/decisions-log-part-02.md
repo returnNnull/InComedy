@@ -135,3 +135,11 @@
 - Decision: Make structured auth-flow logging mandatory across backend and mobile layers with request trace id on backend.
 - Rationale: Auth issues are high-impact and hard to debug without consistent cross-layer telemetry.
 - Consequences: Server now emits request-id based auth logs, mobile auth entry points emit flow-stage logs, and engineering/quality standards explicitly require this for future features.
+
+## D-033
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Maintain current backend HTTP contracts in `docs/context/engineering/api-contracts/v1/openapi.yaml` and treat it as required artifact for auth API changes.
+- Rationale: Explicit contract file is needed to synchronize mobile/backend behavior and avoid endpoint drift.
+- Consequences: Current health/auth endpoints are now documented in OpenAPI; any future API behavior change must update this contract in the same change.

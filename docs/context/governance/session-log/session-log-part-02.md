@@ -216,3 +216,10 @@
 - Changes: Added backend auth logs with request-id/call-id, added structured auth-stage logs in shared/auth Android/iOS entry points, enabled backend `CallId` plugin with `X-Request-ID`, and documented mandatory auth logging rules in engineering and quality context docs.
 - Decisions: Accepted cross-layer auth logging rule in `D-032`.
 - Next: Deploy updated server build and validate logs on real Telegram login attempt (`requestId` + auth stage sequence).
+
+## 2026-02-24 13:36
+
+- Context: Need explicit API contract documentation for current backend endpoints.
+- Changes: Added OpenAPI contract `docs/context/engineering/api-contracts/v1/openapi.yaml` for health and Telegram auth endpoints; updated API contracts README to reference active contract file.
+- Decisions: Accepted OpenAPI contract maintenance rule in `D-033`.
+- Next: Keep OpenAPI file updated in the same change for any auth/backend API behavior update.
