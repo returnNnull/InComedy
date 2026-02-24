@@ -55,10 +55,33 @@
       if (hash.length > 1) parts.push(hash.substring(1));
       var query = parts.filter(Boolean).join("&");
       var params = new URLSearchParams(query);
+      var normalizedParams = params;
       var hasTelegramPayload = params.has("id") && params.has("auth_date") && params.has("hash");
+      if (!hasTelegramPayload && params.has("tgAuthResult")) {
+        try {
+          var encoded = params.get("tgAuthResult") || "";
+          var base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+          while (base64.length % 4 !== 0) base64 += "=";
+          var json = decodeURIComponent(escape(window.atob(base64)));
+          var data = JSON.parse(json);
+
+          normalizedParams = new URLSearchParams();
+          if (data.id != null) normalizedParams.set("id", String(data.id));
+          if (data.first_name) normalizedParams.set("first_name", data.first_name);
+          if (data.last_name) normalizedParams.set("last_name", data.last_name);
+          if (data.username) normalizedParams.set("username", data.username);
+          if (data.photo_url) normalizedParams.set("photo_url", data.photo_url);
+          if (data.auth_date != null) normalizedParams.set("auth_date", String(data.auth_date));
+          if (data.hash) normalizedParams.set("hash", data.hash);
+          if (params.has("state")) normalizedParams.set("state", params.get("state"));
+          hasTelegramPayload = normalizedParams.has("id") && normalizedParams.has("auth_date") && normalizedParams.has("hash");
+        } catch (_e) {
+          hasTelegramPayload = false;
+        }
+      }
       if (!hasTelegramPayload) return;
 
-      var target = "incomedy://auth/telegram?" + query;
+      var target = "incomedy://auth/telegram?" + normalizedParams.toString();
       var openAppButton = document.getElementById("openAppButton");
       var hintText = document.getElementById("hintText");
       var statusText = document.getElementById("statusText");

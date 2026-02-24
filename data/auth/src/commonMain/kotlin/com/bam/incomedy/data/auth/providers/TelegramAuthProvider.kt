@@ -6,6 +6,12 @@ import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 class TelegramAuthProvider(
     private val botId: String,
@@ -13,6 +19,8 @@ class TelegramAuthProvider(
     private val redirectUri: String,
     private val backendApi: TelegramBackendApi,
 ) : SocialAuthProvider {
+    private val json = Json { ignoreUnknownKeys = true }
+
     override val type: AuthProviderType = AuthProviderType.TELEGRAM
 
     override suspend fun createLaunchRequest(state: String): Result<AuthLaunchRequest> {
@@ -47,21 +55,50 @@ class TelegramAuthProvider(
             putAll(parseKeyValuePart(callbackUrl.substringAfter('?', "").substringBefore('#')))
             putAll(parseKeyValuePart(callbackUrl.substringAfter('#', "")))
         }
+        val expanded = decodeTgAuthResult(params["tgAuthResult"])?.let { decoded ->
+            params + decoded
+        } ?: params
 
-        val id = params["id"]?.toLongOrNull() ?: return null
-        val firstName = params["first_name"]?.takeIf { it.isNotBlank() } ?: return null
-        val authDate = params["auth_date"]?.toLongOrNull() ?: return null
-        val hash = params["hash"]?.takeIf { it.isNotBlank() } ?: return null
+        val id = expanded["id"]?.toLongOrNull() ?: return null
+        val firstName = expanded["first_name"]?.takeIf { it.isNotBlank() } ?: return null
+        val authDate = expanded["auth_date"]?.toLongOrNull() ?: return null
+        val hash = expanded["hash"]?.takeIf { it.isNotBlank() } ?: return null
 
         return TelegramVerifyPayload(
             id = id,
             firstName = firstName,
-            lastName = params["last_name"],
-            username = params["username"],
-            photoUrl = params["photo_url"],
+            lastName = expanded["last_name"],
+            username = expanded["username"],
+            photoUrl = expanded["photo_url"],
             authDate = authDate,
             hash = hash,
         )
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun decodeTgAuthResult(encoded: String?): Map<String, String>? {
+        val raw = encoded?.takeIf { it.isNotBlank() } ?: return null
+        return runCatching {
+            val normalized = normalizeBase64(raw)
+            val decodedJson = Base64.Default.decode(normalized).decodeToString()
+            val payload = json.parseToJsonElement(decodedJson).jsonObject
+            mapOf(
+                "id" to payload["id"]?.toString()?.trim('"'),
+                "first_name" to payload["first_name"]?.jsonPrimitive?.contentOrNull,
+                "last_name" to payload["last_name"]?.jsonPrimitive?.contentOrNull,
+                "username" to payload["username"]?.jsonPrimitive?.contentOrNull,
+                "photo_url" to payload["photo_url"]?.jsonPrimitive?.contentOrNull,
+                "auth_date" to payload["auth_date"]?.toString()?.trim('"'),
+                "hash" to payload["hash"]?.jsonPrimitive?.contentOrNull,
+            ).mapValues { it.value?.trim() ?: "" }
+                .filterValues { it.isNotBlank() }
+        }.getOrNull()
+    }
+
+    private fun normalizeBase64(value: String): String {
+        val replaced = value.replace('-', '+').replace('_', '/')
+        val padding = (4 - (replaced.length % 4)) % 4
+        return replaced + "=".repeat(padding)
     }
 
     private fun parseKeyValuePart(value: String): Map<String, String> {
