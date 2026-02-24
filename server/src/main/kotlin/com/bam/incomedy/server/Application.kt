@@ -85,7 +85,10 @@ fun Application.module() {
         )
 
         get("/") {
-            call.respondText("InComedy server", ContentType.Text.Plain)
+            call.respondText(
+                text = telegramMobileBridgeHtml(),
+                contentType = ContentType.Text.Html,
+            )
         }
     }
 }

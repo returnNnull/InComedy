@@ -258,3 +258,10 @@
 - Changes: Moved session token validation to shared domain+data flow (`SessionValidationService` + backend API adapter), added auth effect for invalid stored token cleanup, restored VK/Telegram/Google provider buttons in Android/iOS UI, and removed hardcoded backend URL usage from platform wrappers.
 - Decisions: No new architecture decision; implementation aligned back to existing Clean rules.
 - Next: Run end-to-end auth checks for Telegram and verify placeholder behavior for VK/Google until backend exchange endpoints are implemented.
+
+## 2026-02-24 16:02
+
+- Context: Telegram auth sometimes returned to domain root (`/`) where plain text response prevented deep-link handoff back to app.
+- Changes: Reworked callback HTML to conditionally deep-link only when Telegram payload exists, and served the same bridge HTML on `/` as fallback.
+- Decisions: No new decision; bugfix within existing Telegram callback flow.
+- Next: Deploy updated server container and retest Telegram login from emulator/device.

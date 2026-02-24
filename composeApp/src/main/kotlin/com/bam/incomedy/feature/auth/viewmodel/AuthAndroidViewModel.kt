@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
 
 class AuthAndroidViewModel(
     application: Application,
-    private val sharedViewModel: AuthViewModel = InComedyKoin.getAuthViewModel(),
 ) : AndroidViewModel(application) {
+    private val sharedViewModel: AuthViewModel = InComedyKoin.getAuthViewModel()
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val legacyPrefs = application.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
     private val securePrefs = createSecurePreferences(application)
