@@ -94,6 +94,10 @@ class AuthFeatureBridge(
         viewModel.onIntent(AuthIntent.OnRestoreSessionToken(accessToken))
     }
 
+    fun signOut() {
+        viewModel.onIntent(AuthIntent.OnSignOut)
+    }
+
     override fun dispose() {
         super.dispose()
         viewModel.clear()

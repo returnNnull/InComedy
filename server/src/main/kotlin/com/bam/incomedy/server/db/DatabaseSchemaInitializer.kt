@@ -15,9 +15,17 @@ object DatabaseSchemaInitializer {
                         last_name TEXT,
                         username TEXT,
                         photo_url TEXT,
+                        session_revoked_at TIMESTAMPTZ,
                         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     );
+                    """.trimIndent(),
+                )
+
+                statement.execute(
+                    """
+                    ALTER TABLE users
+                    ADD COLUMN IF NOT EXISTS session_revoked_at TIMESTAMPTZ;
                     """.trimIndent(),
                 )
 
@@ -36,4 +44,3 @@ object DatabaseSchemaInitializer {
         }
     }
 }
-

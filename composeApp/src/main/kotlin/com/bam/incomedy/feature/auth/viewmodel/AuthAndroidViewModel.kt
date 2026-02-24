@@ -95,7 +95,11 @@ class AuthAndroidViewModel(
     }
 
     private fun saveAccessToken(token: String) {
-        securePrefs?.edit()?.putString(KEY_ACCESS_TOKEN, token)?.apply()
+        if (securePrefs != null) {
+            securePrefs.edit().putString(KEY_ACCESS_TOKEN, token).apply()
+        } else {
+            legacyPrefs.edit().putString(KEY_ACCESS_TOKEN, token).apply()
+        }
     }
 
     private fun deleteAccessToken() {
@@ -107,15 +111,16 @@ class AuthAndroidViewModel(
         val secureToken = securePrefs?.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() }
         if (secureToken != null) return secureToken
 
+        if (securePrefs == null) {
+            return legacyPrefs.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() }
+        }
+
         // One-time migration from legacy plain SharedPreferences.
         val legacyToken = legacyPrefs.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() } ?: return null
-        if (securePrefs != null) {
-            securePrefs.edit().putString(KEY_ACCESS_TOKEN, legacyToken).apply()
-            legacyPrefs.edit().remove(KEY_ACCESS_TOKEN).apply()
-            AuthFlowLogger.event(stage = "android.session.token.migrated_to_secure_storage")
-            return legacyToken
-        }
-        return null
+        securePrefs.edit().putString(KEY_ACCESS_TOKEN, legacyToken).apply()
+        legacyPrefs.edit().remove(KEY_ACCESS_TOKEN).apply()
+        AuthFlowLogger.event(stage = "android.session.token.migrated_to_secure_storage")
+        return legacyToken
     }
 
     private fun createSecurePreferences(application: Application): SharedPreferences? {

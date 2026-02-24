@@ -8,9 +8,11 @@ import io.ktor.server.plugins.callid.callId
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import java.time.Instant
 
 object SessionRoutes {
     private val logger = LoggerFactory.getLogger(SessionRoutes::class.java)
@@ -22,10 +24,7 @@ object SessionRoutes {
     ) {
         route.get("/api/v1/auth/session/me") {
             val requestId = call.callId ?: "n/a"
-            val bearerToken = call.request.headers["Authorization"]
-                ?.removePrefix("Bearer ")
-                ?.trim()
-                .orEmpty()
+            val bearerToken = extractBearerToken(call.request.headers["Authorization"])
             if (bearerToken.isBlank()) {
                 call.respond(
                     HttpStatusCode.Unauthorized,
@@ -55,6 +54,13 @@ object SessionRoutes {
                 )
                 return@get
             }
+            if (user.sessionRevokedAt != null && !verified.issuedAt.isAfter(user.sessionRevokedAt)) {
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorResponse("unauthorized", "Session revoked"),
+                )
+                return@get
+            }
 
             logger.info(
                 "auth.session.me.success requestId={} userId={}",
@@ -74,7 +80,40 @@ object SessionRoutes {
                 ),
             )
         }
+
+        route.post("/api/v1/auth/logout") {
+            val requestId = call.callId ?: "n/a"
+            val bearerToken = extractBearerToken(call.request.headers["Authorization"])
+            if (bearerToken.isBlank()) {
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorResponse("unauthorized", "Missing bearer token"),
+                )
+                return@post
+            }
+
+            val verified = tokenService.verifyAccessToken(bearerToken).getOrElse { error ->
+                logger.warn(
+                    "auth.logout.invalid_token requestId={} reason={}",
+                    requestId,
+                    error.message ?: "unknown",
+                )
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorResponse("unauthorized", error.message ?: "Invalid access token"),
+                )
+                return@post
+            }
+
+            userRepository.revokeSessions(verified.userId, Instant.now())
+            logger.info("auth.logout.success requestId={} userId={}", requestId, verified.userId)
+            call.respond(HttpStatusCode.NoContent)
+        }
     }
+}
+
+private fun extractBearerToken(raw: String?): String {
+    return raw?.removePrefix("Bearer ")?.trim().orEmpty()
 }
 
 @Serializable
@@ -93,4 +132,3 @@ data class SessionUserResponse(
     @SerialName("photo_url")
     val photoUrl: String? = null,
 )
-

@@ -286,3 +286,24 @@
 - Changes: Switched mobile backend base URL to `https://incomedy.ru` for Android/iOS (`AuthBackendConfig`) to match active DNS setup.
 - Decisions: No new decision; environment compatibility fix.
 - Next: Re-run Telegram auth flow and add `api` DNS record later if dedicated API subdomain is required.
+
+## 2026-02-24 16:28
+
+- Context: Telegram auth completion still surfaced raw JSON parsing errors in UI/logs when backend response included extra fields (`refresh_token`).
+- Changes: Enabled tolerant JSON parsing (`ignoreUnknownKeys`) for data-layer HTTP client; added sanitized auth failure reasons in `AUTH_FLOW` logs to avoid leaking sensitive payload fragments into adb.
+- Decisions: No new decision; robustness and observability hardening.
+- Next: Install latest mobile build and verify Telegram login UI now shows server message without parser stacktrace.
+
+## 2026-02-24 16:35
+
+- Context: Startup session restore still fell back to auth screen in some restarts due aggressive token invalidation on any validation failure.
+- Changes: Added session validation failure classification (`UNAUTHORIZED/NETWORK/UNKNOWN`), invalidating stored token only on `401`; retained token for transient network errors. Added Android fallback persistence to legacy prefs only when secure storage is unavailable.
+- Decisions: No new decision; reliability fix within existing startup restore behavior.
+- Next: Verify restart flow after successful login with online/offline toggles to confirm token survives transient network failures.
+
+## 2026-02-24 16:47
+
+- Context: Need explicit app-level logout that revokes backend session, not only local token removal.
+- Changes: Added backend `POST /api/v1/auth/logout` with per-user session revocation timestamp and validation in `/api/v1/auth/session/me`; wired client-side sign-out intent/service and added logout button in Android main screen; updated OpenAPI contract.
+- Decisions: No new decision; implementation follows existing auth/session architecture.
+- Next: Deploy server update, rebuild mobile app, and validate flow: login -> main -> logout -> restart stays on auth.

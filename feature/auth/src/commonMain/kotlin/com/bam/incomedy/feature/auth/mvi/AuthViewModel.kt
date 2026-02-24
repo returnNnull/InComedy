@@ -4,6 +4,9 @@ import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
 import com.bam.incomedy.feature.auth.domain.RandomAuthStateGenerator
+import com.bam.incomedy.feature.auth.domain.SessionTerminationService
+import com.bam.incomedy.feature.auth.domain.SessionValidationException
+import com.bam.incomedy.feature.auth.domain.SessionValidationFailureReason
 import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthService
 import kotlinx.coroutines.CoroutineDispatcher
@@ -23,6 +26,7 @@ import kotlinx.coroutines.launch
 class AuthViewModel(
     private val socialAuthService: SocialAuthService,
     private val sessionValidationService: SessionValidationService,
+    private val sessionTerminationService: SessionTerminationService,
     private val stateGenerator: AuthStateGenerator = RandomAuthStateGenerator(),
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
@@ -41,6 +45,7 @@ class AuthViewModel(
             is AuthIntent.OnAuthCallback -> completeAuth(intent.provider, intent.code, intent.state)
             is AuthIntent.OnRestoreSessionToken -> restoreSessionByToken(intent.accessToken)
             is AuthIntent.OnRestoreSession -> restoreSession(intent.session)
+            AuthIntent.OnSignOut -> signOut()
             AuthIntent.OnClearError -> clearError()
         }
     }
@@ -124,15 +129,16 @@ class AuthViewModel(
                     }
                 },
                 onFailure = { error ->
+                    val safeReason = sanitizeForLog(error.message)
                     AuthFlowLogger.event(
                         stage = "complete_auth.failed",
                         provider = provider,
-                        details = "reason=${error.message ?: "unknown"}",
+                        details = "reason=$safeReason",
                     )
                     _state.update { current ->
                         current.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Unable to complete auth",
+                            errorMessage = error.message?.take(200) ?: "Unable to complete auth",
                         )
                     }
                 },
@@ -178,15 +184,50 @@ class AuthViewModel(
                         ),
                     )
                 },
-                onFailure = {
-                    AuthFlowLogger.event(stage = "session.restore.failed")
-                    _effects.emit(AuthEffect.InvalidateStoredSession)
+                onFailure = { error ->
+                    val validationException = error as? SessionValidationException
+                    AuthFlowLogger.event(
+                        stage = "session.restore.failed",
+                        details = "reason=${sanitizeForLog(error.message)}",
+                    )
+                    if (validationException?.reason == SessionValidationFailureReason.UNAUTHORIZED) {
+                        _effects.emit(AuthEffect.InvalidateStoredSession)
+                    }
                 },
             )
         }
     }
 
+    private fun signOut() {
+        scope.launch {
+            val token = state.value.session?.accessToken
+            if (!token.isNullOrBlank()) {
+                sessionTerminationService.terminate(token).onFailure { error ->
+                    AuthFlowLogger.event(
+                        stage = "session.logout.failed",
+                        details = "reason=${sanitizeForLog(error.message)}",
+                    )
+                }
+            }
+            _state.update { it.copy(session = null, isLoading = false, errorMessage = null) }
+            _effects.emit(AuthEffect.InvalidateStoredSession)
+            AuthFlowLogger.event(stage = "session.logout.success")
+        }
+    }
+
     fun clear() {
         scope.cancel()
+    }
+
+    private fun sanitizeForLog(raw: String?): String {
+        if (raw.isNullOrBlank()) return "unknown"
+        val lower = raw.lowercase()
+        return when {
+            "telegram auth hash" in lower -> "telegram_auth_hash_invalid"
+            "illegal input" in lower -> "backend_response_parse_error"
+            "unable to resolve host" in lower -> "network_dns_error"
+            "timeout" in lower -> "network_timeout"
+            else -> raw.take(120)
+        }
     }
 }

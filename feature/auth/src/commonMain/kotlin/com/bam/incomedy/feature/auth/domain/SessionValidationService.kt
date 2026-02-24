@@ -9,3 +9,14 @@ data class ValidatedSession(
     val userId: String,
     val accessToken: String,
 )
+
+enum class SessionValidationFailureReason {
+    UNAUTHORIZED,
+    NETWORK,
+    UNKNOWN,
+}
+
+class SessionValidationException(
+    val reason: SessionValidationFailureReason,
+    message: String,
+) : Exception(message)

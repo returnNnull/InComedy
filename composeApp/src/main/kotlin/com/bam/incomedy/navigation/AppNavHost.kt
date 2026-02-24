@@ -35,7 +35,7 @@ fun AppNavHost(
         modifier = modifier,
     ) {
         authGraph(authViewModel = authViewModel)
-        mainGraph()
+        mainGraph(authViewModel = authViewModel)
     }
 }
 

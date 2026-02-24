@@ -1,10 +1,12 @@
 package com.bam.incomedy.data.auth.di
 
+import com.bam.incomedy.data.auth.backend.BackendSessionTerminationService
 import com.bam.incomedy.data.auth.backend.BackendSessionValidationService
 import com.bam.incomedy.data.auth.backend.TelegramBackendApi
 import com.bam.incomedy.data.auth.providers.GoogleAuthProvider
 import com.bam.incomedy.data.auth.providers.TelegramAuthProvider
 import com.bam.incomedy.data.auth.providers.VkAuthProvider
+import com.bam.incomedy.feature.auth.domain.SessionTerminationService
 import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
 import org.koin.dsl.bind
@@ -16,6 +18,9 @@ val authDataModule = module {
     }
     single<SessionValidationService> {
         BackendSessionValidationService(telegramBackendApi = get())
+    }
+    single<SessionTerminationService> {
+        BackendSessionTerminationService(telegramBackendApi = get())
     }
 
     single {

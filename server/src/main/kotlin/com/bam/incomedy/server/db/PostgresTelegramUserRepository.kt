@@ -29,7 +29,7 @@ class PostgresTelegramUserRepository(
                 username = EXCLUDED.username,
                 photo_url = EXCLUDED.photo_url,
                 updated_at = NOW()
-            RETURNING id, telegram_id, first_name, last_name, username, photo_url
+            RETURNING id, telegram_id, first_name, last_name, username, photo_url, session_revoked_at
         """.trimIndent()
 
         dataSource.connection.use { connection ->
@@ -49,6 +49,7 @@ class PostgresTelegramUserRepository(
                         lastName = result.getString("last_name"),
                         username = result.getString("username"),
                         photoUrl = result.getString("photo_url"),
+                        sessionRevokedAt = result.getTimestamp("session_revoked_at")?.toInstant(),
                     )
                 }
             }
@@ -57,7 +58,7 @@ class PostgresTelegramUserRepository(
 
     override fun findById(userId: String): StoredUser? {
         val sql = """
-            SELECT id, telegram_id, first_name, last_name, username, photo_url
+            SELECT id, telegram_id, first_name, last_name, username, photo_url, session_revoked_at
             FROM users
             WHERE id = ?
             LIMIT 1
@@ -75,8 +76,25 @@ class PostgresTelegramUserRepository(
                         lastName = result.getString("last_name"),
                         username = result.getString("username"),
                         photoUrl = result.getString("photo_url"),
+                        sessionRevokedAt = result.getTimestamp("session_revoked_at")?.toInstant(),
                     )
                 }
+            }
+        }
+    }
+
+    override fun revokeSessions(userId: String, revokedAt: Instant) {
+        val sql = """
+            UPDATE users
+            SET session_revoked_at = ?
+            WHERE id = ?
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setTimestamp(1, Timestamp.from(revokedAt))
+                statement.setObject(2, UUID.fromString(userId))
+                statement.executeUpdate()
             }
         }
     }

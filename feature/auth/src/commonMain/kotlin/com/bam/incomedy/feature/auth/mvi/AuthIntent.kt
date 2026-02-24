@@ -12,5 +12,6 @@ sealed interface AuthIntent {
     ) : AuthIntent
     data class OnRestoreSessionToken(val accessToken: String) : AuthIntent
     data class OnRestoreSession(val session: AuthSession) : AuthIntent
+    object OnSignOut : AuthIntent
     object OnClearError : AuthIntent
 }

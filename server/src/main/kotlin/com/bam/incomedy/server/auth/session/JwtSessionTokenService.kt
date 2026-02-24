@@ -57,10 +57,12 @@ class JwtSessionTokenService(
             val userId = decoded.subject ?: error("Missing access token subject")
             val provider = decoded.getClaim("provider").asString() ?: "unknown"
             val telegramUserId = decoded.getClaim("telegram_user_id").asLong()
+            val issuedAt = decoded.issuedAt?.toInstant() ?: error("Missing access token issued-at")
             VerifiedAccessToken(
                 userId = userId,
                 provider = provider,
                 telegramUserId = telegramUserId,
+                issuedAt = issuedAt,
             )
         }.recoverCatching { cause ->
             if (cause is JWTVerificationException) {
@@ -81,4 +83,5 @@ data class VerifiedAccessToken(
     val userId: String,
     val provider: String,
     val telegramUserId: Long?,
+    val issuedAt: Instant,
 )

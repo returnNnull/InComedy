@@ -10,10 +10,12 @@ data class StoredUser(
     val lastName: String?,
     val username: String?,
     val photoUrl: String?,
+    val sessionRevokedAt: Instant?,
 )
 
 interface TelegramUserRepository {
     fun upsert(user: TelegramUser): StoredUser
     fun findById(userId: String): StoredUser?
+    fun revokeSessions(userId: String, revokedAt: Instant)
     fun storeRefreshToken(userId: String, tokenHash: String, expiresAt: Instant)
 }

@@ -156,6 +156,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current user session tokens up to now
+      operationId: postAuthLogout
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+            example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided request id for tracing.
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session revoked successfully
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+        "401":
+          description: Missing/invalid token
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server failure
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthResponse:

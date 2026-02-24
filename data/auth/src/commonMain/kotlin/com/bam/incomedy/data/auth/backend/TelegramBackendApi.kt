@@ -20,14 +20,13 @@ import kotlinx.serialization.json.Json
 
 class TelegramBackendApi(
     private val baseUrl: String = AuthBackendConfig.baseUrl,
+    private val parser: Json = Json { ignoreUnknownKeys = true },
     private val httpClient: HttpClient = HttpClient {
         install(ContentNegotiation) {
-            json()
+            json(Json { ignoreUnknownKeys = true })
         }
     },
 ) {
-    private val parser = Json { ignoreUnknownKeys = true }
-
     suspend fun verifyTelegram(payload: TelegramVerifyPayload): Result<TelegramBackendSession> {
         return runCatching {
             val response = httpClient
@@ -36,7 +35,10 @@ class TelegramBackendApi(
                     setBody(payload)
                 }
             if (!response.status.isSuccess()) {
-                throw IllegalStateException(parseBackendError(response))
+                throw BackendStatusException(
+                    statusCode = response.status.value,
+                    message = parseBackendError(response),
+                )
             }
             response
                 .body<TelegramBackendSessionResponse>()
@@ -51,12 +53,31 @@ class TelegramBackendApi(
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }
             if (!response.status.isSuccess()) {
-                throw IllegalStateException(parseBackendError(response))
+                throw BackendStatusException(
+                    statusCode = response.status.value,
+                    message = parseBackendError(response),
+                )
             }
             response
                 .body<SessionMeResponse>()
                 .user
                 .toDomain()
+        }
+    }
+
+    suspend fun logout(accessToken: String): Result<Unit> {
+        return runCatching {
+            val response = httpClient
+                .post("$baseUrl/api/v1/auth/logout") {
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                }
+            if (!response.status.isSuccess()) {
+                throw BackendStatusException(
+                    statusCode = response.status.value,
+                    message = parseBackendError(response),
+                )
+            }
+            Unit
         }
     }
 
@@ -133,3 +154,8 @@ private data class BackendErrorResponse(
     val code: String? = null,
     val message: String? = null,
 )
+
+class BackendStatusException(
+    val statusCode: Int,
+    override val message: String,
+) : Exception(message)

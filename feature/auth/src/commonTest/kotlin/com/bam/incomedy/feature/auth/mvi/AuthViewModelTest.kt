@@ -4,6 +4,7 @@ import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
+import com.bam.incomedy.feature.auth.domain.SessionTerminationService
 import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
 import com.bam.incomedy.feature.auth.domain.SocialAuthService
@@ -116,6 +117,7 @@ class AuthViewModelTest {
         return AuthViewModel(
             socialAuthService = SocialAuthService(listOf(provider)),
             sessionValidationService = FakeSessionValidationService(),
+            sessionTerminationService = FakeSessionTerminationService(),
             stateGenerator = FixedStateGenerator,
             dispatcher = dispatcher,
         )
@@ -129,6 +131,12 @@ private object FixedStateGenerator : AuthStateGenerator {
 private class FakeSessionValidationService : SessionValidationService {
     override suspend fun validate(accessToken: String): Result<ValidatedSession> {
         return Result.failure(IllegalStateException("not_used_in_this_test"))
+    }
+}
+
+private class FakeSessionTerminationService : SessionTerminationService {
+    override suspend fun terminate(accessToken: String): Result<Unit> {
+        return Result.success(Unit)
     }
 }
 
