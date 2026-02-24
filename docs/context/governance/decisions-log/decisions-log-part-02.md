@@ -143,3 +143,11 @@
 - Decision: Maintain current backend HTTP contracts in `docs/context/engineering/api-contracts/v1/openapi.yaml` and treat it as required artifact for auth API changes.
 - Rationale: Explicit contract file is needed to synchronize mobile/backend behavior and avoid endpoint drift.
 - Consequences: Current health/auth endpoints are now documented in OpenAPI; any future API behavior change must update this contract in the same change.
+
+## D-034
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Build Docker image from prebuilt server distribution artifact (`:server:installDist`) in CI, not by running Gradle inside Docker build stage.
+- Rationale: Eliminates buildx instability and environment-related Gradle failures during image build.
+- Consequences: CD workflow now runs `:server:installDist` before docker build; Dockerfile is runtime-only and copies `server/build/install/server`.

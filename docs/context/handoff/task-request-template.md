@@ -684,6 +684,50 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (Fix CD Docker Build Stability)
+
+## Context
+
+- Related docs/decisions:
+  - `D-027` (server CI/CD),
+  - `D-034` (prebuilt distribution docker strategy).
+- Current constraints:
+  - CD buildx stage fails when Gradle runs inside Docker build.
+
+## Goal
+
+- What should be delivered:
+  - Make CD docker image build stable and reproducible.
+
+## Scope
+
+- In scope:
+  - CI step for `:server:installDist` before docker build.
+  - Runtime-only Dockerfile consuming prebuilt artifact.
+  - Docker context adjustments for `server/build/install/server`.
+- Out of scope:
+  - Reworking server application code.
+  - Changing deployment host topology.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep existing GHCR image tags and deploy flow.
+  - Minimize pipeline complexity.
+- Deadlines or milestones:
+  - Immediate unblock for deployment pipeline.
+
+## Definition of Done
+
+- Functional result:
+  - `CD Server` build-and-push succeeds without running Gradle inside buildx container.
+- Required tests:
+  - Successful `CD Server` workflow run.
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`, `server/README.md`.
+
+---
+
 ## Latest Formalized Request (KMP Native VM Wrappers)
 
 ## Context

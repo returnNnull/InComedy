@@ -17,6 +17,7 @@ Ktor backend module with Telegram auth verification and PostgreSQL persistence.
 Build image locally:
 
 ```bash
+./gradlew :server:installDist
 docker build -f server/Dockerfile -t incomedy-server:local .
 ```
 
