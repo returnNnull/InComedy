@@ -103,6 +103,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/session/me:
+    get:
+      tags: [Auth]
+      summary: Validate access token and return current session user
+      operationId: getSessionMe
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+            example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided request id for tracing.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Access token is valid and user exists
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionMeResponse"
+        "401":
+          description: Missing/invalid token or unknown user
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server failure
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthResponse:
@@ -188,6 +241,38 @@ components:
         photo_url:
           type: string
           nullable: true
+    SessionMeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - user
+      properties:
+        user:
+          $ref: "#/components/schemas/SessionUser"
+    SessionUser:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - telegram_id
+        - display_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        telegram_id:
+          type: integer
+          format: int64
+          example: 123456789
+        display_name:
+          type: string
+          example: John Doe
+        username:
+          type: string
+          nullable: true
+        photo_url:
+          type: string
+          nullable: true
     ErrorResponse:
       type: object
       additionalProperties: false
@@ -201,4 +286,3 @@ components:
         message:
           type: string
           example: Telegram auth failed
-

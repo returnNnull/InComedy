@@ -10,6 +10,7 @@ Priority scale:
 - Role-based onboarding (Audience, Comedian, Organizer).
 - Social authorization via VK, Telegram, and Google.
 - Real auth completion via Ktor backend (`code -> token/session`) + deep-link callback wiring on Android/iOS.
+- Startup session restore (`token -> /api/v1/auth/session/me`) with automatic auth/main routing.
 - Event creation/editing (organizer).
 - Event discovery by city/date/price.
 - Seat reservation and ticket checkout.

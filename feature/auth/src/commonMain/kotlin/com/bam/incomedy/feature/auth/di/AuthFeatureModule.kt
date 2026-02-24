@@ -13,6 +13,9 @@ val authFeatureModule = module {
     }
 
     factory {
-        AuthViewModel(socialAuthService = get())
+        AuthViewModel(
+            socialAuthService = get(),
+            sessionValidationService = get(),
+        )
     }
 }

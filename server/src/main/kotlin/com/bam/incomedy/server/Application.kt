@@ -1,6 +1,7 @@
 package com.bam.incomedy.server
 
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
+import com.bam.incomedy.server.auth.session.SessionRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthService
 import com.bam.incomedy.server.auth.telegram.TelegramAuthVerifier
@@ -77,6 +78,11 @@ fun Application.module() {
         }
 
         TelegramAuthRoutes.register(this, authService)
+        SessionRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            userRepository = repository,
+        )
 
         get("/") {
             call.respondText("InComedy server", ContentType.Text.Plain)

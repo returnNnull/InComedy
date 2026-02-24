@@ -1,6 +1,6 @@
 # Risk Log
 
-Use this file to track active product/technical risks.
+Use this file to track active product/technical risks, including current security vulnerabilities.
 
 ## Template
 
@@ -10,6 +10,21 @@ Use this file to track active product/technical risks.
 - Impact:
 - Probability:
 - Mitigation:
+- Owner:
+- Status:
+
+## Security Vulnerability Template
+
+- ID:
+- Date discovered:
+- Vulnerability:
+- Affected components:
+- Severity:
+- Exploitability:
+- Current exposure:
+- Immediate containment:
+- Remediation plan:
+- Target fix date:
 - Owner:
 - Status:
 
@@ -34,3 +49,17 @@ Use this file to track active product/technical risks.
 - Mitigation: Add baseline moderation tools (report, mute, ban) before public rollout.
 - Owner: TBD
 - Status: open
+
+## V-001
+
+- Date discovered: 2026-02-24
+- Vulnerability: Mobile auth/session token persisted in plain local storage (`SharedPreferences`/`UserDefaults`).
+- Affected components: `composeApp` auth wrapper, `iosApp` auth wrapper.
+- Severity: High
+- Exploitability: Medium
+- Current exposure: Mitigated in code by migration to secure storage; requires rollout on client updates.
+- Immediate containment: Do not log tokens; force secure storage for new writes.
+- Remediation plan: Complete release rollout with secure storage migration and verify migration telemetry on Android/iOS.
+- Target fix date: 2026-02-26
+- Owner: Engineering
+- Status: in-progress

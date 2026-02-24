@@ -1,6 +1,7 @@
 package com.bam.incomedy.shared.auth
 
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthState
@@ -36,11 +37,17 @@ class AuthFeatureBridge(
     fun bind(
         onState: (AuthUiStateSnapshot) -> Unit,
         onOpenUrl: (String) -> Unit,
+        onInvalidateSession: () -> Unit,
     ): BridgeHandle {
         return CompositeBridgeHandle(
             handles = listOf(
                 observeState(onState),
                 observeOpenAuthUrl(onOpenUrl),
+                observeEffect(effectFlow = viewModel.effects) { effect ->
+                    if (effect is AuthEffect.InvalidateStoredSession) {
+                        onInvalidateSession()
+                    }
+                },
             ),
         )
     }
@@ -70,6 +77,23 @@ class AuthFeatureBridge(
         viewModel.onIntent(AuthIntent.OnClearError)
     }
 
+    fun restoreSession(providerKey: String, userId: String, accessToken: String) {
+        val provider = providerKey.toProviderType() ?: return
+        viewModel.onIntent(
+            AuthIntent.OnRestoreSession(
+                session = AuthSession(
+                    provider = provider,
+                    userId = userId,
+                    accessToken = accessToken,
+                ),
+            ),
+        )
+    }
+
+    fun restoreSessionToken(accessToken: String) {
+        viewModel.onIntent(AuthIntent.OnRestoreSessionToken(accessToken))
+    }
+
     override fun dispose() {
         super.dispose()
         viewModel.clear()
@@ -83,6 +107,8 @@ private fun AuthState.toSnapshot(): AuthUiStateSnapshot {
         errorMessage = errorMessage,
         isAuthorized = isAuthorized,
         authorizedProviderKey = session?.provider?.toKey(),
+        authorizedUserId = session?.userId,
+        authorizedAccessToken = session?.accessToken,
     )
 }
 

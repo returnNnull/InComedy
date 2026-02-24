@@ -816,6 +816,105 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (Startup Session Restore and Auth Routing)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: social auth + real backend completion)
+  - `D-031` (mobile Telegram domain wiring),
+  - `D-033` (OpenAPI contract maintenance rule).
+- Current constraints:
+  - Telegram is current active auth provider in client flow.
+  - User should not re-authenticate if valid backend session already exists.
+
+## Goal
+
+- What should be delivered:
+  - Validate stored access token on app startup via backend.
+  - Route authorized users directly to main graph/screen.
+  - Keep unauthorized users on Telegram auth flow.
+
+## Scope
+
+- In scope:
+  - Backend endpoint for session validation (`/api/v1/auth/session/me`).
+  - Shared auth intent/bridge support for session restore.
+  - Android/iOS startup restore logic and auth/main routing.
+- Out of scope:
+  - New business features in main screen.
+  - VK/Google session restore rollout.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep current MVI + DI structure.
+  - Keep API contract synchronized in same change.
+- Deadlines or milestones:
+  - Complete in current iteration as auth UX reliability fix.
+
+## Definition of Done
+
+- Functional result:
+  - If session token is valid, app opens main without Telegram re-login.
+  - If token is invalid/missing, app shows Telegram auth.
+- Required tests:
+  - `:server:installDist`
+  - `:composeApp:compileDebugKotlin`
+  - `:feature:auth:allTests`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `api-contracts`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Secure Mobile Token Storage)
+
+## Context
+
+- Related docs/decisions:
+  - `D-035` (startup session restore),
+  - auth token currently persisted in plain local storage on mobile wrappers.
+- Current constraints:
+  - Keep existing restore UX behavior.
+  - Support migration for already authorized users after app update.
+
+## Goal
+
+- What should be delivered:
+  - Move Android token persistence to encrypted storage.
+  - Move iOS token persistence to Keychain.
+  - Preserve startup restore and deep-link auth flow.
+
+## Scope
+
+- In scope:
+  - Android secure token storage adapter + legacy migration.
+  - iOS Keychain token storage adapter + legacy migration.
+  - Context docs updates with security rule.
+- Out of scope:
+  - Server token rotation redesign.
+  - New auth providers.
+
+## Constraints
+
+- Tech/business constraints:
+  - Do not expose tokens in logs.
+  - Keep existing API contract and auth endpoints.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Tokens are persisted only in secure platform storage after migration.
+  - Existing users with old plain token keep session after first app launch post-update.
+- Required tests:
+  - `:composeApp:compileDebugKotlin`.
+- Required docs updates:
+  - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
 ## Пример (на русском)
 
 ## Context

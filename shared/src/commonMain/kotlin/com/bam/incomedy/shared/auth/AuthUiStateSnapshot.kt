@@ -6,4 +6,6 @@ data class AuthUiStateSnapshot(
     val errorMessage: String?,
     val isAuthorized: Boolean,
     val authorizedProviderKey: String?,
+    val authorizedUserId: String?,
+    val authorizedAccessToken: String?,
 )

@@ -55,6 +55,32 @@ class PostgresTelegramUserRepository(
         }
     }
 
+    override fun findById(userId: String): StoredUser? {
+        val sql = """
+            SELECT id, telegram_id, first_name, last_name, username, photo_url
+            FROM users
+            WHERE id = ?
+            LIMIT 1
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setObject(1, UUID.fromString(userId))
+                statement.executeQuery().use { result ->
+                    if (!result.next()) return null
+                    return StoredUser(
+                        id = result.getObject("id").toString(),
+                        telegramId = result.getLong("telegram_id"),
+                        firstName = result.getString("first_name"),
+                        lastName = result.getString("last_name"),
+                        username = result.getString("username"),
+                        photoUrl = result.getString("photo_url"),
+                    )
+                }
+            }
+        }
+    }
+
     override fun storeRefreshToken(userId: String, tokenHash: String, expiresAt: Instant) {
         val sql = """
             INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at)
@@ -72,4 +98,3 @@ class PostgresTelegramUserRepository(
         }
     }
 }
-

@@ -151,3 +151,27 @@
 - Decision: Build Docker image from prebuilt server distribution artifact (`:server:installDist`) in CI, not by running Gradle inside Docker build stage.
 - Rationale: Eliminates buildx instability and environment-related Gradle failures during image build.
 - Consequences: CD workflow now runs `:server:installDist` before docker build; Dockerfile is runtime-only and copies `server/build/install/server`.
+
+## D-035
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Add server-side session validation endpoint and mandatory mobile startup session-restore flow that routes authorized users directly to main graph.
+- Rationale: Prevents repeated Telegram auth for users with valid session and aligns app startup behavior with expected post-login UX.
+- Consequences: Backend now exposes `GET /api/v1/auth/session/me`; Android and iOS restore stored access token on startup, validate against backend, and transition to main graph only on valid session.
+
+## D-036
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Store mobile auth/session tokens only in secure platform storage (`EncryptedSharedPreferences` + Android Keystore on Android, Keychain on iOS) with one-time migration from legacy plain storage.
+- Rationale: Plain local storage for bearer tokens is insufficient for production security posture.
+- Consequences: Auth token persistence now uses secure storage adapters; legacy `SharedPreferences`/`UserDefaults` tokens are read only for migration and then removed.
+
+## D-037
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Any discovered vulnerability must be immediately communicated and documented in `docs/context/product/risk-log.md` with severity, exposure, remediation plan, owner, and target fix date.
+- Rationale: Vulnerability visibility degrades quickly without explicit reporting discipline and tracking artifacts.
+- Consequences: Security issues are now a mandatory part of context updates and merge readiness checks.

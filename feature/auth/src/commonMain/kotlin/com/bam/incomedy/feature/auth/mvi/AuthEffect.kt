@@ -7,4 +7,5 @@ sealed interface AuthEffect {
         val provider: AuthProviderType,
         val url: String,
     ) : AuthEffect
+    object InvalidateStoredSession : AuthEffect
 }

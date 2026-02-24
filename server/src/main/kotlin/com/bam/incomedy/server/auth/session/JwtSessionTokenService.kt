@@ -2,6 +2,7 @@ package com.bam.incomedy.server.auth.session
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.auth0.jwt.exceptions.JWTVerificationException
 import com.bam.incomedy.server.config.JwtConfig
 import java.security.MessageDigest
 import java.time.Instant
@@ -14,6 +15,10 @@ class JwtSessionTokenService(
     private val config: JwtConfig,
 ) : SessionTokenService {
     private val algorithm = Algorithm.HMAC256(config.secret)
+    private val verifier = JWT
+        .require(algorithm)
+        .withIssuer(config.issuer)
+        .build()
 
     override fun issue(userId: String, telegramUserId: Long): SessionTokens {
         val now = Instant.now()
@@ -46,6 +51,25 @@ class JwtSessionTokenService(
         return now.plusSeconds(config.refreshTtlSeconds)
     }
 
+    fun verifyAccessToken(accessToken: String): Result<VerifiedAccessToken> {
+        return runCatching {
+            val decoded = verifier.verify(accessToken)
+            val userId = decoded.subject ?: error("Missing access token subject")
+            val provider = decoded.getClaim("provider").asString() ?: "unknown"
+            val telegramUserId = decoded.getClaim("telegram_user_id").asLong()
+            VerifiedAccessToken(
+                userId = userId,
+                provider = provider,
+                telegramUserId = telegramUserId,
+            )
+        }.recoverCatching { cause ->
+            if (cause is JWTVerificationException) {
+                throw IllegalArgumentException("Invalid access token")
+            }
+            throw cause
+        }
+    }
+
     private fun randomToken(): String {
         val bytes = ByteArray(32)
         Random.Default.nextBytes(bytes)
@@ -53,3 +77,8 @@ class JwtSessionTokenService(
     }
 }
 
+data class VerifiedAccessToken(
+    val userId: String,
+    val provider: String,
+    val telegramUserId: Long?,
+)

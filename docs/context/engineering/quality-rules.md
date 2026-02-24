@@ -60,3 +60,5 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Never store secrets in repository.
 - Mask or avoid logging personal/sensitive user data.
 - Apply secure token/session handling in all auth flows.
+- Client-side auth/session tokens must not persist in plain local storage (`SharedPreferences`, `UserDefaults`) outside controlled migration.
+- Any discovered vulnerability must be immediately reported to product owner and tracked in `docs/context/product/risk-log.md` with remediation plan, owner, and target date.

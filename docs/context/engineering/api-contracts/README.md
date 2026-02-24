@@ -14,6 +14,7 @@ This directory stores API contracts used between client and backend.
   - Auth endpoints:
     - `/auth/telegram/callback`
     - `/api/v1/auth/telegram/verify`
+    - `/api/v1/auth/session/me`
 
 ## Rules
 

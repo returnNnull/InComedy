@@ -49,6 +49,13 @@ This document defines mandatory engineering rules for InComedy.
 - Every backend auth request log must include request trace identifier (`X-Request-ID`/call-id).
 - Logs must never include secrets or raw auth tokens.
 
+## Auth Session Security
+
+- Mobile auth/session tokens must be stored only in secure platform storage:
+  - Android: encrypted storage backed by Android Keystore (`EncryptedSharedPreferences`/equivalent).
+  - iOS: Keychain.
+- Plain `SharedPreferences`/`UserDefaults` are allowed only for one-time migration reads and must be cleared immediately after secure migration.
+
 ## Testing Policy
 
 - Every delivered feature must include corresponding automated tests.

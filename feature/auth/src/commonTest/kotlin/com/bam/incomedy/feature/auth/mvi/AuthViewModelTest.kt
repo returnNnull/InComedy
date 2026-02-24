@@ -4,8 +4,10 @@ import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
+import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
 import com.bam.incomedy.feature.auth.domain.SocialAuthService
+import com.bam.incomedy.feature.auth.domain.ValidatedSession
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -113,6 +115,7 @@ class AuthViewModelTest {
     ): AuthViewModel {
         return AuthViewModel(
             socialAuthService = SocialAuthService(listOf(provider)),
+            sessionValidationService = FakeSessionValidationService(),
             stateGenerator = FixedStateGenerator,
             dispatcher = dispatcher,
         )
@@ -121,6 +124,12 @@ class AuthViewModelTest {
 
 private object FixedStateGenerator : AuthStateGenerator {
     override fun next(): String = "fixed_state"
+}
+
+private class FakeSessionValidationService : SessionValidationService {
+    override suspend fun validate(accessToken: String): Result<ValidatedSession> {
+        return Result.failure(IllegalStateException("not_used_in_this_test"))
+    }
 }
 
 private class FakeProvider(

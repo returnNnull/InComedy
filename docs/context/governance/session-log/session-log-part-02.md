@@ -230,3 +230,31 @@
 - Changes: Switched to CI prebuild strategy (`:server:installDist`) before docker build; converted server Dockerfile to runtime-only image that copies prebuilt distribution; updated `.dockerignore` and server README accordingly.
 - Decisions: Accepted prebuilt-distribution docker strategy in `D-034`.
 - Next: Re-run `CD Server` workflow and verify successful image build/push and deploy.
+
+## 2026-02-24 15:05
+
+- Context: Mobile app must skip Telegram auth when server session is already valid.
+- Changes: Added backend endpoint `GET /api/v1/auth/session/me` with JWT validation + user lookup; added shared restore intent/bridge contract; implemented Android/iOS startup token restore against backend; added Android `main` graph and auth/main auto-routing by auth state; limited current auth UI to Telegram entry.
+- Decisions: Accepted startup session-restore behavior as explicit rule in `D-035`.
+- Next: Deploy updated server image, verify `/api/v1/auth/session/me` on staging/prod, and run end-to-end checks on Android/iOS deep-link + cold start restore.
+
+## 2026-02-24 15:24
+
+- Context: Current mobile token persistence used plain local storage and required hardening.
+- Changes: Android auth token storage migrated to `EncryptedSharedPreferences` with Keystore-backed key and one-time migration from legacy plain prefs; iOS auth token storage migrated to Keychain with one-time migration from legacy `UserDefaults`; docs updated with secure storage rule.
+- Decisions: Accepted secure token storage policy in `D-036`.
+- Next: Validate auth restore flow on Android emulator/device and iOS simulator/device after migration from old install.
+
+## 2026-02-24 15:33
+
+- Context: Need explicit permanent process for vulnerability communication and remediation tracking.
+- Changes: Added mandatory vulnerability reporting/tracking policy, updated context checklist, and formalized risk-log security template with first tracked auth storage vulnerability record.
+- Decisions: Accepted vulnerability communication + tracking rule in `D-037`.
+- Next: Keep `risk-log` updated on each discovered vulnerability until remediation is closed.
+
+## 2026-02-24 15:52
+
+- Context: Detected architectural regression: platform auth wrappers contained direct HTTP calls for session restore, and provider list was accidentally reduced to Telegram-only in UI.
+- Changes: Moved session token validation to shared domain+data flow (`SessionValidationService` + backend API adapter), added auth effect for invalid stored token cleanup, restored VK/Telegram/Google provider buttons in Android/iOS UI, and removed hardcoded backend URL usage from platform wrappers.
+- Decisions: No new architecture decision; implementation aligned back to existing Clean rules.
+- Next: Run end-to-end auth checks for Telegram and verify placeholder behavior for VK/Google until backend exchange endpoints are implemented.

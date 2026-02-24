@@ -1,8 +1,10 @@
 package com.bam.incomedy.feature.auth.mvi
 
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
 import com.bam.incomedy.feature.auth.domain.RandomAuthStateGenerator
+import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(
     private val socialAuthService: SocialAuthService,
+    private val sessionValidationService: SessionValidationService,
     private val stateGenerator: AuthStateGenerator = RandomAuthStateGenerator(),
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
@@ -36,6 +39,8 @@ class AuthViewModel(
         when (intent) {
             is AuthIntent.OnProviderClick -> startAuth(intent.provider)
             is AuthIntent.OnAuthCallback -> completeAuth(intent.provider, intent.code, intent.state)
+            is AuthIntent.OnRestoreSessionToken -> restoreSessionByToken(intent.accessToken)
+            is AuthIntent.OnRestoreSession -> restoreSession(intent.session)
             AuthIntent.OnClearError -> clearError()
         }
     }
@@ -137,6 +142,48 @@ class AuthViewModel(
 
     private fun clearError() {
         _state.update { it.copy(errorMessage = null) }
+    }
+
+    private fun restoreSession(session: AuthSession) {
+        AuthFlowLogger.event(
+            stage = "session.restore.success",
+            provider = session.provider,
+            details = "userId=${session.userId}",
+        )
+        _state.update {
+            it.copy(
+                isLoading = false,
+                session = session,
+                errorMessage = null,
+                selectedProvider = session.provider,
+            )
+        }
+    }
+
+    private fun restoreSessionByToken(accessToken: String) {
+        if (accessToken.isBlank()) {
+            scope.launch { _effects.emit(AuthEffect.InvalidateStoredSession) }
+            return
+        }
+        scope.launch {
+            AuthFlowLogger.event(stage = "session.restore.requested")
+            val validationResult = sessionValidationService.validate(accessToken)
+            validationResult.fold(
+                onSuccess = { validated ->
+                    restoreSession(
+                        AuthSession(
+                            provider = validated.provider,
+                            userId = validated.userId,
+                            accessToken = validated.accessToken,
+                        ),
+                    )
+                },
+                onFailure = {
+                    AuthFlowLogger.event(stage = "session.restore.failed")
+                    _effects.emit(AuthEffect.InvalidateStoredSession)
+                },
+            )
+        }
     }
 
     fun clear() {

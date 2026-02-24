@@ -3,9 +3,12 @@ package com.bam.incomedy.data.auth.backend
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.SerialName
@@ -28,6 +31,18 @@ class TelegramBackendApi(
                 }
                 .body<TelegramBackendSessionResponse>()
                 .toSession()
+        }
+    }
+
+    suspend fun getSessionUser(accessToken: String): Result<SessionUser> {
+        return runCatching {
+            httpClient
+                .get("$baseUrl/api/v1/auth/session/me") {
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                }
+                .body<SessionMeResponse>()
+                .user
+                .toDomain()
         }
     }
 }
@@ -71,3 +86,20 @@ private data class TelegramBackendUserResponse(
     val id: String,
 )
 
+data class SessionUser(
+    val id: String,
+)
+
+@Serializable
+private data class SessionMeResponse(
+    val user: SessionUserResponse,
+)
+
+@Serializable
+private data class SessionUserResponse(
+    val id: String,
+) {
+    fun toDomain(): SessionUser {
+        return SessionUser(id = id)
+    }
+}

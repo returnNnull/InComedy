@@ -43,6 +43,7 @@ This folder stores product context and decisions so the team and assistant do no
   - keep engineering/governance docs in sync with implementation changes,
   - maintain decisions/session/traceability records,
   - convert free-form requests into `handoff/task-request-template.md` structure for major tasks,
+  - immediately communicate discovered security vulnerabilities and maintain remediation records in `product/risk-log.md`,
   - remind product owner to refresh priorities in `product/backlog.md` when context is stale.
 - Update `product/product-brief.md` only when strategy, roles, or core scope changes.
 - Add a new entry to the latest part referenced by `governance/decisions-log.md` for every architectural or product-level decision.

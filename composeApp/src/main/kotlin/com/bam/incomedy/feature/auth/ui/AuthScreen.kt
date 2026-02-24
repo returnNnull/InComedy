@@ -31,6 +31,7 @@ fun AuthScreen(
         viewModel.effects.collect { effect ->
             when (effect) {
                 is AuthEffect.OpenExternalAuth -> uriHandler.openUri(effect.url)
+                AuthEffect.InvalidateStoredSession -> Unit
             }
         }
     }
