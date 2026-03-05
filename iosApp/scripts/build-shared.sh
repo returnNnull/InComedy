@@ -2,8 +2,7 @@
 set -eu
 
 if [ "${OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED:-}" = "YES" ]; then
-  echo "Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES"
-  exit 0
+  echo "OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES is set, but Kotlin framework build will still run to avoid stale Shared.framework."
 fi
 
 if [ -z "${JAVA_HOME:-}" ] && [ -x "/usr/libexec/java_home" ]; then
