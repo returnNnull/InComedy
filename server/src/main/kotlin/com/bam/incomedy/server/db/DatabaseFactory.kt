@@ -4,7 +4,7 @@ import com.bam.incomedy.server.config.DatabaseConfig
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import javax.sql.DataSource
-
+///commit comment
 object DatabaseFactory {
     fun create(config: DatabaseConfig): DataSource {
         val hikariConfig = HikariConfig().apply {
