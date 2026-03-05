@@ -1,6 +1,8 @@
 package com.bam.incomedy.server.auth.telegram
 
 import com.bam.incomedy.server.ErrorResponse
+import com.bam.incomedy.server.security.AuthRateLimiter
+import com.bam.incomedy.server.security.clientFingerprint
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
@@ -15,9 +17,18 @@ import org.slf4j.LoggerFactory
 object TelegramAuthRoutes {
     private val logger = LoggerFactory.getLogger(TelegramAuthRoutes::class.java)
 
-    fun register(route: Route, authService: TelegramAuthService) {
+    fun register(route: Route, authService: TelegramAuthService, rateLimiter: AuthRateLimiter) {
         route.post("/api/v1/auth/telegram/verify") {
             val requestId = call.callId ?: "n/a"
+            val client = call.clientFingerprint()
+            if (!rateLimiter.allow(key = "telegram_verify:$client", limit = 20, windowMs = 60_000L)) {
+                logger.warn("auth.telegram.verify.rate_limited requestId={} client={}", requestId, client)
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    ErrorResponse("rate_limited", "Too many requests"),
+                )
+                return@post
+            }
             val request = runCatching { call.receive<TelegramVerifyRequest>() }.getOrElse {
                 logger.warn("auth.telegram.verify.invalid_payload requestId={}", requestId)
                 call.respond(
@@ -65,6 +76,11 @@ object TelegramAuthRoutes {
                     } else {
                         HttpStatusCode.BadRequest
                     }
+                    val safeMessage = if (status == HttpStatusCode.Unauthorized) {
+                        "Telegram auth failed"
+                    } else {
+                        "Invalid auth request"
+                    }
                     logger.warn(
                         "auth.telegram.verify.failed requestId={} status={} reason={}",
                         requestId,
@@ -73,7 +89,7 @@ object TelegramAuthRoutes {
                     )
                     call.respond(
                         status,
-                        ErrorResponse("telegram_auth_failed", error.message ?: "Telegram auth failed"),
+                        ErrorResponse("telegram_auth_failed", safeMessage),
                     )
                 },
             )

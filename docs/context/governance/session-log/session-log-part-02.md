@@ -335,3 +335,10 @@
 - Changes: Added backend refresh endpoint `POST /api/v1/auth/refresh` with one-time refresh-token consumption and rotation; added repository methods for refresh token consume/delete; wired mobile restore flow to send `access+refresh` and fallback to refresh on `401`; propagated `refreshToken` through shared auth/session models and secure storage on Android/iOS; updated OpenAPI contract.
 - Decisions: Accepted refresh-token restore/rotation rule in `D-039`.
 - Next: Deploy updated server and validate real device flow: login -> wait/force access invalidation -> app restart -> auto-restore via refresh.
+
+## 2026-03-05 18:51
+
+- Context: Server auth module required security hardening pass and explicit permanent security rule in engineering standards.
+- Changes: Switched refresh token generation to `SecureRandom`; added auth route in-memory rate limiting for `/api/v1/auth/telegram/verify`, `/api/v1/auth/session/me`, `/api/v1/auth/logout`, `/api/v1/auth/refresh`; sanitized server error responses (no raw internal exception text in API responses); added mandatory security-review rule to engineering and quality standards.
+- Decisions: Accepted mandatory security-review baseline and auth hardening policy in `D-040`.
+- Next: Add persistent/distributed rate limiter (Redis) and dedicated auth security integration tests for limit/retry behavior.

@@ -9,6 +9,7 @@ import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseSchemaInitializer
 import com.bam.incomedy.server.db.PostgresTelegramUserRepository
+import com.bam.incomedy.server.security.AuthRateLimiter
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -25,10 +26,12 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.util.UUID
 
 fun Application.module() {
+    val logger = LoggerFactory.getLogger("Application")
     val config = AppConfig.fromEnv()
     val dataSource = DatabaseFactory.create(config.database)
     DatabaseSchemaInitializer.ensure(dataSource)
@@ -40,6 +43,7 @@ fun Application.module() {
     )
     val tokenService = JwtSessionTokenService(config.jwt)
     val authService = TelegramAuthService(verifier, repository, tokenService)
+    val rateLimiter = AuthRateLimiter()
 
     install(CallId) {
         retrieveFromHeader("X-Request-ID")
@@ -58,9 +62,15 @@ fun Application.module() {
     }
     install(StatusPages) {
         exception<Throwable> { call, cause ->
+            logger.error(
+                "server.unhandled_exception requestId={} reason={}",
+                call.callId ?: "n/a",
+                cause.message ?: "unknown",
+                cause,
+            )
             call.respond(
                 HttpStatusCode.InternalServerError,
-                ErrorResponse("internal_error", cause.message ?: "Unexpected server error"),
+                ErrorResponse("internal_error", "Unexpected server error"),
             )
         }
     }
@@ -77,11 +87,12 @@ fun Application.module() {
             )
         }
 
-        TelegramAuthRoutes.register(this, authService)
+        TelegramAuthRoutes.register(this, authService, rateLimiter)
         SessionRoutes.register(
             route = this,
             tokenService = tokenService,
             userRepository = repository,
+            rateLimiter = rateLimiter,
         )
 
         get("/") {

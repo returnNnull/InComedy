@@ -92,6 +92,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Unexpected server failure
           headers:
@@ -145,6 +156,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Unexpected server failure
           headers:
@@ -185,6 +207,17 @@ paths:
                 type: string
         "401":
           description: Missing/invalid token
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -248,6 +281,17 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Missing/invalid refresh token or session revoked
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
           headers:
             X-Request-ID:
               description: Server trace identifier

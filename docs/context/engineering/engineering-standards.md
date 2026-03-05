@@ -70,3 +70,4 @@ This document defines mandatory engineering rules for InComedy.
 ## Rule of Change
 
 - Any exception to these standards must be explicitly documented in `decisions-log.md` with rationale and expiry plan.
+- Security-first rule: every backend/mobile change must include an explicit security check (threats, secret handling, auth/session impact, abuse controls) before merge.

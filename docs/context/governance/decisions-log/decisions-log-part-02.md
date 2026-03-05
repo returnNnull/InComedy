@@ -191,3 +191,11 @@
 - Decision: Session restore must support access-token validation with refresh-token fallback and refresh-token rotation on backend (`POST /api/v1/auth/refresh`).
 - Rationale: Access tokens expire and should not force full social re-auth when a valid refresh token exists.
 - Consequences: Backend consumes refresh token once and issues new access/refresh pair; mobile stores both tokens in secure storage and restores session with `access+refresh` flow.
+
+## D-040
+
+- Date: 2026-03-05
+- Status: accepted
+- Decision: Security review is mandatory for every change; auth endpoints must enforce abuse protection (rate limiting), cryptographically secure token generation, and sanitized error responses.
+- Rationale: Security regressions can appear in non-security tasks; baseline hardening must be continuous, not ad-hoc.
+- Consequences: All tasks include explicit security checks in DoD; server auth routes apply rate limits; token generation uses `SecureRandom`; internal errors are logged server-side but not exposed in API responses.

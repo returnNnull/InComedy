@@ -1057,3 +1057,46 @@ Use this template for new implementation tasks.
   - `:composeApp:compileDebugKotlin`
 - Required docs updates:
   - `decisions-log`, `decision-traceability`, `session-log`, `api-contracts`.
+
+---
+
+## Latest Formalized Request (Server Auth Security Hardening)
+
+## Context
+
+- Related docs/decisions:
+  - `D-039` (refresh flow), `D-037` (vulnerability tracking).
+- Current constraints:
+  - Server auth already functional; required to close identified security gaps.
+
+## Goal
+
+- What should be delivered:
+  - Harden server auth security baseline and formalize always-on security rule.
+
+## Scope
+
+- In scope:
+  - cryptographically secure refresh token generation.
+  - rate limiting on auth/session endpoints.
+  - sanitized error responses (no internal exception leakage).
+  - context docs update with mandatory security-review rule.
+- Out of scope:
+  - distributed rate limiter infra rollout.
+  - full security audit automation stack.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep existing public API behavior stable.
+  - Do not expose sensitive details in logs/responses.
+
+## Definition of Done
+
+- Functional result:
+  - Auth endpoints are hardened against basic abuse/enumeration and token generation uses secure randomness.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`.

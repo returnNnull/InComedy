@@ -5,15 +5,16 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import com.bam.incomedy.server.config.JwtConfig
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.time.Instant
 import java.util.Base64
 import java.util.Date
 import java.util.UUID
-import kotlin.random.Random
 
 class JwtSessionTokenService(
     private val config: JwtConfig,
 ) : SessionTokenService {
+    private val secureRandom = SecureRandom()
     private val algorithm = Algorithm.HMAC256(config.secret)
     private val verifier = JWT
         .require(algorithm)
@@ -74,7 +75,7 @@ class JwtSessionTokenService(
 
     private fun randomToken(): String {
         val bytes = ByteArray(32)
-        Random.Default.nextBytes(bytes)
+        secureRandom.nextBytes(bytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 }

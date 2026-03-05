@@ -2,6 +2,8 @@ package com.bam.incomedy.server.auth.session
 
 import com.bam.incomedy.server.ErrorResponse
 import com.bam.incomedy.server.db.TelegramUserRepository
+import com.bam.incomedy.server.security.AuthRateLimiter
+import com.bam.incomedy.server.security.clientFingerprint
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
@@ -22,9 +24,18 @@ object SessionRoutes {
         route: Route,
         tokenService: JwtSessionTokenService,
         userRepository: TelegramUserRepository,
+        rateLimiter: AuthRateLimiter,
     ) {
         route.get("/api/v1/auth/session/me") {
             val requestId = call.callId ?: "n/a"
+            val client = call.clientFingerprint()
+            if (!rateLimiter.allow(key = "session_me:$client", limit = 120, windowMs = 60_000L)) {
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    ErrorResponse("rate_limited", "Too many requests"),
+                )
+                return@get
+            }
             val bearerToken = extractBearerToken(call.request.headers["Authorization"])
             if (bearerToken.isBlank()) {
                 call.respond(
@@ -42,7 +53,7 @@ object SessionRoutes {
                 )
                 call.respond(
                     HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", error.message ?: "Invalid access token"),
+                    ErrorResponse("unauthorized", "Invalid access token"),
                 )
                 return@get
             }
@@ -84,6 +95,14 @@ object SessionRoutes {
 
         route.post("/api/v1/auth/logout") {
             val requestId = call.callId ?: "n/a"
+            val client = call.clientFingerprint()
+            if (!rateLimiter.allow(key = "logout:$client", limit = 30, windowMs = 60_000L)) {
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    ErrorResponse("rate_limited", "Too many requests"),
+                )
+                return@post
+            }
             val bearerToken = extractBearerToken(call.request.headers["Authorization"])
             if (bearerToken.isBlank()) {
                 call.respond(
@@ -101,7 +120,7 @@ object SessionRoutes {
                 )
                 call.respond(
                     HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", error.message ?: "Invalid access token"),
+                    ErrorResponse("unauthorized", "Invalid access token"),
                 )
                 return@post
             }
@@ -113,6 +132,14 @@ object SessionRoutes {
 
         route.post("/api/v1/auth/refresh") {
             val requestId = call.callId ?: "n/a"
+            val client = call.clientFingerprint()
+            if (!rateLimiter.allow(key = "refresh:$client", limit = 30, windowMs = 60_000L)) {
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    ErrorResponse("rate_limited", "Too many requests"),
+                )
+                return@post
+            }
             val request = runCatching { call.receive<RefreshRequest>() }.getOrElse {
                 logger.warn("auth.refresh.invalid_payload requestId={}", requestId)
                 call.respond(

@@ -6,6 +6,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - A task is complete only when code, tests, and relevant `docs/context/*` updates are included.
 - CI checks for the changed scope must pass before merge.
+- Mandatory security review is part of DoD for every task, even if the change is not explicitly security-related.
 
 ## Error Handling
 
