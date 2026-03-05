@@ -215,3 +215,19 @@
 - Decision: Enforce transport security policy for remote DB/Redis connections by default and keep Postgres non-public in deploy stack.
 - Rationale: Auth hardening is incomplete if data stores can be reached over insecure transport or exposed directly on host network.
 - Consequences: `DB_SSL_MODE` defaults to `require` for remote DB hosts (`disable` only for local hosts unless explicitly overridden), remote `redis://` is rejected unless explicitly allowed, and `deploy/server/docker-compose.yml` no longer publishes Postgres port to host.
+
+## D-043
+
+- Date: 2026-03-05
+- Status: accepted
+- Decision: Apply baseline web-surface hardening by default: security headers in Caddy, non-root runtime user in server container, and strict Telegram payload format validation.
+- Rationale: Public auth callback surface and container runtime need defense-in-depth beyond token/session controls.
+- Consequences: Caddy sends strict transport and browser hardening headers; server Docker image runs as non-root `appuser`; Telegram verifier enforces length/format/https/auth_date skew checks before hash verification.
+
+## D-044
+
+- Date: 2026-03-05
+- Status: accepted
+- Decision: All protected API routes must use a shared auth middleware/interceptor that validates JWT and session revocation (`session_revoked_at`) before handler execution.
+- Rationale: Per-route token checks are error-prone and can drift; revocation guarantees must be centralized.
+- Consequences: Server routes now use shared session auth interceptor (`withSessionAuth` + `requireSessionPrincipal`); future protected endpoints must plug into this middleware rather than duplicating token logic.

@@ -12,6 +12,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.route
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -26,108 +27,58 @@ object SessionRoutes {
         userRepository: TelegramUserRepository,
         rateLimiter: AuthRateLimiter,
     ) {
-        route.get("/api/v1/auth/session/me") {
-            val requestId = call.callId ?: "n/a"
-            val client = call.clientFingerprint()
-            if (!rateLimiter.allow(key = "session_me:$client", limit = 120, windowMs = 60_000L)) {
-                call.respond(
-                    HttpStatusCode.TooManyRequests,
-                    ErrorResponse("rate_limited", "Too many requests"),
-                )
-                return@get
-            }
-            val bearerToken = extractBearerToken(call.request.headers["Authorization"])
-            if (bearerToken.isBlank()) {
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Missing bearer token"),
-                )
-                return@get
-            }
+        route.route("/api/v1/auth") {
+            withSessionAuth(
+                tokenService = tokenService,
+                userRepository = userRepository,
+            ) {
+                get("/session/me") {
+                    val requestId = call.callId ?: "n/a"
+                    val client = call.clientFingerprint()
+                    if (!rateLimiter.allow(key = "session_me:$client", limit = 120, windowMs = 60_000L)) {
+                        call.respond(
+                            HttpStatusCode.TooManyRequests,
+                            ErrorResponse("rate_limited", "Too many requests"),
+                        )
+                        return@get
+                    }
+                    val principal = call.requireSessionPrincipal()
+                    val user = principal.user
+                    logger.info(
+                        "auth.session.me.success requestId={} userId={}",
+                        requestId,
+                        user.id,
+                    )
+                    call.respond(
+                        HttpStatusCode.OK,
+                        SessionMeResponse(
+                            user = SessionUserResponse(
+                                id = user.id,
+                                telegramId = user.telegramId,
+                                displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
+                                username = user.username,
+                                photoUrl = user.photoUrl,
+                            ),
+                        ),
+                    )
+                }
 
-            val verified = tokenService.verifyAccessToken(bearerToken).getOrElse { error ->
-                logger.warn(
-                    "auth.session.me.invalid_token requestId={} reason={}",
-                    requestId,
-                    error.message ?: "unknown",
-                )
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Invalid access token"),
-                )
-                return@get
+                post("/logout") {
+                    val requestId = call.callId ?: "n/a"
+                    val client = call.clientFingerprint()
+                    if (!rateLimiter.allow(key = "logout:$client", limit = 30, windowMs = 60_000L)) {
+                        call.respond(
+                            HttpStatusCode.TooManyRequests,
+                            ErrorResponse("rate_limited", "Too many requests"),
+                        )
+                        return@post
+                    }
+                    val principal = call.requireSessionPrincipal()
+                    userRepository.revokeSessions(principal.user.id, Instant.now())
+                    logger.info("auth.logout.success requestId={} userId={}", requestId, principal.user.id)
+                    call.respond(HttpStatusCode.NoContent)
+                }
             }
-
-            val user = userRepository.findById(verified.userId)
-            if (user == null) {
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "User not found for token"),
-                )
-                return@get
-            }
-            if (user.sessionRevokedAt != null && !verified.issuedAt.isAfter(user.sessionRevokedAt)) {
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Session revoked"),
-                )
-                return@get
-            }
-
-            logger.info(
-                "auth.session.me.success requestId={} userId={}",
-                requestId,
-                user.id,
-            )
-            call.respond(
-                HttpStatusCode.OK,
-                SessionMeResponse(
-                    user = SessionUserResponse(
-                        id = user.id,
-                        telegramId = user.telegramId,
-                        displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
-                        username = user.username,
-                        photoUrl = user.photoUrl,
-                    ),
-                ),
-            )
-        }
-
-        route.post("/api/v1/auth/logout") {
-            val requestId = call.callId ?: "n/a"
-            val client = call.clientFingerprint()
-            if (!rateLimiter.allow(key = "logout:$client", limit = 30, windowMs = 60_000L)) {
-                call.respond(
-                    HttpStatusCode.TooManyRequests,
-                    ErrorResponse("rate_limited", "Too many requests"),
-                )
-                return@post
-            }
-            val bearerToken = extractBearerToken(call.request.headers["Authorization"])
-            if (bearerToken.isBlank()) {
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Missing bearer token"),
-                )
-                return@post
-            }
-
-            val verified = tokenService.verifyAccessToken(bearerToken).getOrElse { error ->
-                logger.warn(
-                    "auth.logout.invalid_token requestId={} reason={}",
-                    requestId,
-                    error.message ?: "unknown",
-                )
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Invalid access token"),
-                )
-                return@post
-            }
-
-            userRepository.revokeSessions(verified.userId, Instant.now())
-            logger.info("auth.logout.success requestId={} userId={}", requestId, verified.userId)
-            call.respond(HttpStatusCode.NoContent)
         }
 
         route.post("/api/v1/auth/refresh") {
@@ -203,10 +154,6 @@ object SessionRoutes {
             )
         }
     }
-}
-
-private fun extractBearerToken(raw: String?): String {
-    return raw?.removePrefix("Bearer ")?.trim().orEmpty()
 }
 
 @Serializable

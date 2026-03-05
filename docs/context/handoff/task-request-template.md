@@ -1184,3 +1184,85 @@ Use this template for new implementation tasks.
   - `:server:installDist`
 - Required docs updates:
   - `decisions-log`, `decision-traceability`, `session-log`, `server/deploy env docs`.
+
+---
+
+## Latest Formalized Request (Security Headers + Non-Root Runtime + Telegram Input Validation)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040`, `D-042`.
+- Current constraints:
+  - DB field-level encryption explicitly out of scope.
+
+## Goal
+
+- What should be delivered:
+  - Implement remaining high-priority server hardening items from security review.
+
+## Scope
+
+- In scope:
+  - Caddy security headers + CSP.
+  - Non-root runtime user in server Docker image.
+  - Strict Telegram verify payload validation and tests.
+- Out of scope:
+  - Field-level encryption of profile data in PostgreSQL.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep Telegram auth flow functional for mobile callback page.
+  - Keep server API contracts backward-compatible.
+
+## Definition of Done
+
+- Functional result:
+  - Public web surface has baseline browser hardening headers, server process runs non-root, and malformed Telegram payloads are rejected early.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Shared Protected-Route Auth Middleware)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040`, `D-043`.
+- Current constraints:
+  - Token/revocation checks were duplicated in some route handlers.
+
+## Goal
+
+- What should be delivered:
+  - Centralize protected-route authentication and revocation checks into one middleware/interceptor.
+
+## Scope
+
+- In scope:
+  - shared middleware for JWT + `session_revoked_at` checks.
+  - route refactor for existing protected auth endpoints.
+  - docs sync for new server rule.
+- Out of scope:
+  - full authorization/roles matrix.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep existing API contracts and response semantics.
+  - Keep request-id aware logs.
+
+## Definition of Done
+
+- Functional result:
+  - Protected endpoints rely on shared middleware principal, not duplicated token validation logic.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `engineering-standards`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.

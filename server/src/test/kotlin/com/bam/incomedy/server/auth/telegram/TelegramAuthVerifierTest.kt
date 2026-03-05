@@ -51,5 +51,45 @@ class TelegramAuthVerifierTest {
 
         assertFalse(result.isSuccess)
     }
-}
 
+    @Test
+    fun `verify fails for invalid username format`() {
+        val verifier = TelegramAuthVerifier(botToken = "test_bot_token")
+        val payload = TelegramVerifyRequest(
+            id = 10001L,
+            firstName = "InComedy",
+            username = "bad-name",
+            authDate = 1_700_000_000L,
+            hash = "a".repeat(64),
+        )
+        val result = verifier.verify(payload, nowEpochSeconds = 1_700_000_100L)
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `verify fails for non-https photo url`() {
+        val verifier = TelegramAuthVerifier(botToken = "test_bot_token")
+        val payload = TelegramVerifyRequest(
+            id = 10001L,
+            firstName = "InComedy",
+            photoUrl = "http://t.me/i/userpic/320/incomedy_bot.jpg",
+            authDate = 1_700_000_000L,
+            hash = "a".repeat(64),
+        )
+        val result = verifier.verify(payload, nowEpochSeconds = 1_700_000_100L)
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `verify fails for future auth date beyond skew`() {
+        val verifier = TelegramAuthVerifier(botToken = "test_bot_token")
+        val payload = TelegramVerifyRequest(
+            id = 10001L,
+            firstName = "InComedy",
+            authDate = 1_700_000_400L,
+            hash = "a".repeat(64),
+        )
+        val result = verifier.verify(payload, nowEpochSeconds = 1_700_000_000L)
+        assertTrue(result.isFailure)
+    }
+}

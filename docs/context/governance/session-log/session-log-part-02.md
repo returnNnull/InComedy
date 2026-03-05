@@ -356,3 +356,17 @@
 - Changes: Added DB/Redis security policy in config (`DB_SSL_MODE`, `DB_ALLOW_INSECURE`, `REDIS_ALLOW_INSECURE`) with fail-fast on insecure remote connections by default; removed Postgres host port publishing from deploy compose; updated server/deploy env templates and runtime docs.
 - Decisions: Accepted secure transport + non-public Postgres deployment policy in `D-042`.
 - Next: Apply new env vars on server (`DB_SSL_MODE`, `DB_ALLOW_INSECURE`, `REDIS_ALLOW_INSECURE`) and re-run deploy.
+
+## 2026-03-05 20:48
+
+- Context: Requested implementation of remaining top-priority hardening items: security headers, non-root runtime, and stricter auth payload validation.
+- Changes: Added security headers and CSP policies in Caddy for `incomedy.ru` and `api.incomedy.ru`; switched server Docker image runtime to non-root `appuser`; expanded Telegram auth payload validation (`id`, hash format, auth_date skew, username format, https photo URL) and added verifier tests for invalid input paths.
+- Decisions: Accepted web-surface/runtime/auth-input hardening baseline in `D-043`.
+- Next: Deploy updated Caddy + server image and verify callback page behavior under CSP in browser and mobile deep-link flow.
+
+## 2026-03-05 21:02
+
+- Context: Need centralized, reusable revocation-aware token checks for all protected endpoints.
+- Changes: Added shared session auth middleware/interceptor (`withSessionAuth`) that validates bearer JWT and checks `session_revoked_at` before route handlers; refactored `/api/v1/auth/session/me` and `/api/v1/auth/logout` to use middleware principal instead of duplicated per-route token checks.
+- Decisions: Accepted protected-route middleware rule in `D-044`.
+- Next: Apply the same middleware to every new protected endpoint (profile, user settings, business APIs) as they are added.

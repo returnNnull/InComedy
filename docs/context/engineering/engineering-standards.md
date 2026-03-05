@@ -58,6 +58,9 @@ This document defines mandatory engineering rules for InComedy.
 - Plain `SharedPreferences`/`UserDefaults` are allowed only for one-time migration reads and must be cleared immediately after secure migration.
 - Session restore flow must support access-token validation plus refresh-token fallback; refresh token must be rotated (one-time use) on every successful refresh.
 - Remote datastore connections (PostgreSQL/Redis outside local host network) must use secure transport by default (`sslmode=require` for DB, `rediss://` for Redis) unless an explicit temporary insecure override is documented.
+- Public web entrypoints must return baseline security headers (at reverse-proxy or app layer).
+- Runtime containers must run as non-root unless a time-bounded exception is documented in governance decisions.
+- All protected backend routes must pass through shared auth middleware/interceptor that validates JWT and revocation status before handler logic.
 
 ## Testing Policy
 

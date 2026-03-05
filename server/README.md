@@ -56,6 +56,12 @@ cd /opt/incomedy/server
 docker compose --env-file .env up -d
 ```
 
+Security defaults:
+
+- Caddy config adds baseline security headers and CSP.
+- Server container runs as non-root `appuser`.
+- Telegram auth payload is validated for format/length/https constraints before hash verification.
+
 ## Required Environment Variables
 
 - `DB_URL`

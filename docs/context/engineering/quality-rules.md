@@ -64,4 +64,5 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Client-side auth/session tokens must not persist in plain local storage (`SharedPreferences`, `UserDefaults`) outside controlled migration.
 - Token refresh must use refresh-token rotation (one-time refresh token consumption and issuance of a new refresh token).
 - Remote datastore transport must be secured by default (DB TLS / Redis TLS) with any insecure override treated as temporary exception.
+- Auth callback payload fields must be validated for format, length, and protocol constraints before verification/storage.
 - Any discovered vulnerability must be immediately reported to product owner and tracked in `docs/context/product/risk-log.md` with remediation plan, owner, and target date.
