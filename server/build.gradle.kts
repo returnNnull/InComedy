@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.hikaricp)
     implementation(libs.postgresql)
     implementation(libs.java.jwt)
+    implementation(libs.jedis)
 
     testImplementation(libs.ktor.server.tests.jvm)
     testImplementation(libs.kotlin.test)

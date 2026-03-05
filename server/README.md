@@ -64,6 +64,10 @@ docker compose --env-file .env up -d
 - `JWT_SECRET`
 - `TELEGRAM_BOT_TOKEN`
 
+Optional:
+
+- `REDIS_URL` - enables distributed auth rate limiting (recommended for multi-instance deployment).
+
 ## API
 
 ### Health
@@ -84,6 +88,17 @@ docker compose --env-file .env up -d
   "photo_url": "https://t.me/i/userpic/320/johndoe.jpg",
   "auth_date": 1700000000,
   "hash": "telegram_hash"
+}
+```
+
+### Auth Refresh
+
+- `POST /api/v1/auth/refresh`
+- Request body:
+
+```json
+{
+  "refresh_token": "opaque_refresh_token"
 }
 ```
 

@@ -4,6 +4,7 @@ data class AppConfig(
     val database: DatabaseConfig,
     val jwt: JwtConfig,
     val telegram: TelegramConfig,
+    val redis: RedisConfig?,
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): AppConfig {
@@ -23,6 +24,7 @@ data class AppConfig(
                     botToken = env.require("TELEGRAM_BOT_TOKEN"),
                     maxAuthAgeSeconds = env["TELEGRAM_AUTH_MAX_AGE_SECONDS"]?.toLongOrNull() ?: 86400L,
                 ),
+                redis = env["REDIS_URL"]?.takeIf { it.isNotBlank() }?.let { RedisConfig(url = it) },
             )
         }
     }
@@ -46,8 +48,11 @@ data class TelegramConfig(
     val maxAuthAgeSeconds: Long,
 )
 
+data class RedisConfig(
+    val url: String,
+)
+
 private fun Map<String, String>.require(name: String): String {
     return this[name]?.takeIf { it.isNotBlank() }
         ?: error("Environment variable '$name' is required")
 }
-

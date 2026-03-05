@@ -1100,3 +1100,46 @@ Use this template for new implementation tasks.
   - `:server:installDist`
 - Required docs updates:
   - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (Distributed Redis Rate Limiter)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040` (security hardening baseline).
+- Current constraints:
+  - Current limiter is in-memory and instance-local.
+
+## Goal
+
+- What should be delivered:
+  - Add Redis-backed distributed rate limiting for server auth endpoints with safe fallback behavior.
+
+## Scope
+
+- In scope:
+  - Redis limiter implementation.
+  - Optional `REDIS_URL` config and runtime selection.
+  - Deploy compose/env updates for Redis service.
+  - Docs sync in governance and server runtime docs.
+- Out of scope:
+  - Centralized metrics/dashboard for limiter yet.
+  - Adaptive dynamic rate-limit policy.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep server runnable without Redis (fallback to in-memory).
+  - Keep existing endpoint contracts stable.
+
+## Definition of Done
+
+- Functional result:
+  - With `REDIS_URL` set, auth limits are shared across instances; without it, server uses in-memory fallback.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `deploy env docs`.

@@ -1,4 +1,17 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: incomedy-redis
+    restart: unless-stopped
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   postgres:
     image: postgres:16-alpine
     container_name: incomedy-postgres
@@ -24,6 +37,8 @@ services:
     container_name: incomedy-server
     restart: unless-stopped
     depends_on:
+      redis:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     expose:
@@ -34,6 +49,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-incomedy}
       DB_USER: ${POSTGRES_USER:-incomedy}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     healthcheck:
       test: [ "CMD", "curl", "-fsS", "http://localhost:8080/health" ]
       interval: 30s
@@ -57,6 +73,7 @@ services:
       - caddy_config:/config
 
 volumes:
+  redis_data:
   postgres_data:
   caddy_data:
   caddy_config:

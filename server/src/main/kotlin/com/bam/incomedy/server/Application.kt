@@ -10,6 +10,8 @@ import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseSchemaInitializer
 import com.bam.incomedy.server.db.PostgresTelegramUserRepository
 import com.bam.incomedy.server.security.AuthRateLimiter
+import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
+import com.bam.incomedy.server.security.RedisAuthRateLimiter
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -28,6 +30,7 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import redis.clients.jedis.JedisPooled
 import java.util.UUID
 
 fun Application.module() {
@@ -43,7 +46,21 @@ fun Application.module() {
     )
     val tokenService = JwtSessionTokenService(config.jwt)
     val authService = TelegramAuthService(verifier, repository, tokenService)
-    val rateLimiter = AuthRateLimiter()
+    val rateLimiter: AuthRateLimiter = config.redis?.let { redis ->
+        runCatching {
+            RedisAuthRateLimiter(JedisPooled(redis.url))
+        }.onSuccess {
+            logger.info("security.rate_limiter.backend=redis")
+        }.getOrElse { error ->
+            logger.warn(
+                "security.rate_limiter.backend=in_memory reason={}",
+                error.message ?: "redis_init_failed",
+            )
+            InMemoryAuthRateLimiter()
+        }
+    } ?: InMemoryAuthRateLimiter().also {
+        logger.info("security.rate_limiter.backend=in_memory")
+    }
 
     install(CallId) {
         retrieveFromHeader("X-Request-ID")

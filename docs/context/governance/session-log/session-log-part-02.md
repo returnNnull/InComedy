@@ -342,3 +342,10 @@
 - Changes: Switched refresh token generation to `SecureRandom`; added auth route in-memory rate limiting for `/api/v1/auth/telegram/verify`, `/api/v1/auth/session/me`, `/api/v1/auth/logout`, `/api/v1/auth/refresh`; sanitized server error responses (no raw internal exception text in API responses); added mandatory security-review rule to engineering and quality standards.
 - Decisions: Accepted mandatory security-review baseline and auth hardening policy in `D-040`.
 - Next: Add persistent/distributed rate limiter (Redis) and dedicated auth security integration tests for limit/retry behavior.
+
+## 2026-03-05 19:00
+
+- Context: In-memory limiter is insufficient for multi-instance deployment and restarts.
+- Changes: Added Redis-backed distributed rate limiter (`RedisAuthRateLimiter`) with automatic fallback to in-memory; introduced optional `REDIS_URL` config; added Redis service to deploy compose and env templates; updated server README runtime docs.
+- Decisions: Accepted distributed limiter policy in `D-041`.
+- Next: Validate production deployment with Redis enabled and tune per-endpoint limits from telemetry.

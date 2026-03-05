@@ -199,3 +199,11 @@
 - Decision: Security review is mandatory for every change; auth endpoints must enforce abuse protection (rate limiting), cryptographically secure token generation, and sanitized error responses.
 - Rationale: Security regressions can appear in non-security tasks; baseline hardening must be continuous, not ad-hoc.
 - Consequences: All tasks include explicit security checks in DoD; server auth routes apply rate limits; token generation uses `SecureRandom`; internal errors are logged server-side but not exposed in API responses.
+
+## D-041
+
+- Date: 2026-03-05
+- Status: accepted
+- Decision: Use Redis-backed distributed auth rate limiting when `REDIS_URL` is configured, with automatic fallback to in-memory limiter when Redis is unavailable.
+- Rationale: In-memory limits are per-instance and reset on restart; production multi-instance setups require shared counters.
+- Consequences: Deployment stack includes Redis; server configuration supports optional `REDIS_URL`; auth rate limits are consistent across instances when Redis is enabled.
