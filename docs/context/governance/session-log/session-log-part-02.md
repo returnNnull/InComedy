@@ -307,3 +307,31 @@
 - Changes: Added backend `POST /api/v1/auth/logout` with per-user session revocation timestamp and validation in `/api/v1/auth/session/me`; wired client-side sign-out intent/service and added logout button in Android main screen; updated OpenAPI contract.
 - Decisions: No new decision; implementation follows existing auth/session architecture.
 - Next: Deploy server update, rebuild mobile app, and validate flow: login -> main -> logout -> restart stays on auth.
+
+## 2026-02-24 17:02
+
+- Context: Need a shared app-level ViewModel that stores active session and authorized user profile, not only auth-screen state.
+- Changes: Expanded `AuthSession` to include `AuthorizedUser` profile; propagated user fields through Telegram verify/restore pipelines; added shared `SessionViewModel` + `SessionBridge` and Android wrapper `SessionAndroidViewModel`; connected main screen to shared session state and logout action.
+- Decisions: No new decision; implementation extends existing shared-viewmodel architecture.
+- Next: Expose the same shared session bridge in iOS main graph and wire user profile rendering there.
+
+## 2026-02-24 17:12
+
+- Context: Need parity on iOS main graph for new shared session source of truth.
+- Changes: Added iOS `MainSessionModel` backed by `SessionBridge`; main graph now renders display name from shared session state and triggers sign-out via shared session VM.
+- Decisions: Accepted app-level session architecture rule in `D-038`.
+- Next: Validate iOS runtime behavior in Xcode: login -> main user label -> logout -> auth.
+
+## 2026-02-24 17:18
+
+- Context: Requested removal of legacy Android auth token storage (`SharedPreferences` fallback/migration).
+- Changes: Removed `legacyPrefs` usage from Android auth wrapper; token read/write/delete now only uses encrypted storage (`auth_session_secure`).
+- Decisions: Aligned with secure-storage-only policy in `D-036`.
+- Next: Verify Android restart behavior with secure storage available in emulator/device.
+
+## 2026-03-05 18:42
+
+- Context: Need production-grade session continuity when access token expires, without forcing user to repeat Telegram auth.
+- Changes: Added backend refresh endpoint `POST /api/v1/auth/refresh` with one-time refresh-token consumption and rotation; added repository methods for refresh token consume/delete; wired mobile restore flow to send `access+refresh` and fallback to refresh on `401`; propagated `refreshToken` through shared auth/session models and secure storage on Android/iOS; updated OpenAPI contract.
+- Decisions: Accepted refresh-token restore/rotation rule in `D-039`.
+- Next: Deploy updated server and validate real device flow: login -> wait/force access invalidation -> app restart -> auto-restore via refresh.

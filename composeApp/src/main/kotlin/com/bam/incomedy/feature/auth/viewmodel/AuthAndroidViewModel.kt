@@ -1,8 +1,8 @@
 package com.bam.incomedy.feature.auth.viewmodel
 
 import android.app.Application
-import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -27,7 +27,6 @@ class AuthAndroidViewModel(
 ) : AndroidViewModel(application) {
     private val sharedViewModel: AuthViewModel = InComedyKoin.getAuthViewModel()
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val legacyPrefs = application.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
     private val securePrefs = createSecurePreferences(application)
 
     val state: StateFlow<AuthState> = sharedViewModel.state
@@ -64,8 +63,14 @@ class AuthAndroidViewModel(
     }
 
     private fun restoreSessionIfPossible() {
-        val token = loadAccessToken() ?: return
-        sharedViewModel.onIntent(AuthIntent.OnRestoreSessionToken(token))
+        val accessToken = loadAccessToken() ?: return
+        val refreshToken = loadRefreshToken()
+        sharedViewModel.onIntent(
+            AuthIntent.OnRestoreSessionTokens(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+            ),
+        )
     }
 
     private fun persistSessionToken() {
@@ -74,6 +79,12 @@ class AuthAndroidViewModel(
                 val token = current.session?.accessToken
                 if (token.isNullOrBlank()) return@collectLatest
                 saveAccessToken(token)
+                val refreshToken = current.session?.refreshToken
+                if (refreshToken.isNullOrBlank()) {
+                    deleteRefreshToken()
+                } else {
+                    saveRefreshToken(refreshToken)
+                }
             }
         }
     }
@@ -83,6 +94,7 @@ class AuthAndroidViewModel(
             effects.collectLatest { effect ->
                 if (effect is AuthEffect.InvalidateStoredSession) {
                     deleteAccessToken()
+                    deleteRefreshToken()
                 }
             }
         }
@@ -95,32 +107,27 @@ class AuthAndroidViewModel(
     }
 
     private fun saveAccessToken(token: String) {
-        if (securePrefs != null) {
-            securePrefs.edit().putString(KEY_ACCESS_TOKEN, token).apply()
-        } else {
-            legacyPrefs.edit().putString(KEY_ACCESS_TOKEN, token).apply()
-        }
+        securePrefs?.edit { putString(KEY_ACCESS_TOKEN, token) }
     }
 
     private fun deleteAccessToken() {
-        securePrefs?.edit()?.remove(KEY_ACCESS_TOKEN)?.apply()
-        legacyPrefs.edit().remove(KEY_ACCESS_TOKEN).apply()
+        securePrefs?.edit { remove(KEY_ACCESS_TOKEN) }
+    }
+
+    private fun saveRefreshToken(token: String) {
+        securePrefs?.edit { putString(KEY_REFRESH_TOKEN, token) }
+    }
+
+    private fun deleteRefreshToken() {
+        securePrefs?.edit { remove(KEY_REFRESH_TOKEN) }
     }
 
     private fun loadAccessToken(): String? {
-        val secureToken = securePrefs?.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() }
-        if (secureToken != null) return secureToken
+        return securePrefs?.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() }
+    }
 
-        if (securePrefs == null) {
-            return legacyPrefs.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() }
-        }
-
-        // One-time migration from legacy plain SharedPreferences.
-        val legacyToken = legacyPrefs.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() } ?: return null
-        securePrefs.edit().putString(KEY_ACCESS_TOKEN, legacyToken).apply()
-        legacyPrefs.edit().remove(KEY_ACCESS_TOKEN).apply()
-        AuthFlowLogger.event(stage = "android.session.token.migrated_to_secure_storage")
-        return legacyToken
+    private fun loadRefreshToken(): String? {
+        return securePrefs?.getString(KEY_REFRESH_TOKEN, null)?.takeIf { it.isNotBlank() }
     }
 
     private fun createSecurePreferences(application: Application): SharedPreferences? {
@@ -146,7 +153,7 @@ class AuthAndroidViewModel(
 
     private companion object {
         const val KEY_ACCESS_TOKEN = "access_token"
-        const val LEGACY_PREFS_NAME = "auth_session"
+        const val KEY_REFRESH_TOKEN = "refresh_token"
         const val SECURE_PREFS_NAME = "auth_session_secure"
     }
 }

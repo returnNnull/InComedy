@@ -5,6 +5,7 @@ import com.bam.incomedy.server.db.TelegramUserRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -109,6 +110,71 @@ object SessionRoutes {
             logger.info("auth.logout.success requestId={} userId={}", requestId, verified.userId)
             call.respond(HttpStatusCode.NoContent)
         }
+
+        route.post("/api/v1/auth/refresh") {
+            val requestId = call.callId ?: "n/a"
+            val request = runCatching { call.receive<RefreshRequest>() }.getOrElse {
+                logger.warn("auth.refresh.invalid_payload requestId={}", requestId)
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse("bad_request", "Invalid refresh request payload"),
+                )
+                return@post
+            }
+            if (request.refreshToken.isBlank()) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse("bad_request", "Refresh token is required"),
+                )
+                return@post
+            }
+
+            val now = Instant.now()
+            val refreshHash = tokenService.refreshTokenHash(request.refreshToken)
+            val user = userRepository.consumeRefreshToken(refreshHash, now)
+            if (user == null) {
+                logger.warn("auth.refresh.invalid_token requestId={}", requestId)
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorResponse("unauthorized", "Invalid refresh token"),
+                )
+                return@post
+            }
+            if (user.sessionRevokedAt != null) {
+                logger.warn("auth.refresh.revoked requestId={} userId={}", requestId, user.id)
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorResponse("unauthorized", "Session revoked"),
+                )
+                return@post
+            }
+
+            val newTokens = tokenService.issue(
+                userId = user.id,
+                telegramUserId = user.telegramId,
+            )
+            userRepository.storeRefreshToken(
+                userId = user.id,
+                tokenHash = tokenService.refreshTokenHash(newTokens.refreshToken),
+                expiresAt = tokenService.refreshExpiryInstant(now),
+            )
+            logger.info("auth.refresh.success requestId={} userId={}", requestId, user.id)
+            call.respond(
+                HttpStatusCode.OK,
+                RefreshResponse(
+                    accessToken = newTokens.accessToken,
+                    refreshToken = newTokens.refreshToken,
+                    expiresIn = newTokens.expiresInSeconds,
+                    user = SessionUserResponse(
+                        id = user.id,
+                        telegramId = user.telegramId,
+                        displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
+                        username = user.username,
+                        photoUrl = user.photoUrl,
+                    ),
+                ),
+            )
+        }
     }
 }
 
@@ -131,4 +197,21 @@ data class SessionUserResponse(
     val username: String? = null,
     @SerialName("photo_url")
     val photoUrl: String? = null,
+)
+
+@Serializable
+data class RefreshRequest(
+    @SerialName("refresh_token")
+    val refreshToken: String,
+)
+
+@Serializable
+data class RefreshResponse(
+    @SerialName("access_token")
+    val accessToken: String,
+    @SerialName("refresh_token")
+    val refreshToken: String,
+    @SerialName("expires_in")
+    val expiresIn: Long,
+    val user: SessionUserResponse,
 )

@@ -3,6 +3,7 @@ package com.bam.incomedy.data.auth.providers
 import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
+import com.bam.incomedy.feature.auth.domain.AuthorizedUser
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
 
 class VkAuthProvider(
@@ -33,8 +34,11 @@ class VkAuthProvider(
                 provider = type,
                 userId = "vk_user_$state",
                 accessToken = "vk_token_$code",
+                user = AuthorizedUser(
+                    id = "vk_user_$state",
+                    displayName = "VK User",
+                ),
             ),
         )
     }
 }
-

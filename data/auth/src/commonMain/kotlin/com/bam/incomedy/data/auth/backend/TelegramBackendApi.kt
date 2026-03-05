@@ -1,5 +1,6 @@
 package com.bam.incomedy.data.auth.backend
 
+import com.bam.incomedy.feature.auth.domain.AuthorizedUser
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -81,6 +82,23 @@ class TelegramBackendApi(
         }
     }
 
+    suspend fun refreshSession(refreshToken: String): Result<RefreshedBackendSession> {
+        return runCatching {
+            val response = httpClient
+                .post("$baseUrl/api/v1/auth/refresh") {
+                    contentType(ContentType.Application.Json)
+                    setBody(RefreshRequest(refreshToken = refreshToken))
+                }
+            if (!response.status.isSuccess()) {
+                throw BackendStatusException(
+                    statusCode = response.status.value,
+                    message = parseBackendError(response),
+                )
+            }
+            response.body<RefreshResponse>().toDomain()
+        }
+    }
+
     private suspend fun parseBackendError(response: HttpResponse): String {
         val body = response.bodyAsText()
         return runCatching {
@@ -110,18 +128,55 @@ data class TelegramVerifyPayload(
 data class TelegramBackendSession(
     val userId: String,
     val accessToken: String,
+    val refreshToken: String?,
+    val user: AuthorizedUser,
+)
+
+data class RefreshedBackendSession(
+    val userId: String,
+    val accessToken: String,
+    val refreshToken: String,
+    val user: AuthorizedUser,
 )
 
 @Serializable
 private data class TelegramBackendSessionResponse(
     @SerialName("access_token")
     val accessToken: String,
+    @SerialName("refresh_token")
+    val refreshToken: String? = null,
     val user: TelegramBackendUserResponse,
 ) {
     fun toSession(): TelegramBackendSession {
         return TelegramBackendSession(
             userId = user.id,
             accessToken = accessToken,
+            refreshToken = refreshToken,
+            user = user.toDomain(),
+        )
+    }
+}
+
+@Serializable
+private data class RefreshRequest(
+    @SerialName("refresh_token")
+    val refreshToken: String,
+)
+
+@Serializable
+private data class RefreshResponse(
+    @SerialName("access_token")
+    val accessToken: String,
+    @SerialName("refresh_token")
+    val refreshToken: String,
+    val user: TelegramBackendUserResponse,
+) {
+    fun toDomain(): RefreshedBackendSession {
+        return RefreshedBackendSession(
+            userId = user.id,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            user = user.toDomain(),
         )
     }
 }
@@ -129,10 +184,27 @@ private data class TelegramBackendSessionResponse(
 @Serializable
 private data class TelegramBackendUserResponse(
     val id: String,
-)
+    @SerialName("display_name")
+    val displayName: String,
+    val username: String? = null,
+    @SerialName("photo_url")
+    val photoUrl: String? = null,
+) {
+    fun toDomain(): AuthorizedUser {
+        return AuthorizedUser(
+            id = id,
+            displayName = displayName,
+            username = username,
+            photoUrl = photoUrl,
+        )
+    }
+}
 
 data class SessionUser(
     val id: String,
+    val displayName: String,
+    val username: String? = null,
+    val photoUrl: String? = null,
 )
 
 @Serializable
@@ -143,9 +215,19 @@ private data class SessionMeResponse(
 @Serializable
 private data class SessionUserResponse(
     val id: String,
+    @SerialName("display_name")
+    val displayName: String,
+    val username: String? = null,
+    @SerialName("photo_url")
+    val photoUrl: String? = null,
 ) {
     fun toDomain(): SessionUser {
-        return SessionUser(id = id)
+        return SessionUser(
+            id = id,
+            displayName = displayName,
+            username = username,
+            photoUrl = photoUrl,
+        )
     }
 }
 

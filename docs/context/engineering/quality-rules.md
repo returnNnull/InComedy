@@ -61,4 +61,5 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Mask or avoid logging personal/sensitive user data.
 - Apply secure token/session handling in all auth flows.
 - Client-side auth/session tokens must not persist in plain local storage (`SharedPreferences`, `UserDefaults`) outside controlled migration.
+- Token refresh must use refresh-token rotation (one-time refresh token consumption and issuance of a new refresh token).
 - Any discovered vulnerability must be immediately reported to product owner and tracked in `docs/context/product/risk-log.md` with remediation plan, owner, and target date.

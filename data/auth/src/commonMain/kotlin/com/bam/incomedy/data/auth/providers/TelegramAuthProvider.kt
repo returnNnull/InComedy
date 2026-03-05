@@ -46,6 +46,8 @@ class TelegramAuthProvider(
                 provider = type,
                 userId = session.userId,
                 accessToken = session.accessToken,
+                refreshToken = session.refreshToken,
+                user = session.user,
             )
         }
     }

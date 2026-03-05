@@ -18,4 +18,6 @@ interface TelegramUserRepository {
     fun findById(userId: String): StoredUser?
     fun revokeSessions(userId: String, revokedAt: Instant)
     fun storeRefreshToken(userId: String, tokenHash: String, expiresAt: Instant)
+    fun consumeRefreshToken(tokenHash: String, now: Instant): StoredUser?
+    fun deleteRefreshTokens(userId: String)
 }

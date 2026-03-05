@@ -28,6 +28,7 @@ This document defines mandatory engineering rules for InComedy.
   - `commonMain`: shared ViewModel is a plain class exposing `StateFlow<State>` + `SharedFlow/Flow<Event>`
   - Android: wrap shared ViewModel in native AndroidX `ViewModel`; observe state via `collectAsStateWithLifecycle()`
   - iOS: wrap shared ViewModel in native `ObservableObject`; map state to `@Published` and keep explicit subscription disposal in lifecycle (`deinit`/view lifecycle)
+- App-level session and authorized user profile must be stored in a shared session-focused ViewModel (not only in auth-screen wrapper state) so feature graphs can consume it as a single source of truth.
 - Each feature should define explicit:
   - `Intent` (user/action inputs),
   - `State` (single source of truth for UI),
@@ -55,6 +56,7 @@ This document defines mandatory engineering rules for InComedy.
   - Android: encrypted storage backed by Android Keystore (`EncryptedSharedPreferences`/equivalent).
   - iOS: Keychain.
 - Plain `SharedPreferences`/`UserDefaults` are allowed only for one-time migration reads and must be cleared immediately after secure migration.
+- Session restore flow must support access-token validation plus refresh-token fallback; refresh token must be rotated (one-time use) on every successful refresh.
 
 ## Testing Policy
 

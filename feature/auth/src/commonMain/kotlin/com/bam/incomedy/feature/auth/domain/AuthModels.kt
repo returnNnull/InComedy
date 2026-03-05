@@ -10,4 +10,13 @@ data class AuthSession(
     val provider: AuthProviderType,
     val userId: String,
     val accessToken: String,
+    val refreshToken: String? = null,
+    val user: AuthorizedUser,
+)
+
+data class AuthorizedUser(
+    val id: String,
+    val displayName: String,
+    val username: String? = null,
+    val photoUrl: String? = null,
 )

@@ -8,16 +8,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.bam.incomedy.feature.auth.mvi.AuthIntent
-import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 
 @Composable
 fun MainScreen(
-    authViewModel: AuthAndroidViewModel,
+    sessionViewModel: SessionAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val state by sessionViewModel.state.collectAsStateWithLifecycle()
     Column(
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -27,12 +29,12 @@ fun MainScreen(
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(
-            text = "Сессия Telegram активна",
+            text = state.displayName ?: "Сессия активна",
             style = MaterialTheme.typography.bodyLarge,
         )
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { authViewModel.onIntent(AuthIntent.OnSignOut) },
+            onClick = { sessionViewModel.signOut() },
         ) {
             Text("Выйти")
         }

@@ -5,12 +5,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.bam.incomedy.feature.auth.navigation.authGraph
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.main.navigation.mainGraph
+import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 
 @Composable
 fun AppNavHost(
@@ -18,6 +20,7 @@ fun AppNavHost(
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
+    val sessionViewModel: SessionAndroidViewModel = viewModel()
     val state by authViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.isAuthorized) {
@@ -35,7 +38,7 @@ fun AppNavHost(
         modifier = modifier,
     ) {
         authGraph(authViewModel = authViewModel)
-        mainGraph(authViewModel = authViewModel)
+        mainGraph(sessionViewModel = sessionViewModel)
     }
 }
 

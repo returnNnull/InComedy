@@ -5,12 +5,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
-import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.main.ui.MainScreen
+import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.navigation.AppGraph
 
 fun NavGraphBuilder.mainGraph(
-    authViewModel: AuthAndroidViewModel,
+    sessionViewModel: SessionAndroidViewModel,
 ) {
     navigation(
         route = AppGraph.MAIN,
@@ -18,7 +18,7 @@ fun NavGraphBuilder.mainGraph(
     ) {
         composable(route = MainDestinations.MAIN) {
             MainScreen(
-                authViewModel = authViewModel,
+                sessionViewModel = sessionViewModel,
                 modifier = Modifier.fillMaxSize(),
             )
         }

@@ -10,6 +10,10 @@ sealed interface AuthIntent {
         val code: String,
         val state: String,
     ) : AuthIntent
+    data class OnRestoreSessionTokens(
+        val accessToken: String,
+        val refreshToken: String? = null,
+    ) : AuthIntent
     data class OnRestoreSessionToken(val accessToken: String) : AuthIntent
     data class OnRestoreSession(val session: AuthSession) : AuthIntent
     object OnSignOut : AuthIntent

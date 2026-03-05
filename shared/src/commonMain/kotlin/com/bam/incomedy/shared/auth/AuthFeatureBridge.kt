@@ -2,6 +2,7 @@ package com.bam.incomedy.shared.auth
 
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
+import com.bam.incomedy.feature.auth.domain.AuthorizedUser
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthState
@@ -78,6 +79,10 @@ class AuthFeatureBridge(
     }
 
     fun restoreSession(providerKey: String, userId: String, accessToken: String) {
+        restoreSession(providerKey, userId, accessToken, refreshToken = null)
+    }
+
+    fun restoreSession(providerKey: String, userId: String, accessToken: String, refreshToken: String?) {
         val provider = providerKey.toProviderType() ?: return
         viewModel.onIntent(
             AuthIntent.OnRestoreSession(
@@ -85,13 +90,27 @@ class AuthFeatureBridge(
                     provider = provider,
                     userId = userId,
                     accessToken = accessToken,
+                    refreshToken = refreshToken,
+                    user = AuthorizedUser(
+                        id = userId,
+                        displayName = "User",
+                    ),
                 ),
             ),
         )
     }
 
     fun restoreSessionToken(accessToken: String) {
-        viewModel.onIntent(AuthIntent.OnRestoreSessionToken(accessToken))
+        viewModel.onIntent(AuthIntent.OnRestoreSessionTokens(accessToken = accessToken))
+    }
+
+    fun restoreSessionTokens(accessToken: String, refreshToken: String?) {
+        viewModel.onIntent(
+            AuthIntent.OnRestoreSessionTokens(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+            ),
+        )
     }
 
     fun signOut() {
@@ -112,7 +131,11 @@ private fun AuthState.toSnapshot(): AuthUiStateSnapshot {
         isAuthorized = isAuthorized,
         authorizedProviderKey = session?.provider?.toKey(),
         authorizedUserId = session?.userId,
+        authorizedDisplayName = session?.user?.displayName,
+        authorizedUsername = session?.user?.username,
+        authorizedPhotoUrl = session?.user?.photoUrl,
         authorizedAccessToken = session?.accessToken,
+        authorizedRefreshToken = session?.refreshToken,
     )
 }
 

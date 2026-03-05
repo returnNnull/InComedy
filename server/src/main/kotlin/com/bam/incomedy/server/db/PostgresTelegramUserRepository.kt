@@ -97,6 +97,7 @@ class PostgresTelegramUserRepository(
                 statement.executeUpdate()
             }
         }
+        deleteRefreshTokens(userId)
     }
 
     override fun storeRefreshToken(userId: String, tokenHash: String, expiresAt: Instant) {
@@ -111,6 +112,53 @@ class PostgresTelegramUserRepository(
                 statement.setObject(2, UUID.fromString(userId))
                 statement.setString(3, tokenHash)
                 statement.setTimestamp(4, Timestamp.from(expiresAt))
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    override fun consumeRefreshToken(tokenHash: String, now: Instant): StoredUser? {
+        val sql = """
+            WITH consumed AS (
+                DELETE FROM refresh_tokens
+                WHERE token_hash = ? AND expires_at > ?
+                RETURNING user_id
+            )
+            SELECT u.id, u.telegram_id, u.first_name, u.last_name, u.username, u.photo_url, u.session_revoked_at
+            FROM users u
+            JOIN consumed c ON c.user_id = u.id
+            LIMIT 1
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setString(1, tokenHash)
+                statement.setTimestamp(2, Timestamp.from(now))
+                statement.executeQuery().use { result ->
+                    if (!result.next()) return null
+                    return StoredUser(
+                        id = result.getObject("id").toString(),
+                        telegramId = result.getLong("telegram_id"),
+                        firstName = result.getString("first_name"),
+                        lastName = result.getString("last_name"),
+                        username = result.getString("username"),
+                        photoUrl = result.getString("photo_url"),
+                        sessionRevokedAt = result.getTimestamp("session_revoked_at")?.toInstant(),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun deleteRefreshTokens(userId: String) {
+        val sql = """
+            DELETE FROM refresh_tokens
+            WHERE user_id = ?
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setObject(1, UUID.fromString(userId))
                 statement.executeUpdate()
             }
         }

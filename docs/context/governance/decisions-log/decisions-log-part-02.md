@@ -164,9 +164,9 @@
 
 - Date: 2026-02-24
 - Status: accepted
-- Decision: Store mobile auth/session tokens only in secure platform storage (`EncryptedSharedPreferences` + Android Keystore on Android, Keychain on iOS) with one-time migration from legacy plain storage.
+- Decision: Store mobile auth/session tokens only in secure platform storage (`EncryptedSharedPreferences` + Android Keystore on Android, Keychain on iOS), without plain-storage fallback.
 - Rationale: Plain local storage for bearer tokens is insufficient for production security posture.
-- Consequences: Auth token persistence now uses secure storage adapters; legacy `SharedPreferences`/`UserDefaults` tokens are read only for migration and then removed.
+- Consequences: Auth token persistence uses secure storage adapters only; plain storage is not used for fallback persistence.
 
 ## D-037
 
@@ -175,3 +175,19 @@
 - Decision: Any discovered vulnerability must be immediately communicated and documented in `docs/context/product/risk-log.md` with severity, exposure, remediation plan, owner, and target fix date.
 - Rationale: Vulnerability visibility degrades quickly without explicit reporting discipline and tracking artifacts.
 - Consequences: Security issues are now a mandatory part of context updates and merge readiness checks.
+
+## D-038
+
+- Date: 2026-02-24
+- Status: accepted
+- Decision: Keep app-level authorized session and user profile in a shared `SessionViewModel`/bridge, independent from auth-screen wrappers.
+- Rationale: Session state is cross-feature and cross-platform concern; tying it only to auth screen model complicates main-graph usage and sign-out consistency.
+- Consequences: Android/iOS main graphs consume shared session state through native wrappers/bridges; auth flow writes session once and other features read from shared source of truth.
+
+## D-039
+
+- Date: 2026-03-05
+- Status: accepted
+- Decision: Session restore must support access-token validation with refresh-token fallback and refresh-token rotation on backend (`POST /api/v1/auth/refresh`).
+- Rationale: Access tokens expire and should not force full social re-auth when a valid refresh token exists.
+- Consequences: Backend consumes refresh token once and issues new access/refresh pair; mobile stores both tokens in secure storage and restores session with `access+refresh` flow.

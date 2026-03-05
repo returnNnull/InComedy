@@ -4,6 +4,7 @@ import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
+import com.bam.incomedy.feature.auth.domain.AuthorizedUser
 import com.bam.incomedy.feature.auth.domain.SessionTerminationService
 import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
@@ -129,8 +130,19 @@ private object FixedStateGenerator : AuthStateGenerator {
 }
 
 private class FakeSessionValidationService : SessionValidationService {
-    override suspend fun validate(accessToken: String): Result<ValidatedSession> {
-        return Result.failure(IllegalStateException("not_used_in_this_test"))
+    override suspend fun validate(accessToken: String, refreshToken: String?): Result<ValidatedSession> {
+        return Result.success(
+            ValidatedSession(
+                provider = AuthProviderType.TELEGRAM,
+                userId = "restored_user",
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                user = AuthorizedUser(
+                    id = "restored_user",
+                    displayName = "Restored User",
+                ),
+            ),
+        )
     }
 }
 
@@ -163,6 +175,10 @@ private class FakeProvider(
                 provider = type,
                 userId = "${type.name.lowercase()}_user",
                 accessToken = "token_$code",
+                user = AuthorizedUser(
+                    id = "${type.name.lowercase()}_user",
+                    displayName = "${type.name.lowercase()} user",
+                ),
             ),
         )
     }

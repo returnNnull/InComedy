@@ -915,6 +915,54 @@ Use this template for new implementation tasks.
 
 ---
 
+## Latest Formalized Request (Shared Session ViewModel Across Platforms)
+
+## Context
+
+- Related docs/decisions:
+  - `D-035` (startup session restore),
+  - platform wrappers already exist for auth flow.
+- Current constraints:
+  - Need app-level session/user source of truth reusable outside auth screen.
+  - Keep existing auth and logout behavior.
+
+## Goal
+
+- What should be delivered:
+  - Add shared session-focused ViewModel that stores current authorized session and user profile.
+  - Use it from Android/iOS main graphs.
+
+## Scope
+
+- In scope:
+  - Shared session state/VM/bridge.
+  - Mapping user profile into session model from auth/backend flows.
+  - Android/iOS main graph integration for display + logout.
+- Out of scope:
+  - Full profile feature screens.
+  - New social provider backend exchanges.
+
+## Constraints
+
+- Tech/business constraints:
+  - Preserve clean layering and existing DI.
+  - No sensitive data in logs.
+- Deadlines or milestones:
+  - Implement in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Main graph can read authorized user data from shared session VM and execute sign-out through same shared source.
+- Required tests:
+  - `:shared:compileKotlinIosSimulatorArm64`
+  - `:composeApp:compileDebugKotlin`
+  - `:feature:auth:allTests`
+- Required docs updates:
+  - `engineering-standards`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
 ## Пример (на русском)
 
 ## Context
@@ -962,3 +1010,50 @@ Use this template for new implementation tasks.
   - happy path, error path, edge case для callback.
 - Required docs updates:
   - `session-log`, `decisions-log` (если появилось новое решение), `decision-traceability`.
+
+---
+
+## Latest Formalized Request (Refresh Token Rotation + Mobile Auto-Restore)
+
+## Context
+
+- Related docs/decisions:
+  - `D-035` (startup restore), `D-036` (secure token storage), `D-038` (shared session VM).
+- Current constraints:
+  - Existing login flow already issues `access_token` and `refresh_token`.
+  - Mobile restart currently relies mostly on access-token validation.
+
+## Goal
+
+- What should be delivered:
+  - Implement backend refresh endpoint with refresh-token rotation.
+  - Implement mobile restore fallback: validate access token, refresh on `401`, persist rotated tokens securely.
+
+## Scope
+
+- In scope:
+  - `POST /api/v1/auth/refresh` on server.
+  - Data/domain/shared model updates for `refreshToken`.
+  - Android/iOS secure storage for refresh token.
+  - OpenAPI + governance docs sync.
+- Out of scope:
+  - OAuth backend exchange for VK/Google.
+  - Push notifications/session sync across devices.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep clean dependency direction and existing MVI structure.
+  - No token leakage in logs/UI/errors.
+  - Refresh token must be one-time use (rotation).
+
+## Definition of Done
+
+- Functional result:
+  - App restores authorized session after access-token expiration using refresh-token fallback.
+- Required tests:
+  - `:server:installDist`
+  - `:feature:auth:allTests`
+  - `:composeApp:compileDebugKotlin`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `api-contracts`.

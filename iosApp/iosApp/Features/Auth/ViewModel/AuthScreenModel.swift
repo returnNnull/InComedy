@@ -10,10 +10,12 @@ final class AuthScreenModel: ObservableObject {
     @Published var pendingOpenURL: URL?
 
     private let bridge: AuthFeatureBridge
-    private let tokenStore = AuthTokenKeychainStore()
+    private let accessTokenStore = AuthTokenKeychainStore(account: "auth.access_token")
+    private let refreshTokenStore = AuthTokenKeychainStore(account: "auth.refresh_token")
 
     private var bindingHandle: NSObject?
     private let accessTokenKey = "auth.access_token"
+    private let refreshTokenKey = "auth.refresh_token"
 
     init(bridge: AuthFeatureBridge? = nil) {
         self.bridge = bridge ?? AuthFeatureBridge(
@@ -55,7 +57,12 @@ final class AuthScreenModel: ObservableObject {
                         if snapshot.isAuthorized, let provider = snapshot.authorizedProviderKey {
                             self.statusText = "Успешная авторизация через \(provider.uppercased())"
                             if let accessToken = snapshot.authorizedAccessToken {
-                                self.tokenStore.save(token: accessToken)
+                                self.accessTokenStore.save(token: accessToken)
+                            }
+                            if let refreshToken = snapshot.authorizedRefreshToken, !refreshToken.isEmpty {
+                                self.refreshTokenStore.save(token: refreshToken)
+                            } else {
+                                self.refreshTokenStore.deleteToken()
                             }
                         } else if let provider = snapshot.selectedProviderKey,
                                   let knownProvider = AuthProvider(rawValue: provider) {
@@ -95,15 +102,16 @@ final class AuthScreenModel: ObservableObject {
     }
 
     private func restoreSessionIfPossible() {
-        guard let accessToken = loadStoredToken() else {
+        guard let accessToken = loadStoredAccessToken() else {
             return
         }
+        let refreshToken = loadStoredRefreshToken()
         print("AUTH_FLOW stage=ios.session.restore.requested")
-        bridge.restoreSessionToken(accessToken: accessToken)
+        bridge.restoreSessionTokens(accessToken: accessToken, refreshToken: refreshToken)
     }
 
-    private func loadStoredToken() -> String? {
-        if let secureToken = tokenStore.loadToken() {
+    private func loadStoredAccessToken() -> String? {
+        if let secureToken = accessTokenStore.loadToken() {
             return secureToken
         }
 
@@ -111,15 +119,30 @@ final class AuthScreenModel: ObservableObject {
         guard let legacyToken = UserDefaults.standard.string(forKey: accessTokenKey), !legacyToken.isEmpty else {
             return nil
         }
-        tokenStore.save(token: legacyToken)
+        accessTokenStore.save(token: legacyToken)
         UserDefaults.standard.removeObject(forKey: accessTokenKey)
         print("AUTH_FLOW stage=ios.session.token.migrated_to_keychain")
         return legacyToken
     }
 
+    private func loadStoredRefreshToken() -> String? {
+        if let secureToken = refreshTokenStore.loadToken() {
+            return secureToken
+        }
+
+        guard let legacyToken = UserDefaults.standard.string(forKey: refreshTokenKey), !legacyToken.isEmpty else {
+            return nil
+        }
+        refreshTokenStore.save(token: legacyToken)
+        UserDefaults.standard.removeObject(forKey: refreshTokenKey)
+        return legacyToken
+    }
+
     private func deleteStoredToken() {
-        tokenStore.deleteToken()
+        accessTokenStore.deleteToken()
+        refreshTokenStore.deleteToken()
         UserDefaults.standard.removeObject(forKey: accessTokenKey)
+        UserDefaults.standard.removeObject(forKey: refreshTokenKey)
     }
 }
 

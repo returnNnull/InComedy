@@ -43,7 +43,8 @@ class AuthViewModel(
         when (intent) {
             is AuthIntent.OnProviderClick -> startAuth(intent.provider)
             is AuthIntent.OnAuthCallback -> completeAuth(intent.provider, intent.code, intent.state)
-            is AuthIntent.OnRestoreSessionToken -> restoreSessionByToken(intent.accessToken)
+            is AuthIntent.OnRestoreSessionTokens -> restoreSessionByToken(intent.accessToken, intent.refreshToken)
+            is AuthIntent.OnRestoreSessionToken -> restoreSessionByToken(intent.accessToken, null)
             is AuthIntent.OnRestoreSession -> restoreSession(intent.session)
             AuthIntent.OnSignOut -> signOut()
             AuthIntent.OnClearError -> clearError()
@@ -167,13 +168,20 @@ class AuthViewModel(
     }
 
     private fun restoreSessionByToken(accessToken: String) {
+        restoreSessionByToken(accessToken = accessToken, refreshToken = null)
+    }
+
+    private fun restoreSessionByToken(accessToken: String, refreshToken: String?) {
         if (accessToken.isBlank()) {
             scope.launch { _effects.emit(AuthEffect.InvalidateStoredSession) }
             return
         }
         scope.launch {
             AuthFlowLogger.event(stage = "session.restore.requested")
-            val validationResult = sessionValidationService.validate(accessToken)
+            val validationResult = sessionValidationService.validate(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+            )
             validationResult.fold(
                 onSuccess = { validated ->
                     restoreSession(
@@ -181,6 +189,8 @@ class AuthViewModel(
                             provider = validated.provider,
                             userId = validated.userId,
                             accessToken = validated.accessToken,
+                            refreshToken = validated.refreshToken,
+                            user = validated.user,
                         ),
                     )
                 },
