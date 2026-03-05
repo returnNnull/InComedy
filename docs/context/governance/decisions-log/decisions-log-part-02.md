@@ -207,3 +207,11 @@
 - Decision: Use Redis-backed distributed auth rate limiting when `REDIS_URL` is configured, with automatic fallback to in-memory limiter when Redis is unavailable.
 - Rationale: In-memory limits are per-instance and reset on restart; production multi-instance setups require shared counters.
 - Consequences: Deployment stack includes Redis; server configuration supports optional `REDIS_URL`; auth rate limits are consistent across instances when Redis is enabled.
+
+## D-042
+
+- Date: 2026-03-05
+- Status: accepted
+- Decision: Enforce transport security policy for remote DB/Redis connections by default and keep Postgres non-public in deploy stack.
+- Rationale: Auth hardening is incomplete if data stores can be reached over insecure transport or exposed directly on host network.
+- Consequences: `DB_SSL_MODE` defaults to `require` for remote DB hosts (`disable` only for local hosts unless explicitly overridden), remote `redis://` is rejected unless explicitly allowed, and `deploy/server/docker-compose.yml` no longer publishes Postgres port to host.

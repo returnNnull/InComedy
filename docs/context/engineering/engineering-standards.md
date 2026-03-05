@@ -57,6 +57,7 @@ This document defines mandatory engineering rules for InComedy.
   - iOS: Keychain.
 - Plain `SharedPreferences`/`UserDefaults` are allowed only for one-time migration reads and must be cleared immediately after secure migration.
 - Session restore flow must support access-token validation plus refresh-token fallback; refresh token must be rotated (one-time use) on every successful refresh.
+- Remote datastore connections (PostgreSQL/Redis outside local host network) must use secure transport by default (`sslmode=require` for DB, `rediss://` for Redis) unless an explicit temporary insecure override is documented.
 
 ## Testing Policy
 

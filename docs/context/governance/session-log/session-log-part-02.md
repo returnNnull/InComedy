@@ -349,3 +349,10 @@
 - Changes: Added Redis-backed distributed rate limiter (`RedisAuthRateLimiter`) with automatic fallback to in-memory; introduced optional `REDIS_URL` config; added Redis service to deploy compose and env templates; updated server README runtime docs.
 - Decisions: Accepted distributed limiter policy in `D-041`.
 - Next: Validate production deployment with Redis enabled and tune per-endpoint limits from telemetry.
+
+## 2026-03-05 19:10
+
+- Context: Requested to complete remaining transport-security hardening without field-level encryption.
+- Changes: Added DB/Redis security policy in config (`DB_SSL_MODE`, `DB_ALLOW_INSECURE`, `REDIS_ALLOW_INSECURE`) with fail-fast on insecure remote connections by default; removed Postgres host port publishing from deploy compose; updated server/deploy env templates and runtime docs.
+- Decisions: Accepted secure transport + non-public Postgres deployment policy in `D-042`.
+- Next: Apply new env vars on server (`DB_SSL_MODE`, `DB_ALLOW_INSECURE`, `REDIS_ALLOW_INSECURE`) and re-run deploy.

@@ -1143,3 +1143,44 @@ Use this template for new implementation tasks.
   - `:server:installDist`
 - Required docs updates:
   - `decisions-log`, `decision-traceability`, `session-log`, `deploy env docs`.
+
+---
+
+## Latest Formalized Request (Transport Security Hardening Without Field Encryption)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040`, `D-041`.
+- Current constraints:
+  - Keep field-level encryption out of scope for now.
+
+## Goal
+
+- What should be delivered:
+  - Complete remaining server security hardening excluding DB field encryption.
+
+## Scope
+
+- In scope:
+  - default TLS/security policy for remote DB and Redis connections.
+  - remove public Postgres exposure from deploy stack.
+  - update runtime env templates/docs.
+- Out of scope:
+  - app-level encryption of user profile fields in PostgreSQL.
+
+## Constraints
+
+- Tech/business constraints:
+  - local compose/dev must continue to work with local DB/Redis.
+  - fail-fast on insecure remote datastore config unless explicit override is set.
+
+## Definition of Done
+
+- Functional result:
+  - Remote DB/Redis insecure transports are blocked by default; Postgres is internal-only in deploy compose.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `server/deploy env docs`.

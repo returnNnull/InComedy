@@ -67,6 +67,14 @@ docker compose --env-file .env up -d
 Optional:
 
 - `REDIS_URL` - enables distributed auth rate limiting (recommended for multi-instance deployment).
+- `DB_SSL_MODE` - PostgreSQL SSL mode (`disable`, `require`, `verify-full`, ...). Default: `disable` for local DB hosts, `require` for remote hosts.
+- `DB_ALLOW_INSECURE` - set `true` only to allow remote DB without TLS.
+- `REDIS_ALLOW_INSECURE` - set `true` only to allow remote `redis://` without TLS.
+
+Security notes:
+
+- In deploy compose, Postgres is no longer published to host (`5432` is internal only).
+- For remote Redis use `rediss://...` unless you intentionally opt out with `REDIS_ALLOW_INSECURE=true`.
 
 ## API
 
