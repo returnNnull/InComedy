@@ -61,6 +61,9 @@ Security defaults:
 - Caddy config adds baseline security headers and CSP.
 - Server container runs as non-root `appuser`.
 - Telegram auth payload is validated for format/length/https constraints before hash verification.
+- Telegram auth assertions are single-use server-side and default auth-age is `300` seconds.
+- Public auth JSON bodies are capped in application code (`4 KiB` for Telegram verify, `2 KiB` for refresh).
+- `X-Request-ID` is accepted only in UUID format; invalid values are replaced by a server-generated id.
 
 ## Required Environment Variables
 
@@ -76,11 +79,13 @@ Optional:
 - `DB_SSL_MODE` - PostgreSQL SSL mode (`disable`, `require`, `verify-full`, ...). Default: `disable` for local DB hosts, `require` for remote hosts.
 - `DB_ALLOW_INSECURE` - set `true` only to allow remote DB without TLS.
 - `REDIS_ALLOW_INSECURE` - set `true` only to allow remote `redis://` without TLS.
+- `TELEGRAM_AUTH_MAX_AGE_SECONDS` - maximum accepted Telegram auth assertion age. Default: `300`.
 
 Security notes:
 
 - In deploy compose, Postgres is no longer published to host (`5432` is internal only).
 - For remote Redis use `rediss://...` unless you intentionally opt out with `REDIS_ALLOW_INSECURE=true`.
+- Auth rate limiting no longer trusts raw `X-Forwarded-For`; protected routes key limits by authenticated user and public routes use direct peer/token/account identifiers.
 
 ## API
 

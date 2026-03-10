@@ -16,6 +16,7 @@ data class StoredUser(
 interface TelegramUserRepository {
     fun upsert(user: TelegramUser): StoredUser
     fun findById(userId: String): StoredUser?
+    fun registerTelegramAuthAssertion(assertionHash: String, telegramUserId: Long, expiresAt: Instant): Boolean
     fun revokeSessions(userId: String, revokedAt: Instant)
     fun storeRefreshToken(userId: String, tokenHash: String, expiresAt: Instant)
     fun consumeRefreshToken(tokenHash: String, now: Instant): StoredUser?

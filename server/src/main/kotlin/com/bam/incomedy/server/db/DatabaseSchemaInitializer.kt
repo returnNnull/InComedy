@@ -31,6 +31,24 @@ object DatabaseSchemaInitializer {
 
                 statement.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS telegram_auth_assertions (
+                        hash TEXT PRIMARY KEY,
+                        telegram_id BIGINT NOT NULL,
+                        expires_at TIMESTAMPTZ NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
+                    """.trimIndent(),
+                )
+
+                statement.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_telegram_auth_assertions_expires_at
+                    ON telegram_auth_assertions (expires_at);
+                    """.trimIndent(),
+                )
+
+                statement.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS refresh_tokens (
                         id UUID PRIMARY KEY,
                         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

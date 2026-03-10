@@ -8,6 +8,7 @@ This folder stores product context and decisions so the team and assistant do no
 - `engineering/`: stack, architecture, quality rules, tests, and API contracts.
 - `governance/`: decisions and running session memory.
 - `handoff/`: cross-chat sync protocol and handoff template.
+- `../standup-platform-ru/`: detailed Russian-language product and technical specification package for the current standup-event platform direction.
 
 ## Files
 
@@ -16,6 +17,7 @@ This folder stores product context and decisions so the team and assistant do no
 - `product/glossary.md`: domain terms and definitions.
 - `product/non-functional-requirements.md`: performance, reliability, security, and operability targets.
 - `product/risk-log.md`: current risks with mitigation and owners.
+- `../standup-platform-ru/README.md`: entry point to the full Russian product/technical handoff package.
 - `engineering/tooling-stack.md`: approved and planned technology stack.
 - `engineering/engineering-standards.md`: mandatory architecture, MVI, and testing rules.
 - `engineering/quality-rules.md`: DoD, quality gates, test minimums, and engineering constraints.
@@ -59,4 +61,5 @@ This folder stores product context and decisions so the team and assistant do no
 ## Operating Rule
 
 - For all future product and implementation tasks, treat files in `docs/context/` as the primary project context.
+- When implementation requires detailed feature/domain clarification, use `docs/standup-platform-ru/` as the primary detailed specification layer and keep `docs/context/` as the compact memory/index layer.
 - If new input conflicts with these docs, update the docs first, then proceed with implementation.

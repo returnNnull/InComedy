@@ -14,6 +14,7 @@ Status labels:
 - Dependency Injection: `Koin` (KMP-first, shared across mobile/server layers)
 - Android navigation: `androidx.navigation:navigation-compose`
 - Database: `PostgreSQL`
+- Redis: shared short-lived state / distributed coordination / rate limiting
 - CI/CD: `GitHub Actions`
 - Server packaging/runtime: `Docker` + `Docker Compose`
 
@@ -21,10 +22,19 @@ Status labels:
 
 - Authentication providers:
   - Telegram login (server verify + mobile callback wiring) in progress
-  - VK: TBD (next)
-  - Google: TBD (next)
-- Payments provider: TBD
-- Push notifications provider: TBD
+  - VK ID
+  - Google Identity / Credential Manager wrappers
+  - Sign in with Apple (required for iOS release if third-party login remains)
+- Payments provider:
+  - YooKassa (primary RU-market candidate)
+  - CloudPayments (fallback candidate)
+- Push notifications provider:
+  - Firebase Cloud Messaging
+  - Apple Push Notification service
+- Real-time transport:
+  - Ktor WebSockets for live lineup/stage/event updates
+- Object storage:
+  - S3-compatible storage for media/assets if comedian media or venue assets expand
 - Analytics stack: TBD
 - KMP iOS interop helpers:
   - KMP-NativeCoroutines (bridge Flow/suspend to Swift async/Combine)

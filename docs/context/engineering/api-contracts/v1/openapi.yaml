@@ -49,9 +49,10 @@ paths:
         - in: header
           name: X-Request-ID
           required: false
-          description: Optional client-provided request id for tracing.
+          description: Optional client-provided UUID request id for tracing.
           schema:
             type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -82,7 +83,18 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-          description: Verification failed (expired/invalid hash)
+          description: Verification failed (expired/invalid/replayed Telegram assertion)
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -130,9 +142,10 @@ paths:
         - in: header
           name: X-Request-ID
           required: false
-          description: Optional client-provided request id for tracing.
+          description: Optional client-provided UUID request id for tracing.
           schema:
             type: string
+            format: uuid
       responses:
         "200":
           description: Access token is valid and user exists
@@ -194,9 +207,10 @@ paths:
         - in: header
           name: X-Request-ID
           required: false
-          description: Optional client-provided request id for tracing.
+          description: Optional client-provided UUID request id for tracing.
           schema:
             type: string
+            format: uuid
       responses:
         "204":
           description: Session revoked successfully
@@ -247,9 +261,10 @@ paths:
         - in: header
           name: X-Request-ID
           required: false
-          description: Optional client-provided request id for tracing.
+          description: Optional client-provided UUID request id for tracing.
           schema:
             type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -269,7 +284,18 @@ paths:
               schema:
                 $ref: "#/components/schemas/RefreshResponse"
         "400":
-          description: Invalid payload
+          description: Invalid payload or invalid refresh token format
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -357,7 +383,8 @@ components:
           example: 1700000000
         hash:
           type: string
-          minLength: 1
+          minLength: 64
+          maxLength: 64
           example: 84e3cf9be4e4a0087d2ce0f3f9385cbf1f4ce3bd5c32f5e6a00c88cba8f66ef6
     TelegramAuthResponse:
       type: object
@@ -372,6 +399,8 @@ components:
           type: string
         refresh_token:
           type: string
+          minLength: 43
+          maxLength: 43
         expires_in:
           type: integer
           format: int64

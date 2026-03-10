@@ -2,12 +2,13 @@ package com.bam.incomedy.server.auth.session
 
 import com.bam.incomedy.server.ErrorResponse
 import com.bam.incomedy.server.db.TelegramUserRepository
+import com.bam.incomedy.server.http.PayloadTooLargeException
+import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.security.AuthRateLimiter
-import com.bam.incomedy.server.security.clientFingerprint
+import com.bam.incomedy.server.security.directPeerFingerprint
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
-import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -15,11 +16,18 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
 object SessionRoutes {
     private val logger = LoggerFactory.getLogger(SessionRoutes::class.java)
+    private val requestJson = Json {
+        ignoreUnknownKeys = false
+    }
+    private val refreshTokenRegex = Regex("^[A-Za-z0-9_-]{43}$")
+
+    private const val MAX_REFRESH_REQUEST_BYTES = 2 * 1024
 
     fun register(
         route: Route,
@@ -28,130 +36,149 @@ object SessionRoutes {
         rateLimiter: AuthRateLimiter,
     ) {
         route.route("/api/v1/auth") {
-            withSessionAuth(
-                tokenService = tokenService,
-                userRepository = userRepository,
-            ) {
-                get("/session/me") {
-                    val requestId = call.callId ?: "n/a"
-                    val client = call.clientFingerprint()
-                    if (!rateLimiter.allow(key = "session_me:$client", limit = 120, windowMs = 60_000L)) {
-                        call.respond(
-                            HttpStatusCode.TooManyRequests,
-                            ErrorResponse("rate_limited", "Too many requests"),
+            route("") {
+                withSessionAuth(
+                    tokenService = tokenService,
+                    userRepository = userRepository,
+                    rateLimiter = rateLimiter,
+                ) {
+                    get("/session/me") {
+                        val requestId = call.callId ?: "n/a"
+                        val principal = call.requireSessionPrincipal()
+                        if (!rateLimiter.allow(key = "session_me:${principal.user.id}", limit = 120, windowMs = 60_000L)) {
+                            call.respond(
+                                HttpStatusCode.TooManyRequests,
+                                ErrorResponse("rate_limited", "Too many requests"),
+                            )
+                            return@get
+                        }
+                        val user = principal.user
+                        logger.info(
+                            "auth.session.me.success requestId={} userId={}",
+                            requestId,
+                            user.id,
                         )
-                        return@get
-                    }
-                    val principal = call.requireSessionPrincipal()
-                    val user = principal.user
-                    logger.info(
-                        "auth.session.me.success requestId={} userId={}",
-                        requestId,
-                        user.id,
-                    )
-                    call.respond(
-                        HttpStatusCode.OK,
-                        SessionMeResponse(
-                            user = SessionUserResponse(
-                                id = user.id,
-                                telegramId = user.telegramId,
-                                displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
-                                username = user.username,
-                                photoUrl = user.photoUrl,
-                            ),
-                        ),
-                    )
-                }
-
-                post("/logout") {
-                    val requestId = call.callId ?: "n/a"
-                    val client = call.clientFingerprint()
-                    if (!rateLimiter.allow(key = "logout:$client", limit = 30, windowMs = 60_000L)) {
                         call.respond(
-                            HttpStatusCode.TooManyRequests,
-                            ErrorResponse("rate_limited", "Too many requests"),
+                            HttpStatusCode.OK,
+                            SessionMeResponse(
+                                user = SessionUserResponse(
+                                    id = user.id,
+                                    telegramId = user.telegramId,
+                                    displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
+                                    username = user.username,
+                                    photoUrl = user.photoUrl,
+                                ),
+                            ),
+                        )
+                    }
+
+                    post("/logout") {
+                        val requestId = call.callId ?: "n/a"
+                        val principal = call.requireSessionPrincipal()
+                        if (!rateLimiter.allow(key = "logout:${principal.user.id}", limit = 30, windowMs = 60_000L)) {
+                            call.respond(
+                                HttpStatusCode.TooManyRequests,
+                                ErrorResponse("rate_limited", "Too many requests"),
+                            )
+                            return@post
+                        }
+                        userRepository.revokeSessions(principal.user.id, Instant.now())
+                        logger.info("auth.logout.success requestId={} userId={}", requestId, principal.user.id)
+                        call.respond(HttpStatusCode.NoContent)
+                    }
+                }
+            }
+
+            post("/refresh") {
+                val requestId = call.callId ?: "n/a"
+                val directPeer = call.directPeerFingerprint()
+                if (!rateLimiter.allow(key = "refresh_peer:$directPeer", limit = 600, windowMs = 60_000L)) {
+                    call.respond(
+                        HttpStatusCode.TooManyRequests,
+                        ErrorResponse("rate_limited", "Too many requests"),
+                    )
+                    return@post
+                }
+                val request = call.receiveJsonBodyLimited<RefreshRequest>(
+                    json = requestJson,
+                    maxBytes = MAX_REFRESH_REQUEST_BYTES,
+                ).getOrElse { error ->
+                    if (error is PayloadTooLargeException) {
+                        logger.warn("auth.refresh.payload_too_large requestId={} peer={}", requestId, directPeer)
+                        call.respond(
+                            HttpStatusCode.PayloadTooLarge,
+                            ErrorResponse("payload_too_large", "Request body is too large"),
                         )
                         return@post
                     }
-                    val principal = call.requireSessionPrincipal()
-                    userRepository.revokeSessions(principal.user.id, Instant.now())
-                    logger.info("auth.logout.success requestId={} userId={}", requestId, principal.user.id)
-                    call.respond(HttpStatusCode.NoContent)
+                    logger.warn("auth.refresh.invalid_payload requestId={} peer={}", requestId, directPeer)
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse("bad_request", "Invalid refresh request payload"),
+                    )
+                    return@post
                 }
-            }
-        }
+                if (!refreshTokenRegex.matches(request.refreshToken)) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse("bad_request", "Invalid refresh token format"),
+                    )
+                    return@post
+                }
 
-        route.post("/api/v1/auth/refresh") {
-            val requestId = call.callId ?: "n/a"
-            val client = call.clientFingerprint()
-            if (!rateLimiter.allow(key = "refresh:$client", limit = 30, windowMs = 60_000L)) {
-                call.respond(
-                    HttpStatusCode.TooManyRequests,
-                    ErrorResponse("rate_limited", "Too many requests"),
-                )
-                return@post
-            }
-            val request = runCatching { call.receive<RefreshRequest>() }.getOrElse {
-                logger.warn("auth.refresh.invalid_payload requestId={}", requestId)
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ErrorResponse("bad_request", "Invalid refresh request payload"),
-                )
-                return@post
-            }
-            if (request.refreshToken.isBlank()) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ErrorResponse("bad_request", "Refresh token is required"),
-                )
-                return@post
-            }
+                val now = Instant.now()
+                val refreshHash = tokenService.refreshTokenHash(request.refreshToken)
+                if (!rateLimiter.allow(key = "refresh_token:$refreshHash", limit = 30, windowMs = 60_000L)) {
+                    call.respond(
+                        HttpStatusCode.TooManyRequests,
+                        ErrorResponse("rate_limited", "Too many requests"),
+                    )
+                    return@post
+                }
+                val user = userRepository.consumeRefreshToken(refreshHash, now)
+                if (user == null) {
+                    logger.warn("auth.refresh.invalid_token requestId={}", requestId)
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ErrorResponse("unauthorized", "Invalid refresh token"),
+                    )
+                    return@post
+                }
+                if (user.sessionRevokedAt != null) {
+                    logger.warn("auth.refresh.revoked requestId={} userId={}", requestId, user.id)
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ErrorResponse("unauthorized", "Session revoked"),
+                    )
+                    return@post
+                }
 
-            val now = Instant.now()
-            val refreshHash = tokenService.refreshTokenHash(request.refreshToken)
-            val user = userRepository.consumeRefreshToken(refreshHash, now)
-            if (user == null) {
-                logger.warn("auth.refresh.invalid_token requestId={}", requestId)
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Invalid refresh token"),
+                val newTokens = tokenService.issue(
+                    userId = user.id,
+                    telegramUserId = user.telegramId,
                 )
-                return@post
-            }
-            if (user.sessionRevokedAt != null) {
-                logger.warn("auth.refresh.revoked requestId={} userId={}", requestId, user.id)
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorResponse("unauthorized", "Session revoked"),
+                userRepository.storeRefreshToken(
+                    userId = user.id,
+                    tokenHash = tokenService.refreshTokenHash(newTokens.refreshToken),
+                    expiresAt = tokenService.refreshExpiryInstant(now),
                 )
-                return@post
-            }
-
-            val newTokens = tokenService.issue(
-                userId = user.id,
-                telegramUserId = user.telegramId,
-            )
-            userRepository.storeRefreshToken(
-                userId = user.id,
-                tokenHash = tokenService.refreshTokenHash(newTokens.refreshToken),
-                expiresAt = tokenService.refreshExpiryInstant(now),
-            )
-            logger.info("auth.refresh.success requestId={} userId={}", requestId, user.id)
-            call.respond(
-                HttpStatusCode.OK,
-                RefreshResponse(
-                    accessToken = newTokens.accessToken,
-                    refreshToken = newTokens.refreshToken,
-                    expiresIn = newTokens.expiresInSeconds,
-                    user = SessionUserResponse(
-                        id = user.id,
-                        telegramId = user.telegramId,
-                        displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
-                        username = user.username,
-                        photoUrl = user.photoUrl,
+                logger.info("auth.refresh.success requestId={} userId={}", requestId, user.id)
+                call.respond(
+                    HttpStatusCode.OK,
+                    RefreshResponse(
+                        accessToken = newTokens.accessToken,
+                        refreshToken = newTokens.refreshToken,
+                        expiresIn = newTokens.expiresInSeconds,
+                        user = SessionUserResponse(
+                            id = user.id,
+                            telegramId = user.telegramId,
+                            displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
+                            username = user.username,
+                            photoUrl = user.photoUrl,
+                        ),
                     ),
-                ),
-            )
+                )
+            }
         }
     }
 }

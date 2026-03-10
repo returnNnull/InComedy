@@ -3,6 +3,8 @@ package com.bam.incomedy.server.auth.session
 import com.bam.incomedy.server.ErrorResponse
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.TelegramUserRepository
+import com.bam.incomedy.server.security.AuthRateLimiter
+import com.bam.incomedy.server.security.directPeerFingerprint
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationCallPipeline
@@ -10,6 +12,9 @@ import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.RouteSelector
+import io.ktor.server.routing.RouteSelectorEvaluation
+import io.ktor.server.routing.RoutingResolveContext
 import io.ktor.util.AttributeKey
 import org.slf4j.LoggerFactory
 
@@ -20,14 +25,32 @@ data class SessionPrincipal(
 
 private val logger = LoggerFactory.getLogger("SessionAuthPlugin")
 private val sessionPrincipalKey = AttributeKey<SessionPrincipal>("session_principal")
+private object SessionAuthRouteSelector : RouteSelector() {
+    override fun evaluate(context: RoutingResolveContext, segmentIndex: Int): RouteSelectorEvaluation {
+        return RouteSelectorEvaluation.Transparent
+    }
+
+    override fun toString(): String = "(session-auth)"
+}
 
 fun Route.withSessionAuth(
     tokenService: JwtSessionTokenService,
     userRepository: TelegramUserRepository,
+    rateLimiter: AuthRateLimiter,
     build: Route.() -> Unit,
 ) {
-    intercept(ApplicationCallPipeline.Plugins) {
+    val authenticatedRoute = createChild(SessionAuthRouteSelector)
+    authenticatedRoute.intercept(ApplicationCallPipeline.Plugins) {
         val requestId = call.callId ?: "n/a"
+        val directPeer = call.directPeerFingerprint()
+        if (!rateLimiter.allow(key = "protected_peer:$directPeer", limit = 600, windowMs = 60_000L)) {
+            call.respond(
+                HttpStatusCode.TooManyRequests,
+                ErrorResponse("rate_limited", "Too many requests"),
+            )
+            finish()
+            return@intercept
+        }
         val bearerToken = call.request.headers["Authorization"]
             ?.removePrefix("Bearer ")
             ?.trim()
@@ -81,7 +104,7 @@ fun Route.withSessionAuth(
             ),
         )
     }
-    build()
+    authenticatedRoute.build()
 }
 
 fun ApplicationCall.requireSessionPrincipal(): SessionPrincipal {

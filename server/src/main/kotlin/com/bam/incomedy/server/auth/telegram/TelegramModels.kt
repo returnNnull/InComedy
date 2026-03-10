@@ -2,6 +2,7 @@ package com.bam.incomedy.server.auth.telegram
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class TelegramVerifyRequest(
@@ -29,5 +30,6 @@ data class TelegramUser(
 data class VerifiedTelegramAuth(
     val user: TelegramUser,
     val authDate: Long,
+    val assertionHash: String,
+    val replayExpiresAt: Instant,
 )
-

@@ -46,7 +46,7 @@ data class AppConfig(
                 ),
                 telegram = TelegramConfig(
                     botToken = env.require("TELEGRAM_BOT_TOKEN"),
-                    maxAuthAgeSeconds = env["TELEGRAM_AUTH_MAX_AGE_SECONDS"]?.toLongOrNull() ?: 86400L,
+                    maxAuthAgeSeconds = env["TELEGRAM_AUTH_MAX_AGE_SECONDS"]?.toLongOrNull() ?: 300L,
                 ),
                 redis = redisConfig,
             )

@@ -57,10 +57,10 @@ class RedisAuthRateLimiter(
     }
 }
 
-fun ApplicationCall.clientFingerprint(): String {
-    val forwarded = request.headers["X-Forwarded-For"]
-        ?.substringBefore(',')
-        ?.trim()
-    if (!forwarded.isNullOrBlank()) return forwarded
-    return request.local.remoteHost.ifBlank { "unknown" }
+fun ApplicationCall.directPeerFingerprint(): String {
+    return request.local.remoteHost
+        .trim()
+        .takeIf { it.isNotBlank() }
+        ?.take(128)
+        ?: "unknown"
 }

@@ -9,6 +9,7 @@ import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseSchemaInitializer
 import com.bam.incomedy.server.db.PostgresTelegramUserRepository
+import com.bam.incomedy.server.observability.isValidRequestId
 import com.bam.incomedy.server.security.AuthRateLimiter
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
 import com.bam.incomedy.server.security.RedisAuthRateLimiter
@@ -65,7 +66,7 @@ fun Application.module() {
     install(CallId) {
         retrieveFromHeader("X-Request-ID")
         generate { UUID.randomUUID().toString() }
-        verify { it.isNotBlank() }
+        verify(::isValidRequestId)
         replyToHeader("X-Request-ID")
     }
     install(CallLogging) {

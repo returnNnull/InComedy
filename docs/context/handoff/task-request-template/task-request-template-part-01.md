@@ -1,0 +1,1268 @@
+# Task Request Template
+
+Use this template for new implementation tasks.
+
+## Context
+
+- Related docs/decisions:
+- Current constraints:
+
+## Goal
+
+- What should be delivered:
+
+## Scope
+
+- In scope:
+- Out of scope:
+
+## Constraints
+
+- Tech/business constraints:
+- Deadlines or milestones:
+
+## Definition of Done
+
+- Functional result:
+- Required tests:
+- Required docs updates:
+
+---
+
+## Latest Formalized Request
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: social auth, deep-link callback)
+  - `docs/context/engineering/tooling-stack.md`
+  - `D-012` (platform-specific UI split), `D-015` (Koin DI standard)
+- Current constraints:
+  - Keep platform-specific UI split (Android Compose, iOS SwiftUI).
+  - Do not change auth business logic during navigation library onboarding.
+
+## Goal
+
+- What should be delivered:
+  - Add an Android navigation library to project dependencies.
+  - Wire minimal navigation host so app entry goes through a navigation graph.
+
+## Scope
+
+- In scope:
+  - `gradle/libs.versions.toml` dependency alias for navigation.
+  - `composeApp/build.gradle.kts` dependency wiring.
+  - `composeApp/src/main/kotlin/com/bam/incomedy/App.kt` minimal `NavHost`.
+- Out of scope:
+  - Multi-screen redesign.
+  - iOS navigation refactor.
+  - Auth backend/deep-link completion.
+
+## Constraints
+
+- Tech/business constraints:
+  - Follow `MVI` and existing feature boundaries.
+  - Keep current auth UX and DI initialization.
+- Deadlines or milestones:
+  - Prepare base navigation layer for the next implementation block.
+
+## Definition of Done
+
+- Functional result:
+  - Android app uses configured navigation library and renders auth route via `NavHost`.
+- Required tests:
+  - Build verification for `composeApp` and existing auth unit tests remain green.
+- Required docs updates:
+  - `docs/context/engineering/tooling-stack.md`
+  - `docs/context/governance/decisions-log.md`
+  - `docs/context/governance/decision-traceability.md`
+  - `docs/context/governance/session-log.md`
+
+---
+
+## Latest Formalized Request (Navigation Subgraphs)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/engineering-standards.md` (MVI/effect-driven navigation)
+  - `D-020` (Android navigation standard)
+- Current constraints:
+  - Keep current auth UI behavior unchanged.
+  - Prepare scalable navigation structure for upcoming feature growth.
+
+## Goal
+
+- What should be delivered:
+  - Reorganize Android navigation into root host + feature subgraph.
+  - Move auth route registration into dedicated auth navigation package.
+
+## Scope
+
+- In scope:
+  - `AppNavHost` root navigation container.
+  - `AuthGraph` nested graph and route constants.
+  - `App.kt` wiring through new navigation layer.
+- Out of scope:
+  - New screens and cross-feature transitions.
+  - iOS navigation updates.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep platform-specific UI split.
+  - Keep ViewModel free from `NavController` dependencies.
+- Deadlines or milestones:
+  - Deliver as base structure for next feature navigation increments.
+
+## Definition of Done
+
+- Functional result:
+  - App boots through root `NavHost` and renders auth screen via auth subgraph.
+- Required tests:
+  - `composeApp` debug assembly succeeds.
+- Required docs updates:
+  - `docs/context/governance/session-log/*`
+  - `docs/context/governance/decision-traceability.md`
+
+---
+
+## Latest Formalized Request (Rule + Full Commit)
+
+## Context
+
+- Related docs/decisions:
+  - `D-020` (navigation-compose standard),
+  - current navigation subgraph implementation in `composeApp`.
+- Current constraints:
+  - Keep documentation as source of truth.
+  - Include script changes in the same final commit.
+
+## Goal
+
+- What should be delivered:
+  - Add explicit rule that navigation must be decomposed into subgraphs.
+  - Commit all pending workspace changes, including script updates.
+
+## Scope
+
+- In scope:
+  - Context updates in engineering/governance docs.
+  - Full git commit of current working tree changes.
+- Out of scope:
+  - New feature screens implementation.
+
+## Constraints
+
+- Tech/business constraints:
+  - Rules must be documented before implementation/commit completion.
+- Deadlines or milestones:
+  - Complete in current session.
+
+## Definition of Done
+
+- Functional result:
+  - Rule is documented and decision recorded.
+  - All pending changes are committed, including `scripts/*`.
+- Required tests:
+  - `:composeApp:assembleDebug`.
+- Required docs updates:
+  - `engineering-standards`, `architecture-overview`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (iOS Navigation Graphs)
+
+## Context
+
+- Related docs/decisions:
+  - `D-022` (Android subgraph rule),
+  - current iOS app starts directly from auth screen via `ContentView`.
+- Current constraints:
+  - Keep iOS UI platform-specific and SwiftUI-based.
+  - Preserve existing auth UI behavior.
+
+## Goal
+
+- What should be delivered:
+  - Add scalable iOS navigation architecture with root graph container and feature graphs.
+  - Route current auth flow through feature-owned graph view.
+
+## Scope
+
+- In scope:
+  - iOS navigation container in app layer.
+  - Auth graph and placeholder post-auth graph.
+  - Documentation updates with explicit iOS navigation rule.
+- Out of scope:
+  - Full implementation of post-auth screens.
+
+## Constraints
+
+- Tech/business constraints:
+  - Shared ViewModel stays navigation-framework-agnostic.
+  - Cross-feature transitions handled in app/graph layer.
+- Deadlines or milestones:
+  - Complete in current iteration as structural foundation.
+
+## Definition of Done
+
+- Functional result:
+  - `ContentView` renders root graph, auth is hosted in feature graph, and auth success can transition to main graph placeholder.
+- Required tests:
+  - `xcodebuild` iOS compile check (if environment allows).
+- Required docs updates:
+  - `engineering-standards`, `architecture-overview`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (iOS BridgeHandle Compile Fix)
+
+## Context
+
+- Related docs/decisions:
+  - existing iOS bridge adapter base (`BridgeBackedObservableObject`),
+  - `D-023` iOS navigation structure rollout.
+- Current constraints:
+  - Fix must not change shared Kotlin bridge contracts.
+  - Keep iOS bridge lifecycle disposal behavior.
+
+## Goal
+
+- What should be delivered:
+  - Remove compile-time dependency on unresolved `BridgeHandle` Swift type in iOS app target.
+
+## Scope
+
+- In scope:
+  - `iosApp/iosApp/Common/Bridge/BridgeBackedObservableObject.swift` type handling update.
+- Out of scope:
+  - Kotlin bridge API redesign.
+  - Navigation flow changes.
+
+## Constraints
+
+- Tech/business constraints:
+  - Maintain safe disposal of active binding handle.
+- Deadlines or milestones:
+  - Immediate unblock for iOS run/build.
+
+## Definition of Done
+
+- Functional result:
+  - iOS code no longer references unknown `BridgeHandle` type and compiles past this point.
+- Required tests:
+  - iOS compile check in Xcode environment.
+- Required docs updates:
+  - `session-log`.
+
+---
+
+## Latest Formalized Request (Ktor Auth Backend: Plan)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: social auth + real backend completion)
+  - `docs/context/engineering/tooling-stack.md` (`Ktor` backend confirmed)
+  - `D-011` (auth feature module and provider abstraction)
+- Current constraints:
+  - Existing mobile flow currently builds provider launch URLs in client and uses placeholder `exchangeCode`.
+  - Real provider token/session exchange must be moved to backend.
+
+## Goal
+
+- What should be delivered:
+  - Produce implementation plan for Ktor auth backend for Telegram, VK, Google based on official provider APIs.
+
+## Scope
+
+- In scope:
+  - Provider flow selection and backend endpoint design.
+  - Validation/security/session issuance plan.
+  - Required configuration/secrets list and rollout order.
+- Out of scope:
+  - Full coding implementation in this step.
+  - Final provider credential setup in production consoles.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep current product P0 priorities and existing auth UX entry points.
+  - Follow `MVI`, quality rules, and secure token/session handling.
+- Deadlines or milestones:
+  - First deliver actionable technical plan; implementation starts after data/credentials confirmation.
+
+## Definition of Done
+
+- Functional result:
+  - Concrete phased plan for Ktor auth backend accepted.
+- Required tests:
+  - Test plan includes happy/error/edge cases per provider and session issuance.
+- Required docs updates:
+  - `docs/context/handoff/task-request-template.md` (this entry),
+  - and then governance docs in implementation phase.
+
+---
+
+## Latest Formalized Request (Telegram Auth Backend Implementation)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: real auth completion via Ktor backend)
+  - `D-011` (auth feature architecture), `D-025` (server module + Telegram-first rollout)
+  - `docs/context/engineering/tooling-stack.md` (`PostgreSQL` confirmed)
+- Current constraints:
+  - Start with Telegram provider first.
+  - Keep bot token out of repository and use environment variables.
+
+## Goal
+
+- What should be delivered:
+  - Create `server` module in current repository.
+  - Implement Ktor Telegram auth verify endpoint with server-side signature validation and DB-backed session issuance.
+
+## Scope
+
+- In scope:
+  - `server` Gradle module setup.
+  - Endpoint `POST /api/v1/auth/telegram/verify`.
+  - Telegram payload verification (`hash`, `auth_date`).
+  - PostgreSQL persistence for users/refresh tokens.
+  - JWT access token + refresh token issuance.
+- Out of scope:
+  - Google/VK backend exchange implementation.
+  - Full mobile callback wiring in this change.
+
+## Constraints
+
+- Tech/business constraints:
+  - Use Ktor on backend and PostgreSQL for storage.
+  - No hardcoded secrets in source control.
+- Deadlines or milestones:
+  - Complete Telegram backend slice first, then move to Google/VK.
+
+## Definition of Done
+
+- Functional result:
+  - Telegram auth payload can be verified by backend and returns app session tokens.
+- Required tests:
+  - Backend verifier tests for happy/error/edge cases.
+- Required docs updates:
+  - `tooling-stack`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Mobile Telegram Callback + Data Layer)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: real auth completion)
+  - `D-025` (Telegram backend verify endpoint)
+  - `D-026` (auth provider integrations in mobile data layer)
+- Current constraints:
+  - Keep `feature/auth` focused on domain/mvi contracts.
+  - Do not place provider networking logic in feature/presentation layer.
+
+## Goal
+
+- What should be delivered:
+  - Implement Telegram callback handling on Android/iOS and complete mobile auth through backend verify endpoint.
+  - Add/organize mobile `data` layer for auth providers and backend API calls.
+
+## Scope
+
+- In scope:
+  - `data/auth` module with provider implementations and Telegram backend API client.
+  - Android deep-link callback wiring (`incomedy://auth/*`).
+  - iOS callback wiring (`onOpenURL` + URL scheme setup).
+  - Shared DI wiring to include data auth module.
+- Out of scope:
+  - Google/VK real backend exchange.
+  - Production environment config and deployment.
+
+## Constraints
+
+- Tech/business constraints:
+  - Maintain Clean dependency direction and existing shared MVI flow.
+  - Telegram bot token stays server-side only.
+- Deadlines or milestones:
+  - Complete in current iteration as Telegram E2E mobile slice.
+
+## Definition of Done
+
+- Functional result:
+  - Mobile app accepts Telegram callback URL and completes auth via backend verification.
+- Required tests:
+  - `:feature:auth:allTests`
+  - `:composeApp:assembleDebug`
+- Required docs updates:
+  - `tooling-stack`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Server CI/CD Bootstrap)
+
+## Context
+
+- Related docs/decisions:
+  - `D-025` (server module exists),
+  - `D-027` (CI/CD approach),
+  - `docs/context/engineering/quality-rules.md` (CI gates required).
+- Current constraints:
+  - Keep deployment simple and reproducible for early stage.
+  - Use environment secrets for credentials and runtime config.
+
+## Goal
+
+- What should be delivered:
+  - Add CI for server test/build.
+  - Add CD for Docker image publish and staging deploy.
+
+## Scope
+
+- In scope:
+  - GitHub Actions workflows for `server`.
+  - Dockerfile and deploy compose manifest.
+  - Documentation of required secrets/setup.
+- Out of scope:
+  - Production rollout approval flow.
+  - Cloud-specific IaC beyond compose-based staging.
+
+## Constraints
+
+- Tech/business constraints:
+  - No secrets in repository.
+  - Keep rollback path simple (`docker compose up -d` with previous image tag).
+- Deadlines or milestones:
+  - Deliver in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - PRs run server CI.
+  - `main` pushes can publish image and deploy staging after secrets setup.
+- Required tests:
+  - `:server:build`.
+- Required docs updates:
+  - `tooling-stack`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (PostgreSQL Docker Container for Deploy)
+
+## Context
+
+- Related docs/decisions:
+  - `D-025` (server + PostgreSQL persistence)
+  - `D-027` (server CI/CD baseline)
+  - `D-028` (compose-based PostgreSQL bootstrap)
+- Current constraints:
+  - Need ready deployment stack with minimal manual DB setup.
+
+## Goal
+
+- What should be delivered:
+  - Add ready-to-run PostgreSQL container in deploy compose stack for server.
+
+## Scope
+
+- In scope:
+  - `deploy/server/docker-compose.yml` postgres service with persistence and healthcheck.
+  - `deploy/server/.env.example` with DB/server variables.
+  - Docs update for startup flow.
+- Out of scope:
+  - Managed database provisioning.
+  - Production HA/backup automation.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep secrets out of repository.
+  - Keep deployment compatible with existing CD workflow.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - `docker compose up -d` can run both PostgreSQL and server with shared env.
+- Required tests:
+  - compose syntax validation in target environment (`docker compose config`).
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`, `server/README.md`.
+
+---
+
+## Latest Formalized Request (Domain Routing with Caddy)
+
+## Context
+
+- Related docs/decisions:
+  - `D-027` (CI/CD baseline),
+  - `D-028` (compose Postgres),
+  - `D-030` (Caddy TLS/domain routing).
+- Current constraints:
+  - Domain `incomedy.ru` must be reachable externally over HTTPS.
+
+## Goal
+
+- What should be delivered:
+  - Add Caddy reverse-proxy/TLS layer for domain-based access to server API.
+
+## Scope
+
+- In scope:
+  - `deploy/server/Caddyfile` for `incomedy.ru`, `www.incomedy.ru`, `api.incomedy.ru`.
+  - `deploy/server/docker-compose.yml` update with `caddy` service.
+  - CD workflow update to copy Caddyfile to target host.
+- Out of scope:
+  - DNS registrar automation.
+  - Advanced WAF/rate-limit edge policies.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep server runtime in Docker Compose.
+  - Avoid exposing app container port publicly.
+- Deadlines or milestones:
+  - Complete in current deployment iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Domain requests are served over HTTPS and proxied to backend app container.
+- Required tests:
+  - Live checks: `https://incomedy.ru/health`, `https://api.incomedy.ru/health`.
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`, `server/README.md`.
+
+---
+
+## Latest Formalized Request (Mobile Telegram Auth Completion)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: real social auth completion)
+  - `D-025` (server Telegram verify), `D-026` (auth in data layer), `D-031` (domain wiring)
+- Current constraints:
+  - Domain stack is live (`https://incomedy.ru`, `https://api.incomedy.ru`).
+  - Mobile auth must stop using localhost callbacks/backend URLs.
+
+## Goal
+
+- What should be delivered:
+  - Complete Telegram auth in mobile apps (Android/iOS) against deployed backend/domain.
+
+## Scope
+
+- In scope:
+  - Telegram launch URL config (`origin`, `return_to`, bot id).
+  - Mobile backend base URL for Telegram verify call.
+  - Callback parsing compatibility for query/fragment formats.
+- Out of scope:
+  - VK/Google backend completion.
+  - Additional auth UI redesign.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep auth network/provider implementation in `data/auth`.
+  - Keep feature/auth module domain+mvi only.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Mobile Telegram callback is processed and exchanged to backend session using deployed API domain.
+- Required tests:
+  - `:data:auth:compileKotlinIosSimulatorArm64`
+  - `:feature:auth:allTests`
+  - `:composeApp:assembleDebug`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Auth Logging Rule + Implementation)
+
+## Context
+
+- Related docs/decisions:
+  - `D-031` (mobile telegram auth completion),
+  - `D-032` (mandatory auth logging),
+  - `docs/context/engineering/quality-rules.md` Observability section.
+- Current constraints:
+  - Need logs in both server and mobile for debugging callback/exchange problems.
+  - Logs must not contain secrets.
+
+## Goal
+
+- What should be delivered:
+  - Add structured auth logging in server and mobile app.
+  - Document this as mandatory engineering rule for future work.
+
+## Scope
+
+- In scope:
+  - backend request-id logging for auth endpoint,
+  - server auth stage logs (received/success/failure),
+  - mobile auth stage logs for provider click, callback received, parse/success/failure,
+  - context docs update with observability rule.
+- Out of scope:
+  - external log aggregation stack (ELK, Loki, etc.)
+  - full metrics/tracing platform setup.
+
+## Constraints
+
+- Tech/business constraints:
+  - No token/secret leakage in logs.
+  - Keep implementation minimal and compatible with current stack.
+- Deadlines or milestones:
+  - Complete in current auth stabilization iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Auth flow can be debugged end-to-end from logs on backend and mobile.
+- Required tests:
+  - `:server:build`
+  - `:feature:auth:allTests`
+  - `:composeApp:assembleDebug`
+- Required docs updates:
+  - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (OpenAPI Contract for Current Server API)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/api-contracts/README.md`
+  - `D-033` (OpenAPI maintenance rule)
+- Current constraints:
+  - Server already exposes health and Telegram auth endpoints.
+  - Contract must match current DTOs/routes.
+
+## Goal
+
+- What should be delivered:
+  - Add current backend API contract in OpenAPI format under `api-contracts/v1`.
+
+## Scope
+
+- In scope:
+  - `GET /health`
+  - `GET /auth/telegram/callback`
+  - `POST /api/v1/auth/telegram/verify`
+  - request/response schemas and status codes
+- Out of scope:
+  - Future VK/Google contracts.
+  - Auto-generated swagger UI wiring in server runtime.
+
+## Constraints
+
+- Tech/business constraints:
+  - Contract file must be human-readable and versioned in repo.
+  - Keep it aligned with current implementation.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - OpenAPI file exists and documents current auth/health endpoints.
+- Required tests:
+  - Manual contract review against route and DTO definitions.
+- Required docs updates:
+  - `api-contracts/README.md`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Fix CD Docker Build Stability)
+
+## Context
+
+- Related docs/decisions:
+  - `D-027` (server CI/CD),
+  - `D-034` (prebuilt distribution docker strategy).
+- Current constraints:
+  - CD buildx stage fails when Gradle runs inside Docker build.
+
+## Goal
+
+- What should be delivered:
+  - Make CD docker image build stable and reproducible.
+
+## Scope
+
+- In scope:
+  - CI step for `:server:installDist` before docker build.
+  - Runtime-only Dockerfile consuming prebuilt artifact.
+  - Docker context adjustments for `server/build/install/server`.
+- Out of scope:
+  - Reworking server application code.
+  - Changing deployment host topology.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep existing GHCR image tags and deploy flow.
+  - Minimize pipeline complexity.
+- Deadlines or milestones:
+  - Immediate unblock for deployment pipeline.
+
+## Definition of Done
+
+- Functional result:
+  - `CD Server` build-and-push succeeds without running Gradle inside buildx container.
+- Required tests:
+  - Successful `CD Server` workflow run.
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`, `server/README.md`.
+
+---
+
+## Latest Formalized Request (KMP Native VM Wrappers)
+
+## Context
+
+- Related docs/decisions:
+  - Existing shared auth ViewModel in `commonMain`.
+  - User-approved integration recipe for KMP VM usage on Android/iOS.
+- Current constraints:
+  - Preserve shared MVI contracts (`StateFlow` + `Event Flow`).
+  - Add native platform wrappers for lifecycle-safe consumption.
+
+## Goal
+
+- What should be delivered:
+  - Implement Android native ViewModel wrapper around shared auth VM.
+  - Keep/align iOS ObservableObject wrapper pattern for shared VM consumption.
+  - Register this pattern as explicit engineering rule.
+
+## Scope
+
+- In scope:
+  - Android auth wrapper + UI wiring changes.
+  - Context governance updates for new rule/decision.
+- Out of scope:
+  - Full iOS flow refactor beyond compile stabilization.
+
+## Constraints
+
+- Tech/business constraints:
+  - Shared VM remains platform-agnostic and framework-free.
+  - Lifecycle cleanup must be explicit in native wrappers.
+- Deadlines or milestones:
+  - Apply in current auth feature iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Android auth UI consumes native ViewModel wrapper and lifecycle-aware state collection.
+  - Rule is documented and traceable in governance docs.
+- Required tests:
+  - `:composeApp:assembleDebug`.
+- Required docs updates:
+  - `engineering-standards`, `architecture-overview`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (iOS Wrapper Simplification)
+
+## Context
+
+- Related docs/decisions:
+  - Ongoing `D-023`/`D-024` rollout for iOS graph and native wrapper patterns.
+- Current constraints:
+  - Keep lifecycle-safe cleanup.
+  - Reduce accidental complexity in iOS layer.
+
+## Goal
+
+- What should be delivered:
+  - Make iOS auth wrapper/navigation code easier to read and maintain while preserving behavior.
+
+## Scope
+
+- In scope:
+  - Remove extra base wrapper class in iOS auth stack.
+  - Simplify auth graph view structure for current single-screen flow.
+- Out of scope:
+  - New post-auth feature implementation.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep explicit binding disposal.
+  - Keep platform-specific iOS wrapper pattern.
+- Deadlines or milestones:
+  - Immediate cleanup in current session.
+
+## Definition of Done
+
+- Functional result:
+  - iOS auth wrapper is self-contained and easier to reason about.
+- Required tests:
+  - iOS compile check in Xcode environment.
+- Required docs updates:
+  - `session-log`.
+
+---
+
+## Latest Formalized Request (Startup Session Restore and Auth Routing)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0`: social auth + real backend completion)
+  - `D-031` (mobile Telegram domain wiring),
+  - `D-033` (OpenAPI contract maintenance rule).
+- Current constraints:
+  - Telegram is current active auth provider in client flow.
+  - User should not re-authenticate if valid backend session already exists.
+
+## Goal
+
+- What should be delivered:
+  - Validate stored access token on app startup via backend.
+  - Route authorized users directly to main graph/screen.
+  - Keep unauthorized users on Telegram auth flow.
+
+## Scope
+
+- In scope:
+  - Backend endpoint for session validation (`/api/v1/auth/session/me`).
+  - Shared auth intent/bridge support for session restore.
+  - Android/iOS startup restore logic and auth/main routing.
+- Out of scope:
+  - New business features in main screen.
+  - VK/Google session restore rollout.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep current MVI + DI structure.
+  - Keep API contract synchronized in same change.
+- Deadlines or milestones:
+  - Complete in current iteration as auth UX reliability fix.
+
+## Definition of Done
+
+- Functional result:
+  - If session token is valid, app opens main without Telegram re-login.
+  - If token is invalid/missing, app shows Telegram auth.
+- Required tests:
+  - `:server:installDist`
+  - `:composeApp:compileDebugKotlin`
+  - `:feature:auth:allTests`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `api-contracts`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Secure Mobile Token Storage)
+
+## Context
+
+- Related docs/decisions:
+  - `D-035` (startup session restore),
+  - auth token currently persisted in plain local storage on mobile wrappers.
+- Current constraints:
+  - Keep existing restore UX behavior.
+  - Support migration for already authorized users after app update.
+
+## Goal
+
+- What should be delivered:
+  - Move Android token persistence to encrypted storage.
+  - Move iOS token persistence to Keychain.
+  - Preserve startup restore and deep-link auth flow.
+
+## Scope
+
+- In scope:
+  - Android secure token storage adapter + legacy migration.
+  - iOS Keychain token storage adapter + legacy migration.
+  - Context docs updates with security rule.
+- Out of scope:
+  - Server token rotation redesign.
+  - New auth providers.
+
+## Constraints
+
+- Tech/business constraints:
+  - Do not expose tokens in logs.
+  - Keep existing API contract and auth endpoints.
+- Deadlines or milestones:
+  - Complete in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Tokens are persisted only in secure platform storage after migration.
+  - Existing users with old plain token keep session after first app launch post-update.
+- Required tests:
+  - `:composeApp:compileDebugKotlin`.
+- Required docs updates:
+  - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Shared Session ViewModel Across Platforms)
+
+## Context
+
+- Related docs/decisions:
+  - `D-035` (startup session restore),
+  - platform wrappers already exist for auth flow.
+- Current constraints:
+  - Need app-level session/user source of truth reusable outside auth screen.
+  - Keep existing auth and logout behavior.
+
+## Goal
+
+- What should be delivered:
+  - Add shared session-focused ViewModel that stores current authorized session and user profile.
+  - Use it from Android/iOS main graphs.
+
+## Scope
+
+- In scope:
+  - Shared session state/VM/bridge.
+  - Mapping user profile into session model from auth/backend flows.
+  - Android/iOS main graph integration for display + logout.
+- Out of scope:
+  - Full profile feature screens.
+  - New social provider backend exchanges.
+
+## Constraints
+
+- Tech/business constraints:
+  - Preserve clean layering and existing DI.
+  - No sensitive data in logs.
+- Deadlines or milestones:
+  - Implement in current iteration.
+
+## Definition of Done
+
+- Functional result:
+  - Main graph can read authorized user data from shared session VM and execute sign-out through same shared source.
+- Required tests:
+  - `:shared:compileKotlinIosSimulatorArm64`
+  - `:composeApp:compileDebugKotlin`
+  - `:feature:auth:allTests`
+- Required docs updates:
+  - `engineering-standards`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Пример (на русском)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (P0: social auth)
+  - `D-015` (Koin), `D-012` (platform-specific UI)
+- Current constraints:
+  - не менять платежный модуль,
+  - не трогать release-процесс,
+  - сохранить текущий UX auth-кнопок.
+
+## Goal
+
+- What should be delivered:
+  - подключить deep-link callback для auth на Android/iOS,
+  - прокинуть callback в shared ViewModel,
+  - показать понятный error/success status в UI.
+
+## Scope
+
+- In scope:
+  - `composeApp` auth callback wiring,
+  - `iosApp` auth callback wiring,
+  - `shared/feature/auth` обработка callback.
+- Out of scope:
+  - новый дизайн экрана,
+  - рефактор платежей,
+  - внедрение feature flags.
+
+## Constraints
+
+- Tech/business constraints:
+  - соблюдать `MVI`,
+  - использовать `Koin` DI,
+  - сохранить platform-specific UI split.
+- Deadlines or milestones:
+  - MVP-ready к концу спринта.
+
+## Definition of Done
+
+- Functional result:
+  - успешный OAuth callback завершает авторизацию на обеих платформах.
+- Required tests:
+  - happy path, error path, edge case для callback.
+- Required docs updates:
+  - `session-log`, `decisions-log` (если появилось новое решение), `decision-traceability`.
+
+---
+
+## Latest Formalized Request (Refresh Token Rotation + Mobile Auto-Restore)
+
+## Context
+
+- Related docs/decisions:
+  - `D-035` (startup restore), `D-036` (secure token storage), `D-038` (shared session VM).
+- Current constraints:
+  - Existing login flow already issues `access_token` and `refresh_token`.
+  - Mobile restart currently relies mostly on access-token validation.
+
+## Goal
+
+- What should be delivered:
+  - Implement backend refresh endpoint with refresh-token rotation.
+  - Implement mobile restore fallback: validate access token, refresh on `401`, persist rotated tokens securely.
+
+## Scope
+
+- In scope:
+  - `POST /api/v1/auth/refresh` on server.
+  - Data/domain/shared model updates for `refreshToken`.
+  - Android/iOS secure storage for refresh token.
+  - OpenAPI + governance docs sync.
+- Out of scope:
+  - OAuth backend exchange for VK/Google.
+  - Push notifications/session sync across devices.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep clean dependency direction and existing MVI structure.
+  - No token leakage in logs/UI/errors.
+  - Refresh token must be one-time use (rotation).
+
+## Definition of Done
+
+- Functional result:
+  - App restores authorized session after access-token expiration using refresh-token fallback.
+- Required tests:
+  - `:server:installDist`
+  - `:feature:auth:allTests`
+  - `:composeApp:compileDebugKotlin`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `api-contracts`.
+
+---
+
+## Latest Formalized Request (Server Auth Security Hardening)
+
+## Context
+
+- Related docs/decisions:
+  - `D-039` (refresh flow), `D-037` (vulnerability tracking).
+- Current constraints:
+  - Server auth already functional; required to close identified security gaps.
+
+## Goal
+
+- What should be delivered:
+  - Harden server auth security baseline and formalize always-on security rule.
+
+## Scope
+
+- In scope:
+  - cryptographically secure refresh token generation.
+  - rate limiting on auth/session endpoints.
+  - sanitized error responses (no internal exception leakage).
+  - context docs update with mandatory security-review rule.
+- Out of scope:
+  - distributed rate limiter infra rollout.
+  - full security audit automation stack.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep existing public API behavior stable.
+  - Do not expose sensitive details in logs/responses.
+
+## Definition of Done
+
+- Functional result:
+  - Auth endpoints are hardened against basic abuse/enumeration and token generation uses secure randomness.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `engineering-standards`, `quality-rules`, `decisions-log`, `decision-traceability`, `session-log`.
+
+---
+
+## Latest Formalized Request (Distributed Redis Rate Limiter)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040` (security hardening baseline).
+- Current constraints:
+  - Current limiter is in-memory and instance-local.
+
+## Goal
+
+- What should be delivered:
+  - Add Redis-backed distributed rate limiting for server auth endpoints with safe fallback behavior.
+
+## Scope
+
+- In scope:
+  - Redis limiter implementation.
+  - Optional `REDIS_URL` config and runtime selection.
+  - Deploy compose/env updates for Redis service.
+  - Docs sync in governance and server runtime docs.
+- Out of scope:
+  - Centralized metrics/dashboard for limiter yet.
+  - Adaptive dynamic rate-limit policy.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep server runnable without Redis (fallback to in-memory).
+  - Keep existing endpoint contracts stable.
+
+## Definition of Done
+
+- Functional result:
+  - With `REDIS_URL` set, auth limits are shared across instances; without it, server uses in-memory fallback.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `deploy env docs`.
+
+---
+
+## Latest Formalized Request (Transport Security Hardening Without Field Encryption)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040`, `D-041`.
+- Current constraints:
+  - Keep field-level encryption out of scope for now.
+
+## Goal
+
+- What should be delivered:
+  - Complete remaining server security hardening excluding DB field encryption.
+
+## Scope
+
+- In scope:
+  - default TLS/security policy for remote DB and Redis connections.
+  - remove public Postgres exposure from deploy stack.
+  - update runtime env templates/docs.
+- Out of scope:
+  - app-level encryption of user profile fields in PostgreSQL.
+
+## Constraints
+
+- Tech/business constraints:
+  - local compose/dev must continue to work with local DB/Redis.
+  - fail-fast on insecure remote datastore config unless explicit override is set.
+
+## Definition of Done
+
+- Functional result:
+  - Remote DB/Redis insecure transports are blocked by default; Postgres is internal-only in deploy compose.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `server/deploy env docs`.
+
+---
+
+## Latest Formalized Request (Security Headers + Non-Root Runtime + Telegram Input Validation)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040`, `D-042`.
+- Current constraints:
+  - DB field-level encryption explicitly out of scope.
+
+## Goal
+
+- What should be delivered:
+  - Implement remaining high-priority server hardening items from security review.
+
+## Scope
+
+- In scope:
+  - Caddy security headers + CSP.
+  - Non-root runtime user in server Docker image.
+  - Strict Telegram verify payload validation and tests.
+- Out of scope:
+  - Field-level encryption of profile data in PostgreSQL.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep Telegram auth flow functional for mobile callback page.
+  - Keep server API contracts backward-compatible.
+
+## Definition of Done
+
+- Functional result:
+  - Public web surface has baseline browser hardening headers, server process runs non-root, and malformed Telegram payloads are rejected early.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.
+
+---
+
+## Latest Formalized Request (Shared Protected-Route Auth Middleware)
+
+## Context
+
+- Related docs/decisions:
+  - `D-040`, `D-043`.
+- Current constraints:
+  - Token/revocation checks were duplicated in some route handlers.
+
+## Goal
+
+- What should be delivered:
+  - Centralize protected-route authentication and revocation checks into one middleware/interceptor.
+
+## Scope
+
+- In scope:
+  - shared middleware for JWT + `session_revoked_at` checks.
+  - route refactor for existing protected auth endpoints.
+  - docs sync for new server rule.
+- Out of scope:
+  - full authorization/roles matrix.
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep existing API contracts and response semantics.
+  - Keep request-id aware logs.
+
+## Definition of Done
+
+- Functional result:
+  - Protected endpoints rely on shared middleware principal, not duplicated token validation logic.
+- Required tests:
+  - `:server:test`
+  - `:server:installDist`
+- Required docs updates:
+  - `engineering-standards`, `decisions-log`, `decision-traceability`, `session-log`, `task-request-template`.

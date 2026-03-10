@@ -9,15 +9,17 @@
 - Backend (`Ktor`)
   - API layer
   - Domain services
-  - Persistence and integrations (DB, payments, notifications)
+  - Persistence and integrations (DB, payments, notifications, auth providers, real-time)
 
 ## Core Domain Areas
 
 - Authentication and role onboarding (VK/Telegram/Google auth)
+- Organizer workspace and staff permissions
 - Events and scheduling
+- Venues, hall templates, and seat inventory
 - Tickets and check-in
 - Comedian applications and lineup management
-- Event chat and moderation
+- Live stage status and event announcements/feed
 - Donations and payouts
 
 ## Dependency Direction (Client)
@@ -46,4 +48,6 @@
 ## Notes
 
 - Keep module boundaries aligned with feature domains and Clean architecture rules.
+- Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
+- Prefer REST for CRUD and WebSocket/push for live event updates.
 - Update this file when introducing major modules or cross-cutting infrastructure.

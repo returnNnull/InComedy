@@ -10,6 +10,40 @@ class PostgresTelegramUserRepository(
     private val dataSource: DataSource,
 ) : TelegramUserRepository {
 
+    override fun registerTelegramAuthAssertion(
+        assertionHash: String,
+        telegramUserId: Long,
+        expiresAt: Instant,
+    ): Boolean {
+        val cleanupSql = """
+            DELETE FROM telegram_auth_assertions
+            WHERE expires_at <= NOW()
+        """.trimIndent()
+        val insertSql = """
+            INSERT INTO telegram_auth_assertions (hash, telegram_id, expires_at, created_at)
+            VALUES (?, ?, ?, NOW())
+            ON CONFLICT (hash) DO NOTHING
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                connection.prepareStatement(cleanupSql).use { it.executeUpdate() }
+                val inserted = connection.prepareStatement(insertSql).use { statement ->
+                    statement.setString(1, assertionHash)
+                    statement.setLong(2, telegramUserId)
+                    statement.setTimestamp(3, Timestamp.from(expiresAt))
+                    statement.executeUpdate() == 1
+                }
+                connection.commit()
+                return inserted
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            }
+        }
+    }
+
     override fun upsert(user: TelegramUser): StoredUser {
         val generatedId = UUID.randomUUID()
         val sql = """

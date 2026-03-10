@@ -6,6 +6,8 @@ import com.bam.incomedy.server.db.TelegramUserRepository
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
+class ReplayedTelegramAuthException : IllegalArgumentException("Telegram auth payload was already used")
+
 class TelegramAuthService(
     private val verifier: TelegramAuthVerifier,
     private val repository: TelegramUserRepository,
@@ -15,6 +17,19 @@ class TelegramAuthService(
 
     fun verifyAndCreateSession(request: TelegramVerifyRequest): Result<TelegramAuthResult> {
         val verified = verifier.verify(request).getOrElse { return Result.failure(it) }
+        val accepted = repository.registerTelegramAuthAssertion(
+            assertionHash = verified.assertionHash,
+            telegramUserId = verified.user.id,
+            expiresAt = verified.replayExpiresAt,
+        )
+        if (!accepted) {
+            logger.warn(
+                "auth.telegram.verify.replay_detected telegramId={} authDate={}",
+                verified.user.id,
+                verified.authDate,
+            )
+            return Result.failure(ReplayedTelegramAuthException())
+        }
         val storedUser = repository.upsert(verified.user)
 
         val tokens = tokenService.issue(

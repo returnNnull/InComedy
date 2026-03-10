@@ -7,30 +7,37 @@ Priority scale:
 
 ## P0
 
-- Role-based onboarding (Audience, Comedian, Organizer).
-- Social authorization via VK, Telegram, and Google.
-- Real auth completion via Ktor backend (`code -> token/session`) + deep-link callback wiring on Android/iOS.
-- Startup session restore (`token -> /api/v1/auth/session/me`) with automatic auth/main routing.
-- Event creation/editing (organizer).
+- Multi-role identity model (Audience, Comedian, Organizer on one account).
+- Auth via Telegram, VK, Google, and Sign in with Apple for iOS release.
+- Real auth completion via backend (`provider -> internal session`) + secure session restore.
+- Organizer workspace with member invitations and permission roles (`owner`, `manager`, `checker`, `host`).
+- Venue management and hall template builder v1.
+- Event creation/editing/publication and sales lifecycle states.
 - Event discovery by city/date/price.
-- Seat reservation and ticket checkout.
-- Ticket QR for check-in.
-- Event chat with organizer announcements.
-- Comedian application to events + organizer approve/reject.
-- Basic donations to comedians.
-- Push notifications for status changes (ticket, schedule, application).
+- Seat/zone reservation with hold expiration and protected inventory transitions.
+- Ticket checkout via external PSP, QR ticket issuance, and check-in.
+- Comedian applications + organizer approve/reject/waitlist + lineup ordering.
+- Live stage status (`current performer`, `next up`) with real-time updates.
+- Basic donations to verified comedians with payout verification gate.
+- Push notifications and organizer announcements/event feed.
+- Audit trail for critical organizer actions.
 
 ## P1
 
-- Event map view and nearby events.
-- Refund and cancellation handling.
-- Organizer moderation tools (report, mute, ban).
+- Waitlist for sold-out events and released-seat return to sale.
+- Refund and cancellation handling with operator tooling.
+- Promo codes and simple campaigns.
+- Wallet pass / improved ticket wallet.
+- Organizer moderation and incident tools.
 - Comedian profile enhancements (media, tags, performance history).
-- Simple organizer analytics (sales, attendance, conversion).
+- Organizer analytics (sales, attendance, conversion, lineup stats).
+- Recurring event templates and repeated shows.
 
 ## P2
 
 - Personalized recommendations.
-- Dynamic pricing and promo campaigns.
+- Dynamic pricing.
 - Advanced payout automation and settlement reports.
-- Multi-city organizer account management.
+- Public audience chat/community layer.
+- Multi-city organizer network management.
+- Referral and loyalty mechanics.

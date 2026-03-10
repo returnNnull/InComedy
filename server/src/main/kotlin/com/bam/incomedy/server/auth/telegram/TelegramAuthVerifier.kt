@@ -3,6 +3,7 @@ package com.bam.incomedy.server.auth.telegram
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Instant
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -30,6 +31,8 @@ class TelegramAuthVerifier(
                     photoUrl = payload.photoUrl,
                 ),
                 authDate = payload.authDate,
+                assertionHash = expectedHash,
+                replayExpiresAt = Instant.ofEpochSecond(payload.authDate + maxAuthAgeSeconds),
             ),
         )
     }

@@ -2,13 +2,13 @@
 
 ## One-liner
 
-Chat-first platform for standup events where audience, comedians, and organizers interact around real events.
+Full-cycle standup event platform covering organizer operations, venue-aware ticketing, comedian lineup management, live show state, and donations.
 
 ## Problem
 
-- Audience has fragmented discovery, ticketing, and communication.
-- Organizers handle applications and lineup updates manually across multiple tools.
-- Comedians lack a single channel to apply, coordinate, and monetize (donations).
+- Organizers run standup events across fragmented tools for applications, lineup planning, seating, ticketing, guest lists, and live coordination.
+- Comedians lack a transparent workflow for applying, confirming participation, tracking running order, and receiving donations.
+- Audience has a disconnected experience between discovery, seat selection, purchase, event entry, and supporting performers.
 
 ## Core Roles
 
@@ -16,28 +16,39 @@ Chat-first platform for standup events where audience, comedians, and organizers
 2. Comedian
 3. Organizer
 
+Additional operational permissions exist inside organizer workspace (`owner`, `manager`, `checker`, `host/coordinator`).
+
 ## Core Flows
 
-1. Audience discovers events by city, books seat, buys ticket, joins event chat, sends donations.
-2. Organizer creates event, manages applications, confirms lineup, communicates updates in event chat.
-3. Comedian applies to events, receives status, joins coordination chat, receives donations.
+1. Audience discovers events, selects seat/zone, buys ticket, checks in, follows live stage status, and sends donations.
+2. Organizer creates venue and hall template, publishes event, manages sales, guests, applications, lineup, staff responsibilities, and live event state.
+3. Comedian applies to events, receives approval/rejection, tracks slot/order, and receives donations through verified payout setup.
 
-## Product Principle
+## Product Principles
 
-- Chat is not a side feature; every event has a dedicated chat as a primary interaction layer.
+- Operations-first: organizer workflow is more important than broad social features in MVP.
+- One account can hold multiple roles; roles are permissions, not separate accounts.
+- Venue-aware sales: hall layout, inventory states, and seat holds are first-class domain concepts.
+- Live show state matters: current performer and lineup changes are product-level concerns.
+- Compliance by design: auth/payment/donation flows must fit App Store / Google Play constraints from the start.
 
 ## MVP Scope
 
-- Role-based onboarding.
-- Event creation and discovery.
-- Ticket purchase and reservation.
-- Event chat.
-- Comedian application and organizer approval.
-- Basic donation flow.
+- Multi-role onboarding and profile context switching.
+- Auth via Telegram, VK, Google, plus Sign in with Apple for iOS release.
+- Organizer workspace with team permissions.
+- Venue and hall template builder v1.
+- Event creation/editing/publication and sales states.
+- Ticket reservation, purchase, QR ticket, and check-in.
+- Comedian applications, approvals, and lineup management.
+- Live stage status (`current performer` / `next up`).
+- Basic donation flow for verified comedian payout profiles.
+- Push notifications and event announcements/feed.
 
 ## Out of Scope (MVP)
 
+- Full public audience chat with advanced moderation.
 - Advanced recommendation engine.
 - Deep analytics dashboards.
-- Complex payout splitting logic.
-
+- Complex multi-party payout splitting.
+- 3D/fully freeform hall design editor.
