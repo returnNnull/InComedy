@@ -1,62 +1,56 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# InComedy
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+InComedy is a Kotlin Multiplatform + Ktor repository for a standup-event platform covering organizer operations, venue-aware ticketing, lineup/live-show management, and comedian donations.
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+## Current Status
 
-* [/shared](./shared/src) is for the code that will be shared between all targets in the project.
-  The most important subfolder is [commonMain](./shared/src/commonMain/kotlin). If preferred, you
-  can add code to the platform-specific folders here too.
+Repository snapshot: `2026-03-10`.
 
-### Build and Run Android Application
+- Implemented foundation:
+  - mobile auth/session flow with shared `MVI` logic;
+  - Telegram backend verification and internal JWT session issuance;
+  - refresh-token rotation, secure mobile token storage, and auth security hardening;
+  - Android root `NavHost` + feature subgraph structure;
+  - iOS root graph container with auth/main graph shells;
+  - OpenAPI contract and CI/CD/deploy baseline for the current server scope.
+- Partial:
+  - VK and Google auth launch flows exist in client data layer, but backend identity exchange is still stubbed;
+  - iOS Sign in with Apple is not implemented yet.
+- Not started:
+  - multi-role profile/workspace model;
+  - venues, hall templates, and events;
+  - ticketing/check-in;
+  - comedian applications, lineup, and live stage status;
+  - donations, notifications, analytics.
 
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
+## Repository Structure
 
-### Build and Run iOS Application
+- `composeApp/`: Android application shell and platform UI.
+- `iosApp/`: native SwiftUI application and iOS navigation layer.
+- `shared/`: shared bridges, DI, and app/session state for mobile clients.
+- `core/common/`: cross-platform core utilities.
+- `feature/auth/`: shared auth domain and `MVI` ViewModel logic.
+- `data/auth/`: auth provider integrations and backend API adapters.
+- `server/`: Ktor backend for current auth/session scope.
+- `deploy/server/`: Docker Compose and Caddy deployment assets.
+- `docs/context/`: compact project memory and governance records.
+- `docs/standup-platform-ru/`: detailed Russian-language target-state product/technical specification.
 
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+## Useful Commands
 
----
+```bash
+./gradlew :composeApp:assembleDebug
+./gradlew :feature:auth:allTests
+./gradlew :server:test :server:installDist
+./gradlew :server:run
+```
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+For iOS, open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp` target.
 
-## Project Memory
+## Documentation
 
-To avoid losing product context across long iterations, project knowledge is stored in:
+- `docs/context/README.md`: compact source of truth for product, engineering, and governance context.
+- `docs/standup-platform-ru/README.md`: detailed target-state specification package.
+- `docs/standup-platform-ru/11-статус-реализации-на-2026-03-10.md`: current repo-to-spec alignment snapshot.
 
-- `docs/context/README.md`
-- `docs/context/product/product-brief.md`
-- `docs/context/product/backlog.md`
-- `docs/context/product/glossary.md`
-- `docs/context/product/non-functional-requirements.md`
-- `docs/context/product/risk-log.md`
-- `docs/context/engineering/tooling-stack.md`
-- `docs/context/engineering/engineering-standards.md`
-- `docs/context/engineering/quality-rules.md`
-- `docs/context/engineering/architecture-overview.md`
-- `docs/context/engineering/test-strategy.md`
-- `docs/context/engineering/api-contracts/README.md`
-- `docs/context/governance/decisions-log.md`
-- `docs/context/governance/session-log.md`
-- `docs/context/handoff/context-protocol.md`
-- `docs/context/handoff/chat-handoff-template.md`
-
-When scope or decisions change, update these files in the same PR as code changes.
+When scope, decisions, or implementation status change, update the relevant documentation in the same change.

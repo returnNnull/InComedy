@@ -18,6 +18,7 @@ This folder stores product context and decisions so the team and assistant do no
 - `product/non-functional-requirements.md`: performance, reliability, security, and operability targets.
 - `product/risk-log.md`: current risks with mitigation and owners.
 - `../standup-platform-ru/README.md`: entry point to the full Russian product/technical handoff package.
+- `../standup-platform-ru/11-статус-реализации-на-2026-03-10.md`: current repo-to-spec alignment snapshot.
 - `engineering/tooling-stack.md`: approved and planned technology stack.
 - `engineering/engineering-standards.md`: mandatory architecture, MVI, and testing rules.
 - `engineering/quality-rules.md`: DoD, quality gates, test minimums, and engineering constraints.
@@ -30,7 +31,8 @@ This folder stores product context and decisions so the team and assistant do no
 - `governance/session-log.md`: session-log index with links to part files.
 - `governance/session-log/session-log-part-XX.md`: short running notes after each significant work session.
 - `governance/context-integrity-checklist.md`: pre-merge context consistency checks.
-- `governance/decision-traceability.md`: mapping from decisions to code and tests.
+- `governance/decision-traceability.md`: decision-traceability index.
+- `governance/decision-traceability/decision-traceability-part-XX.md`: split mapping from decisions to code and tests.
 - `handoff/context-protocol.md`: standard for reading, updating, and handing off context across chats.
 - `handoff/chat-handoff-template.md`: copy-paste message to bootstrap a new chat with full context sync.
 - `handoff/task-request-template.md`: structured task input template.
@@ -62,4 +64,5 @@ This folder stores product context and decisions so the team and assistant do no
 
 - For all future product and implementation tasks, treat files in `docs/context/` as the primary project context.
 - When implementation requires detailed feature/domain clarification, use `docs/standup-platform-ru/` as the primary detailed specification layer and keep `docs/context/` as the compact memory/index layer.
+- When reconciling target-state specs with the current repository, check `../standup-platform-ru/11-статус-реализации-на-2026-03-10.md` first.
 - If new input conflicts with these docs, update the docs first, then proceed with implementation.

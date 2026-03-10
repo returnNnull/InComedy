@@ -7,6 +7,11 @@ Priority scale:
 
 ## P0
 
+Current implementation sequence note (`2026-03-10`):
+- Keep Telegram as the only implemented login temporarily, but treat it as the first linked auth identity only.
+- Build provider-agnostic identity, roles, active-role context, and organizer workspace membership before adding more auth providers.
+- Add VK, Google, and Sign in with Apple on top of that internal identity model before public release.
+
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
 - Auth via Telegram, VK, Google, and Sign in with Apple for iOS release.
 - Real auth completion via backend (`provider -> internal session`) + secure session restore.

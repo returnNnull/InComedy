@@ -43,10 +43,10 @@ Use this file to track active product/technical risks, including current securit
 ## R-002
 
 - Date: 2026-02-23
-- Risk: Chat moderation gaps create abuse/spam risk at launch.
+- Risk: Event feed or future user-generated communication features may create abuse/spam risk without baseline moderation controls.
 - Impact: High
 - Probability: Medium
-- Mitigation: Add baseline moderation tools (report, mute, ban) before public rollout.
+- Mitigation: Keep broad public chat out of MVP, add baseline moderation/reporting controls for announcements and future community features before rollout.
 - Owner: TBD
 - Status: open
 
@@ -98,6 +98,36 @@ Use this file to track active product/technical risks, including current securit
 - Probability: High
 - Mitigation: Prioritize organizer operations, ticketing, lineup, check-in, and live stage status; defer broad social/community scope to P1/P2.
 - Owner: Product
+- Status: open
+
+## R-008
+
+- Date: 2026-03-10
+- Risk: Live stage-status updates may behave unreliably under poor venue connectivity, damaging organizer and comedian trust during active shows.
+- Impact: High
+- Probability: Medium
+- Mitigation: Design live state with WebSocket plus push/polling fallback, keep state transitions idempotent, and test degraded-network behavior before rollout.
+- Owner: Engineering
+- Status: open
+
+## R-009
+
+- Date: 2026-03-10
+- Risk: Incorrect role or workspace permission modeling may expose organizer financial data or allow unauthorized operational actions.
+- Impact: Critical
+- Probability: Medium
+- Mitigation: Implement explicit permission matrix, shared authorization checks, audit logging, and permission-focused automated tests before organizer/ticketing rollout.
+- Owner: Engineering
+- Status: open
+
+## R-010
+
+- Date: 2026-03-10
+- Risk: Refund and cancellation flows may create heavy support load if policies and operator tooling are not defined before ticketing launch.
+- Impact: High
+- Probability: Medium
+- Mitigation: Lock refund/cancel policy before ticketing implementation, keep manual recovery tooling available, and track post-payment recovery incidents explicitly.
+- Owner: Product + Engineering
 - Status: open
 
 ## V-001

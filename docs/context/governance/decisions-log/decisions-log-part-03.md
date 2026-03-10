@@ -31,3 +31,11 @@
 - Decision: Include Sign in with Apple in iOS scope and design donations as a compliance-constrained flow separated from ticket checkout.
 - Rationale: Current App Store policy makes third-party-login-only iOS release risky, and donation flows have stricter interpretation than real-world ticket purchases.
 - Consequences: Auth scope expands beyond Telegram/VK/Google; donation architecture must support pass-through or web-checkout fallback and verified payout profiles.
+
+## D-049
+
+- Date: 2026-03-10
+- Status: accepted
+- Decision: Keep Telegram as the only implemented auth provider for the next delivery slice, but build identity/session/roles/workspace foundations on a provider-agnostic internal `User + AuthIdentity` model so VK/Google/Apple can be added later without domain refactor.
+- Rationale: The current repository already has the deepest Telegram integration, while the highest-value next step is unblocking role-based product domains rather than multiplying partial provider implementations. Provider-specific identifiers leaking into profile, RBAC, or workspace domains would create expensive rework when additional providers are added.
+- Consequences: Telegram remains an interim entry path only; internal user/session models, profile state, role switching, and organizer workspace membership must be detached from `telegram_id`. Future VK/Google/Apple work should plug into the same internal identity model instead of introducing parallel user representations.
