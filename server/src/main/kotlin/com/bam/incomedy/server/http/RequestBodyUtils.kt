@@ -8,7 +8,7 @@ import kotlinx.serialization.json.Json
 
 class PayloadTooLargeException(
     maxBytes: Int,
-) : IllegalArgumentException("Request body exceeds $maxBytes bytes")
+) : IllegalArgumentException("Request body exceeds $maxBytes bytes!")
 
 suspend inline fun <reified T> ApplicationCall.receiveJsonBodyLimited(
     json: Json,
