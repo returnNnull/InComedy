@@ -39,3 +39,11 @@
 - Decision: Keep Telegram as the only implemented auth provider for the next delivery slice, but build identity/session/roles/workspace foundations on a provider-agnostic internal `User + AuthIdentity` model so VK/Google/Apple can be added later without domain refactor.
 - Rationale: The current repository already has the deepest Telegram integration, while the highest-value next step is unblocking role-based product domains rather than multiplying partial provider implementations. Provider-specific identifiers leaking into profile, RBAC, or workspace domains would create expensive rework when additional providers are added.
 - Consequences: Telegram remains an interim entry path only; internal user/session models, profile state, role switching, and organizer workspace membership must be detached from `telegram_id`. Future VK/Google/Apple work should plug into the same internal identity model instead of introducing parallel user representations.
+
+## D-050
+
+- Date: 2026-03-10
+- Status: accepted
+- Decision: Move backend database evolution to versioned SQL migrations executed during startup, and stop relying on ad-hoc schema bootstrap DDL embedded in application code as the primary rollout mechanism.
+- Rationale: The project has already accumulated multiple schema changes across auth hardening and identity/workspace work. Without versioned migrations, deploy safety depends on mutable startup code, there is no persistent schema history, and existing databases cannot be reasoned about or upgraded confidently across environments.
+- Consequences: Backend stack now includes a migration tool and `db/migration` scripts. Schema changes must be forward-only and recorded as versioned migrations with rollout compatibility for both clean databases and already initialized deployments. Application startup may trigger migration execution, but should no longer contain the schema definition itself.

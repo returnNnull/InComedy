@@ -2,7 +2,8 @@ package com.bam.incomedy.server.auth.telegram
 
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.SessionUser
-import com.bam.incomedy.server.db.TelegramUserRepository
+import com.bam.incomedy.server.db.AuthProvider
+import com.bam.incomedy.server.db.UserRepository
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
@@ -10,7 +11,7 @@ class ReplayedTelegramAuthException : IllegalArgumentException("Telegram auth pa
 
 class TelegramAuthService(
     private val verifier: TelegramAuthVerifier,
-    private val repository: TelegramUserRepository,
+    private val repository: UserRepository,
     private val tokenService: JwtSessionTokenService,
 ) {
     private val logger = LoggerFactory.getLogger(TelegramAuthService::class.java)
@@ -30,11 +31,11 @@ class TelegramAuthService(
             )
             return Result.failure(ReplayedTelegramAuthException())
         }
-        val storedUser = repository.upsert(verified.user)
+        val storedUser = repository.upsertTelegramIdentity(verified.user)
 
         val tokens = tokenService.issue(
             userId = storedUser.id,
-            telegramUserId = storedUser.telegramId,
+            provider = AuthProvider.TELEGRAM,
         )
         repository.storeRefreshToken(
             userId = storedUser.id,
@@ -42,13 +43,11 @@ class TelegramAuthService(
             expiresAt = tokenService.refreshExpiryInstant(Instant.now()),
         )
         logger.info(
-            "auth.telegram.session.issued userId={} telegramId={} accessTtlSeconds={}",
+            "auth.telegram.session.issued userId={} accessTtlSeconds={}",
             storedUser.id,
-            storedUser.telegramId,
             tokens.expiresInSeconds,
         )
 
-        val displayName = listOfNotNull(storedUser.firstName, storedUser.lastName).joinToString(" ").trim()
         return Result.success(
             TelegramAuthResult(
                 accessToken = tokens.accessToken,
@@ -56,7 +55,7 @@ class TelegramAuthService(
                 expiresInSeconds = tokens.expiresInSeconds,
                 user = SessionUser(
                     id = storedUser.id,
-                    displayName = displayName.ifBlank { storedUser.username ?: "Telegram user" },
+                    displayName = storedUser.displayName,
                     username = storedUser.username,
                     photoUrl = storedUser.photoUrl,
                 ),

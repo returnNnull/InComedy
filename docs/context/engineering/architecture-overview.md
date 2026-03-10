@@ -10,6 +10,7 @@
   - API layer
   - Domain services
   - Persistence and integrations (DB, payments, notifications, auth providers, real-time)
+  - Startup applies versioned PostgreSQL migrations before serving traffic
 
 ## Core Domain Areas
 
@@ -26,16 +27,17 @@
 
 - Implemented:
   - auth/session foundation across mobile and server;
+  - provider-agnostic backend `User + AuthIdentity` persistence foundation behind the current Telegram login;
+  - backend role storage, active-role context, and minimal organizer workspace create/list routes;
   - shared session-focused ViewModel/bridge state;
   - Android root navigation + auth subgraph;
   - iOS root graph container with auth/main shells;
   - Telegram verify + session restore/refresh/logout backend contract.
 - Partial:
-  - VK and Google auth provider wiring exists in mobile data layer, but server-backed unified identity exchange is not complete;
+  - VK and Google auth provider wiring exists in mobile data layer, but server-backed linked-identity exchange is not complete;
+  - organizer workspace is backend-foundational only for now (owner create/list), without invites or full staff operations;
   - iOS bridge/navigation rollout is structural and still limited to auth/main placeholder scope.
 - Planned next bounded contexts:
-  - identity/roles,
-  - organizer workspace,
   - venues,
   - events,
   - lineup,
@@ -70,6 +72,7 @@
 ## Notes
 
 - Keep module boundaries aligned with feature domains and Clean architecture rules.
+- PostgreSQL schema evolution must live in versioned migration files; application code should invoke migration execution, not own mutable schema DDL as business logic.
 - Internal identity must be modeled provider-agnostically (`User` + linked auth identities); provider-specific ids must not become the primary keys for profile, RBAC, or workspace domains.
 - Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
 - Prefer REST for CRUD and WebSocket/push for live event updates.

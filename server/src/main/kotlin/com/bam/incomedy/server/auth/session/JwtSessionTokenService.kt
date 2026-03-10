@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import com.bam.incomedy.server.config.JwtConfig
+import com.bam.incomedy.server.db.AuthProvider
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Instant
@@ -21,15 +22,14 @@ class JwtSessionTokenService(
         .withIssuer(config.issuer)
         .build()
 
-    override fun issue(userId: String, telegramUserId: Long): SessionTokens {
+    override fun issue(userId: String, provider: AuthProvider): SessionTokens {
         val now = Instant.now()
         val accessExpiry = now.plusSeconds(config.accessTtlSeconds)
 
         val accessToken = JWT.create()
             .withIssuer(config.issuer)
             .withSubject(userId)
-            .withClaim("provider", "telegram")
-            .withClaim("telegram_user_id", telegramUserId)
+            .withClaim("provider", provider.wireName)
             .withIssuedAt(Date.from(now))
             .withExpiresAt(Date.from(accessExpiry))
             .withJWTId(UUID.randomUUID().toString())
@@ -57,12 +57,10 @@ class JwtSessionTokenService(
             val decoded = verifier.verify(accessToken)
             val userId = decoded.subject ?: error("Missing access token subject")
             val provider = decoded.getClaim("provider").asString() ?: "unknown"
-            val telegramUserId = decoded.getClaim("telegram_user_id").asLong()
             val issuedAt = decoded.issuedAt?.toInstant() ?: error("Missing access token issued-at")
             VerifiedAccessToken(
                 userId = userId,
                 provider = provider,
-                telegramUserId = telegramUserId,
                 issuedAt = issuedAt,
             )
         }.recoverCatching { cause ->
@@ -83,6 +81,5 @@ class JwtSessionTokenService(
 data class VerifiedAccessToken(
     val userId: String,
     val provider: String,
-    val telegramUserId: Long?,
     val issuedAt: Instant,
 )

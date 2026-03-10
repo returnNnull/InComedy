@@ -2,7 +2,7 @@ package com.bam.incomedy.server.auth.session
 
 import com.bam.incomedy.server.ErrorResponse
 import com.bam.incomedy.server.db.StoredUser
-import com.bam.incomedy.server.db.TelegramUserRepository
+import com.bam.incomedy.server.db.UserRepository
 import com.bam.incomedy.server.security.AuthRateLimiter
 import com.bam.incomedy.server.security.directPeerFingerprint
 import io.ktor.http.HttpStatusCode
@@ -35,7 +35,7 @@ private object SessionAuthRouteSelector : RouteSelector() {
 
 fun Route.withSessionAuth(
     tokenService: JwtSessionTokenService,
-    userRepository: TelegramUserRepository,
+    userRepository: UserRepository,
     rateLimiter: AuthRateLimiter,
     build: Route.() -> Unit,
 ) {

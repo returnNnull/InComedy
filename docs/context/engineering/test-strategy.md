@@ -17,6 +17,7 @@
 
 - Contract tests are required for the current auth API surface and for future payment/webhook integrations.
 - Integration tests should cover concurrency and idempotency risks for ticketing, payments, and check-in once those domains are introduced.
+- Backend persistence changes must include migration-path verification for both clean schema creation and upgrade of a legacy initialized schema.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 
 ## MVI-Specific Expectations

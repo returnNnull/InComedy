@@ -1,12 +1,18 @@
 package com.bam.incomedy.server.auth.session
 
 import com.bam.incomedy.server.config.JwtConfig
+import com.bam.incomedy.server.db.AuthProvider
+import com.bam.incomedy.server.db.StoredUser
+import com.bam.incomedy.server.db.UserRole
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
 import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
@@ -17,6 +23,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SessionRoutesTest {
 
@@ -82,6 +89,58 @@ class SessionRoutesTest {
         }
 
         assertEquals(HttpStatusCode.TooManyRequests, limitedResponse.status)
+    }
+
+    @Test
+    fun `session me returns provider agnostic user state`() = testApplication {
+        val repository = InMemoryTelegramUserRepository().apply {
+            putUser(
+                StoredUser(
+                    id = "00000000-0000-0000-0000-000000000001",
+                    displayName = "Test User",
+                    username = "tester",
+                    photoUrl = null,
+                    sessionRevokedAt = null,
+                    linkedProviders = setOf(AuthProvider.TELEGRAM),
+                    roles = setOf(UserRole.AUDIENCE),
+                    activeRole = UserRole.AUDIENCE,
+                ),
+            )
+        }
+        val tokenService = testTokenService()
+
+        environment {
+            config = MapApplicationConfig()
+        }
+        application {
+            this.install(ContentNegotiation) {
+                json()
+            }
+            routing {
+                SessionRoutes.register(
+                    route = this,
+                    tokenService = tokenService,
+                    userRepository = repository,
+                    rateLimiter = InMemoryAuthRateLimiter(),
+                )
+            }
+        }
+
+        val accessToken = tokenService.issue(
+            userId = "00000000-0000-0000-0000-000000000001",
+            provider = AuthProvider.TELEGRAM,
+        ).accessToken
+
+        val response = client.get("/api/v1/auth/session/me") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""roles":["audience"]"""))
+        assertTrue(body.contains(""""active_role":"audience""""))
+        assertTrue(body.contains(""""linked_providers":["telegram"]"""))
+        assertTrue(!body.contains("telegram_id"))
     }
 
     private fun testTokenService(): JwtSessionTokenService {

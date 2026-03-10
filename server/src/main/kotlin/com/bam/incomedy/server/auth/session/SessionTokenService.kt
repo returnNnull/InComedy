@@ -1,6 +1,7 @@
 package com.bam.incomedy.server.auth.session
 
-interface SessionTokenService {
-    fun issue(userId: String, telegramUserId: Long): SessionTokens
-}
+import com.bam.incomedy.server.db.AuthProvider
 
+interface SessionTokenService {
+    fun issue(userId: String, provider: AuthProvider): SessionTokens
+}

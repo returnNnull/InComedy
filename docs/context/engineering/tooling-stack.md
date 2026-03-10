@@ -14,6 +14,7 @@ Status labels:
 - Dependency Injection: `Koin` (KMP-first, shared across mobile/server layers)
 - Android navigation: `androidx.navigation:navigation-compose`
 - Database: `PostgreSQL`
+- Database migrations: `Flyway`
 - Redis: shared short-lived state / distributed coordination / rate limiting
 - CI/CD: `GitHub Actions`
 - Server packaging/runtime: `Docker` + `Docker Compose`

@@ -7,9 +7,11 @@ import com.bam.incomedy.server.auth.telegram.TelegramAuthService
 import com.bam.incomedy.server.auth.telegram.TelegramAuthVerifier
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
-import com.bam.incomedy.server.db.DatabaseSchemaInitializer
+import com.bam.incomedy.server.db.DatabaseMigrationRunner
 import com.bam.incomedy.server.db.PostgresTelegramUserRepository
+import com.bam.incomedy.server.identity.IdentityRoutes
 import com.bam.incomedy.server.observability.isValidRequestId
+import com.bam.incomedy.server.organizer.WorkspaceRoutes
 import com.bam.incomedy.server.security.AuthRateLimiter
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
 import com.bam.incomedy.server.security.RedisAuthRateLimiter
@@ -38,7 +40,7 @@ fun Application.module() {
     val logger = LoggerFactory.getLogger("Application")
     val config = AppConfig.fromEnv()
     val dataSource = DatabaseFactory.create(config.database)
-    DatabaseSchemaInitializer.ensure(dataSource)
+    DatabaseMigrationRunner.migrate(dataSource)
 
     val repository = PostgresTelegramUserRepository(dataSource)
     val verifier = TelegramAuthVerifier(
@@ -107,6 +109,18 @@ fun Application.module() {
 
         TelegramAuthRoutes.register(this, authService, rateLimiter)
         SessionRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            userRepository = repository,
+            rateLimiter = rateLimiter,
+        )
+        IdentityRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            userRepository = repository,
+            rateLimiter = rateLimiter,
+        )
+        WorkspaceRoutes.register(
             route = this,
             tokenService = tokenService,
             userRepository = repository,

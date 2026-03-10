@@ -25,6 +25,8 @@ ktor = "2.3.13"
 logback = "1.5.18"
 hikari = "6.3.0"
 postgresql = "42.7.7"
+flyway = "9.22.3"
+h2 = "2.2.224"
 javaJwt = "4.5.0"
 jedis = "5.2.0"
 
@@ -72,6 +74,8 @@ ktor-server-tests-jvm = { module = "io.ktor:ktor-server-tests-jvm", version.ref 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
 java-jwt = { module = "com.auth0:java-jwt", version.ref = "javaJwt" }
 jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 

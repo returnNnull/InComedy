@@ -106,3 +106,115 @@
   - `docs/context/governance/decisions-log.md`
   - `docs/context/governance/decision-traceability.md`
   - `docs/context/governance/session-log.md`
+
+---
+
+## Latest Formalized Request (Backend Identity and Workspace Foundation)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md` (`P0` sequencing note)
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/standup-platform-ru/11-статус-реализации-на-2026-03-10.md`
+  - `D-045`, `D-049`
+- Current constraints:
+  - Work is backend-only for this slice.
+  - Telegram remains the only active auth provider during implementation.
+  - Backend changes must stop treating Telegram-specific identifiers as the primary domain identity.
+
+## Goal
+
+- What should be delivered:
+  - Start the provider-agnostic backend identity foundation with roles and organizer workspace support while preserving the current Telegram login flow.
+
+## Scope
+
+- In scope:
+  - provider-agnostic user/auth-identity persistence on backend
+  - role storage and active-role context on backend
+  - organizer workspace persistence and minimal owner/create-list flow
+  - auth/session route adaptation to generic user identity model
+  - server tests and API contract/docs updates for changed backend scope
+- Out of scope:
+  - VK/Google/Apple implementation
+  - frontend/UI wiring
+  - venues, events, ticketing, lineup, donations
+
+## Constraints
+
+- Tech/business constraints:
+  - Keep current Telegram verification and session restoration behavior working.
+  - New backend models must be reusable for future provider linking.
+  - Do not break current mobile client parsing of auth/session responses.
+- Deadlines or milestones:
+  - This is the first backend slice after auth/session hardening.
+
+## Definition of Done
+
+- Functional result:
+  - Backend stores users independently from provider-specific ids and supports role/workspace foundation endpoints without regressing Telegram auth.
+- Required tests:
+  - `./gradlew :server:test :server:installDist`
+- Required docs updates:
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `docs/context/governance/decision-traceability.md`
+  - `docs/context/governance/session-log.md`
+
+---
+
+## Latest Formalized Request (Backend Database Migrations)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/tooling-stack.md`
+  - `docs/context/engineering/quality-rules.md`
+  - `docs/context/engineering/architecture-overview.md`
+  - `D-050`
+- Current constraints:
+  - Existing backend schema has been evolving through startup bootstrap code.
+  - Current deploys must preserve data in existing PostgreSQL volumes.
+  - Migration rollout must support both clean databases and already initialized environments.
+
+## Goal
+
+- What should be delivered:
+  - Introduce a proper versioned migration mechanism for the backend and replace schema-definition bootstrap logic with startup-driven migration execution.
+
+## Scope
+
+- In scope:
+  - migration tool setup in `server`
+  - versioned SQL migrations for current backend schema
+  - startup wiring from ad-hoc schema bootstrap to migration runner
+  - deployment/runtime documentation updates
+  - validation for clean database and existing-schema rollout paths
+- Out of scope:
+  - domain model redesign beyond what is needed to preserve current schema
+  - venue/event/ticketing domain expansion
+  - client-side feature changes
+
+## Constraints
+
+- Tech/business constraints:
+  - Existing data must survive ordinary redeploys.
+  - The first migration rollout must not assume an empty schema.
+  - Future schema work should append new migrations instead of editing historical startup DDL.
+- Deadlines or milestones:
+  - This must land before further backend domain expansion to avoid compounding schema debt.
+
+## Definition of Done
+
+- Functional result:
+  - Backend startup applies versioned migrations, current schema is represented in migration files, and existing deployments can upgrade without data reset.
+- Required tests:
+  - `./gradlew :server:test :server:installDist`
+  - targeted validation against a clean PostgreSQL instance and an already-initialized schema
+- Required docs updates:
+  - `docs/context/engineering/tooling-stack.md`
+  - `docs/context/engineering/quality-rules.md`
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/governance/decisions-log.md`
+  - `docs/context/governance/decision-traceability.md`
+  - `docs/context/governance/session-log.md`

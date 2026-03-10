@@ -41,6 +41,14 @@ docker compose up -d
 docker compose ps
 ```
 
+### Database Migrations
+
+- Server startup runs versioned Flyway migrations before serving traffic.
+- Clean databases are created from `server/src/main/resources/db/migration/*`.
+- Existing initialized databases are upgraded in place; schema history is tracked in `flyway_schema_history`.
+- Ordinary deploys do not recreate the database because deploy compose keeps PostgreSQL data in the named volume `postgres_data`.
+- Data is lost only if the volume is explicitly removed, the host is replaced without restoring the volume, or `DB_URL` points to a different database.
+
 ### Domain + HTTPS (Caddy)
 
 `deploy/server/Caddyfile` is used for TLS termination and reverse proxy:
@@ -155,7 +163,10 @@ Runtime `.env` is managed directly on the server at:
     "id": "uuid",
     "display_name": "John Doe",
     "username": "johndoe",
-    "photo_url": "https://..."
+    "photo_url": "https://...",
+    "roles": ["audience"],
+    "active_role": "audience",
+    "linked_providers": ["telegram"]
   }
 }
 ```

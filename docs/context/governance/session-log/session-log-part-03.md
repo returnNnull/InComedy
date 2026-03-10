@@ -34,3 +34,17 @@
 - Changes: Formalized a Telegram-first but provider-agnostic next slice, updated backlog sequencing notes, added ADR `D-049`, extended traceability, and refined the status snapshot so the next implementation step is identity/roles/workspace foundation rather than more partial provider work.
 - Decisions: Accepted `D-049`: Telegram stays the sole active provider for the next slice, while internal identity/session/roles/workspace must be detached from provider-specific ids.
 - Next: Start implementation of `User + AuthIdentity`, active role context, and organizer workspace membership while keeping the existing Telegram flow operational.
+
+## 2026-03-10 14:35
+
+- Context: Requested to start the actual backend implementation of the Telegram-first identity/workspace foundation.
+- Changes: Implemented provider-agnostic backend `UserRepository` model, added persistence for auth identities / roles / organizer workspaces, generalized JWT/session handling away from `telegram_id`, added `me/roles`, `me/active-role`, and `workspaces` create/list routes, expanded server tests, and updated API contract/spec status docs.
+- Decisions: No new ADR beyond previously accepted `D-049`; backend implementation moved that decision from planned to in-progress.
+- Next: Wire client/shared layers to the new backend identity/workspace endpoints and continue with organizer staff/member operations before venue/event domains.
+
+## 2026-03-10 14:57
+
+- Context: Asked whether backend deploys recreate PostgreSQL and what migration strategy exists; requested implementation of proper migrations.
+- Changes: Added ADR `D-050`, updated tooling/quality/architecture/test docs, introduced Flyway-based startup migration runner, moved backend schema to versioned SQL migrations under `server/src/main/resources/db/migration`, removed ad-hoc schema bootstrap DDL from application startup, added automated migration-path tests for clean and legacy schemas, and refreshed server runtime docs with volume/migration behavior.
+- Decisions: Accepted `D-050`: backend DB schema evolution must be managed through versioned migrations rather than mutable startup DDL.
+- Next: Run a first staging deploy with the Flyway transition and verify migration history plus auth/session/workspace smoke flows against the persisted Postgres volume.

@@ -9,6 +9,9 @@ Repository snapshot: `2026-03-10`.
 - Implemented foundation:
   - mobile auth/session flow with shared `MVI` logic;
   - Telegram backend verification and internal JWT session issuance;
+  - provider-agnostic backend user/auth-identity persistence foundation;
+  - backend role storage, active-role switching, and minimal organizer workspace create/list routes;
+  - versioned backend database migrations for clean deploys and in-place schema upgrades;
   - refresh-token rotation, secure mobile token storage, and auth security hardening;
   - Android root `NavHost` + feature subgraph structure;
   - iOS root graph container with auth/main graph shells;
@@ -17,7 +20,6 @@ Repository snapshot: `2026-03-10`.
   - VK and Google auth launch flows exist in client data layer, but backend identity exchange is still stubbed;
   - iOS Sign in with Apple is not implemented yet.
 - Not started:
-  - multi-role profile/workspace model;
   - venues, hall templates, and events;
   - ticketing/check-in;
   - comedian applications, lineup, and live stage status;

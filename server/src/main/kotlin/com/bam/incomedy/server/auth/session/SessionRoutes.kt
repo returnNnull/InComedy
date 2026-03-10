@@ -1,7 +1,8 @@
 package com.bam.incomedy.server.auth.session
 
 import com.bam.incomedy.server.ErrorResponse
-import com.bam.incomedy.server.db.TelegramUserRepository
+import com.bam.incomedy.server.db.StoredUser
+import com.bam.incomedy.server.db.UserRepository
 import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.security.AuthRateLimiter
@@ -32,7 +33,7 @@ object SessionRoutes {
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
-        userRepository: TelegramUserRepository,
+        userRepository: UserRepository,
         rateLimiter: AuthRateLimiter,
     ) {
         route.route("/api/v1/auth") {
@@ -61,13 +62,7 @@ object SessionRoutes {
                         call.respond(
                             HttpStatusCode.OK,
                             SessionMeResponse(
-                                user = SessionUserResponse(
-                                    id = user.id,
-                                    telegramId = user.telegramId,
-                                    displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
-                                    username = user.username,
-                                    photoUrl = user.photoUrl,
-                                ),
+                                user = user.toSessionUserResponse(),
                             ),
                         )
                     }
@@ -155,7 +150,7 @@ object SessionRoutes {
 
                 val newTokens = tokenService.issue(
                     userId = user.id,
-                    telegramUserId = user.telegramId,
+                    provider = principalProvider(user),
                 )
                 userRepository.storeRefreshToken(
                     userId = user.id,
@@ -169,13 +164,7 @@ object SessionRoutes {
                         accessToken = newTokens.accessToken,
                         refreshToken = newTokens.refreshToken,
                         expiresIn = newTokens.expiresInSeconds,
-                        user = SessionUserResponse(
-                            id = user.id,
-                            telegramId = user.telegramId,
-                            displayName = listOfNotNull(user.firstName, user.lastName).joinToString(" ").trim(),
-                            username = user.username,
-                            photoUrl = user.photoUrl,
-                        ),
+                        user = user.toSessionUserResponse(),
                     ),
                 )
             }
@@ -191,13 +180,16 @@ data class SessionMeResponse(
 @Serializable
 data class SessionUserResponse(
     val id: String,
-    @SerialName("telegram_id")
-    val telegramId: Long,
     @SerialName("display_name")
     val displayName: String,
     val username: String? = null,
     @SerialName("photo_url")
     val photoUrl: String? = null,
+    val roles: List<String> = emptyList(),
+    @SerialName("active_role")
+    val activeRole: String? = null,
+    @SerialName("linked_providers")
+    val linkedProviders: List<String> = emptyList(),
 )
 
 @Serializable
@@ -216,3 +208,18 @@ data class RefreshResponse(
     val expiresIn: Long,
     val user: SessionUserResponse,
 )
+
+private fun StoredUser.toSessionUserResponse(): SessionUserResponse {
+    return SessionUserResponse(
+        id = id,
+        displayName = displayName,
+        username = username,
+        photoUrl = photoUrl,
+        roles = roles.map { it.wireName }.sorted(),
+        activeRole = activeRole?.wireName,
+        linkedProviders = linkedProviders.map { it.wireName }.sorted(),
+    )
+}
+
+private fun principalProvider(user: StoredUser) = user.linkedProviders.firstOrNull()
+    ?: com.bam.incomedy.server.db.AuthProvider.TELEGRAM

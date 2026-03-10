@@ -18,6 +18,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - Backend endpoints and payloads must be defined and updated via explicit contracts.
 - Breaking API changes require versioning or migration strategy before rollout.
+- Backend database schema changes require versioned forward migrations plus a rollout/backfill strategy for existing environments before merge.
 
 ## CI Quality Gates
 
@@ -48,6 +49,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - Follow project naming conventions and module/package boundaries.
 - Avoid oversized classes/files that mix unrelated responsibilities.
+- Do not embed primary database schema DDL in mutable application startup/service logic once a migration system is in place.
 
 ## Observability
 
