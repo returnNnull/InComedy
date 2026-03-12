@@ -23,7 +23,7 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-12)
+## Current Implementation Status (2026-03-13)
 
 - Implemented:
   - auth/session foundation across mobile and server;
@@ -32,7 +32,9 @@
   - shared session-focused ViewModel/bridge state with role context, linked providers, and organizer workspace list/create wiring;
   - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
   - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
-  - Telegram verify + session restore/refresh/logout backend contract.
+  - Telegram verify + session restore/refresh/logout backend contract;
+  - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
+  - shared/mobile backend error correlation via surfaced backend request ids in failure messages.
 - Partial:
   - VK and Google auth provider wiring exists in mobile data layer, but server-backed linked-identity exchange is not complete;
   - organizer workspace currently supports owner create/list only; invites, member management, and permission editing are still missing;
@@ -77,4 +79,5 @@
 - Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
 - Prefer REST for CRUD and WebSocket/push for live event updates.
 - For PSP/push/payout side effects, prefer transactional outbox + background workers once those domains are introduced.
+- Cross-cutting diagnostics infrastructure must stay sanitized and operator-only; client-visible correlation should use request ids rather than exposing raw server logs.
 - Update this file when introducing major modules or cross-cutting infrastructure.

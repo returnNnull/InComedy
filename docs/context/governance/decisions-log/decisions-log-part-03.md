@@ -55,3 +55,11 @@
 - Decision: Require repository code comments at class/object/interface, method/function, and field/property level, and enforce comment backfill for touched classes in the same change.
 - Rationale: The project is moving from foundation slices to broader product surfaces, and handoff/debugging cost rises quickly when classes and public behavior are under-documented. A mandatory comment baseline improves maintainability across shared, Android, iOS, and server code.
 - Consequences: `engineering-standards.md` and `quality-rules.md` now treat code comments as a required engineering rule. When editing an existing class, its class/method/property comments must be brought up to the rule in the same change instead of leaving mixed documentation quality behind.
+
+## D-052
+
+- Date: 2026-03-13
+- Status: accepted
+- Decision: Expose recent backend diagnostic events through an operator-only, sanitized retrieval mechanism keyed by request correlation ids instead of relying on raw server logs as the only live-debugging path.
+- Rationale: Current mobile/server troubleshooting depends on separately reading device logs and server logs without a safe retrieval channel. That slows down auth and production incident analysis, and raw log access is a poor default because it increases secret/PII exposure risk.
+- Consequences: Backend must retain a bounded set of sanitized diagnostic events, protect retrieval with a dedicated operator token, and keep request-id correlation visible in client-side failures. New backend routes should emit safe diagnostic stages instead of assuming SSH/log tailing will remain the primary investigation path.

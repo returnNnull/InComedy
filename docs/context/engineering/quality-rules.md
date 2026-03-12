@@ -58,6 +58,8 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Include trace identifiers where applicable to simplify diagnostics.
 - For auth callbacks/exchange, logs are mandatory on both backend and mobile entry points.
 - Auth logs must include provider and stage, but must not include access/refresh tokens, bot tokens, or other secrets.
+- Live-environment backend troubleshooting must have an operator-only sanitized retrieval path for recent diagnostic events; debugging must not require exposing raw server logs to clients.
+- Diagnostics retention and payload shape must stay bounded and low-cardinality to avoid turning troubleshooting data into an uncontrolled log sink.
 
 ## Security and Privacy
 

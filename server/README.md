@@ -72,6 +72,7 @@ Security defaults:
 - Telegram auth assertions are single-use server-side and default auth-age is `300` seconds.
 - Public auth JSON bodies are capped in application code (`4 KiB` for Telegram verify, `2 KiB` for refresh).
 - `X-Request-ID` is accepted only in UUID format; invalid values are replaced by a server-generated id.
+- If `DIAGNOSTICS_ACCESS_TOKEN` is configured, the server keeps a bounded in-memory store of sanitized diagnostics events and exposes an operator-only retrieval endpoint.
 
 ## Required Environment Variables
 
@@ -88,12 +89,49 @@ Optional:
 - `DB_ALLOW_INSECURE` - set `true` only to allow remote DB without TLS.
 - `REDIS_ALLOW_INSECURE` - set `true` only to allow remote `redis://` without TLS.
 - `TELEGRAM_AUTH_MAX_AGE_SECONDS` - maximum accepted Telegram auth assertion age. Default: `300`.
+- `DIAGNOSTICS_ACCESS_TOKEN` - enables operator-only diagnostics retrieval endpoint when set.
+- `DIAGNOSTICS_RETENTION_LIMIT` - bounded number of sanitized diagnostics events to retain in memory. Default: `1000`.
 
 Security notes:
 
 - In deploy compose, Postgres is no longer published to host (`5432` is internal only).
 - For remote Redis use `rediss://...` unless you intentionally opt out with `REDIS_ALLOW_INSECURE=true`.
 - Auth rate limiting no longer trusts raw `X-Forwarded-For`; protected routes key limits by authenticated user and public routes use direct peer/token/account identifiers.
+- Diagnostics retrieval is operator-only via `X-Diagnostics-Token` and returns sanitized events, not raw server logs.
+
+## Diagnostics Retrieval
+
+When `DIAGNOSTICS_ACCESS_TOKEN` is set, the backend exposes:
+
+- `GET /api/v1/diagnostics/events`
+
+Supported filters:
+
+- `request_id`
+- `route_prefix`
+- `stage`
+- `status`
+- `from`
+- `to`
+- `limit`
+
+Required header:
+
+- `X-Diagnostics-Token: <operator token>`
+
+Example:
+
+```bash
+INCOMEDY_DIAGNOSTICS_BASE_URL=https://incomedy.ru \
+INCOMEDY_DIAGNOSTICS_TOKEN=replace-me \
+scripts/fetch_server_diagnostics.sh --request-id 123e4567-e89b-12d3-a456-426614174000
+```
+
+Notes:
+
+- Returned events are newest-first.
+- Diagnostics store is bounded in memory and is intended for recent troubleshooting, not long-term audit retention.
+- Use the `requestId` surfaced in backend error messages/device logs to correlate a failing client action with server-side diagnostics.
 
 ## API
 

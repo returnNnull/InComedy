@@ -45,12 +45,7 @@ class TelegramBackendApi(
                     contentType(ContentType.Application.Json)
                     setBody(payload)
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response
                 .body<TelegramBackendSessionResponse>()
                 .toSession()
@@ -64,12 +59,7 @@ class TelegramBackendApi(
                 .get("$baseUrl/api/v1/auth/session/me") {
                     bearer(accessToken)
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response
                 .body<SessionMeResponse>()
                 .user
@@ -84,12 +74,7 @@ class TelegramBackendApi(
                 .get("$baseUrl/api/v1/me/roles") {
                     bearer(accessToken)
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response.body<MeRolesResponse>().toDomain()
         }
     }
@@ -103,12 +88,7 @@ class TelegramBackendApi(
                     contentType(ContentType.Application.Json)
                     setBody(SetActiveRoleRequest(role = role))
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response.body<MeRolesResponse>().toDomain()
         }
     }
@@ -120,12 +100,7 @@ class TelegramBackendApi(
                 .get("$baseUrl/api/v1/workspaces") {
                     bearer(accessToken)
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response.body<WorkspaceListResponse>().workspaces.map(WorkspaceResponse::toDomain)
         }
     }
@@ -143,12 +118,7 @@ class TelegramBackendApi(
                     contentType(ContentType.Application.Json)
                     setBody(CreateWorkspaceRequest(name = name, slug = slug))
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response.body<WorkspaceResponse>().toDomain()
         }
     }
@@ -160,12 +130,7 @@ class TelegramBackendApi(
                 .post("$baseUrl/api/v1/auth/logout") {
                     bearer(accessToken)
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             Unit
         }
     }
@@ -178,25 +143,37 @@ class TelegramBackendApi(
                     contentType(ContentType.Application.Json)
                     setBody(RefreshRequest(refreshToken = refreshToken))
                 }
-            if (!response.status.isSuccess()) {
-                throw BackendStatusException(
-                    statusCode = response.status.value,
-                    message = parseBackendError(response),
-                )
-            }
+            ensureSuccess(response)
             response.body<RefreshResponse>().toDomain()
         }
     }
 
+    /** Проверяет успешность backend-ответа и поднимает исключение с correlation id при ошибке. */
+    private suspend fun ensureSuccess(response: HttpResponse) {
+        if (response.status.isSuccess()) {
+            return
+        }
+        val failure = parseBackendFailure(response)
+        throw BackendStatusException(
+            statusCode = response.status.value,
+            requestId = failure.requestId,
+            message = failure.message,
+        )
+    }
+
     /** Извлекает человекочитаемое сообщение об ошибке из backend-ответа. */
-    private suspend fun parseBackendError(response: HttpResponse): String {
+    private suspend fun parseBackendFailure(response: HttpResponse): BackendFailure {
         val body = response.bodyAsText()
-        return runCatching {
+        val message = runCatching {
             val error = parser.decodeFromString(BackendErrorResponse.serializer(), body)
             error.message ?: "Request failed with status ${response.status.value}"
         }.getOrElse {
             "Request failed with status ${response.status.value}"
         }
+        return BackendFailure(
+            message = message,
+            requestId = response.headers["X-Request-ID"],
+        )
     }
 
     /** Добавляет bearer token в Authorization-заголовок запроса. */
@@ -521,6 +498,17 @@ private data class WorkspaceResponse(
 }
 
 /**
+ * DTO backend failure с trace identifier для корреляции device/server логов.
+ *
+ * @property message Безопасное сообщение backend-ошибки.
+ * @property requestId Echoed `X-Request-ID`, если сервер его вернул.
+ */
+private data class BackendFailure(
+    val message: String,
+    val requestId: String? = null,
+)
+
+/**
  * DTO стандартной backend-ошибки.
  *
  * @property code Машинный код ошибки.
@@ -536,9 +524,12 @@ private data class BackendErrorResponse(
  * Исключение backend API с сохранением HTTP-статуса.
  *
  * @property statusCode HTTP-статус ответа.
- * @property message Сообщение backend-ошибки.
+ * @property requestId Correlation id backend-ответа для поиска серверной диагностики.
  */
 class BackendStatusException(
     val statusCode: Int,
-    override val message: String,
-) : Exception(message)
+    val requestId: String? = null,
+    message: String,
+) : Exception(
+    requestId?.takeIf { it.isNotBlank() }?.let { "$message (requestId=$it)" } ?: message,
+)

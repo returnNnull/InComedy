@@ -10,6 +10,9 @@ import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
 import com.bam.incomedy.server.db.PostgresTelegramUserRepository
 import com.bam.incomedy.server.identity.IdentityRoutes
+import com.bam.incomedy.server.observability.DiagnosticsConfig
+import com.bam.incomedy.server.observability.DiagnosticsRoutes
+import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.observability.isValidRequestId
 import com.bam.incomedy.server.organizer.WorkspaceRoutes
 import com.bam.incomedy.server.security.AuthRateLimiter
@@ -36,9 +39,11 @@ import org.slf4j.event.Level
 import redis.clients.jedis.JedisPooled
 import java.util.UUID
 
+/** Конфигурирует и запускает HTTP-сервер приложения. */
 fun Application.module() {
     val logger = LoggerFactory.getLogger("Application")
     val config = AppConfig.fromEnv()
+    val diagnosticsConfig = DiagnosticsConfig.fromEnv()
     val dataSource = DatabaseFactory.create(config.database)
     DatabaseMigrationRunner.migrate(dataSource)
 
@@ -63,6 +68,13 @@ fun Application.module() {
         }
     } ?: InMemoryAuthRateLimiter().also {
         logger.info("security.rate_limiter.backend=in_memory")
+    }
+    val diagnosticsStore = diagnosticsConfig?.let { diagnostics ->
+        logger.info("observability.diagnostics.enabled retentionLimit={}", diagnostics.retentionLimit)
+        InMemoryDiagnosticsStore(retentionLimit = diagnostics.retentionLimit)
+    } ?: run {
+        logger.info("observability.diagnostics.disabled")
+        null
     }
 
     install(CallId) {
@@ -107,25 +119,40 @@ fun Application.module() {
             )
         }
 
-        TelegramAuthRoutes.register(this, authService, rateLimiter)
+        TelegramAuthRoutes.register(
+            route = this,
+            authService = authService,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
         SessionRoutes.register(
             route = this,
             tokenService = tokenService,
             userRepository = repository,
             rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
         )
         IdentityRoutes.register(
             route = this,
             tokenService = tokenService,
             userRepository = repository,
             rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
         )
         WorkspaceRoutes.register(
             route = this,
             tokenService = tokenService,
             userRepository = repository,
             rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
         )
+        diagnosticsConfig?.let { diagnostics ->
+            DiagnosticsRoutes.register(
+                route = this,
+                diagnosticsStore = diagnosticsStore ?: return@let,
+                accessToken = diagnostics.accessToken,
+            )
+        }
 
         get("/") {
             call.respondText(

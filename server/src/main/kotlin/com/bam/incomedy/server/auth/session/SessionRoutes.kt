@@ -5,6 +5,8 @@ import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRepository
 import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
+import com.bam.incomedy.server.observability.DiagnosticsStore
+import com.bam.incomedy.server.observability.recordCall
 import com.bam.incomedy.server.security.AuthRateLimiter
 import com.bam.incomedy.server.security.directPeerFingerprint
 import io.ktor.http.HttpStatusCode
@@ -21,20 +23,29 @@ import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
+/** Session lifecycle routes с безопасной диагностикой restore/refresh/logout проблем. */
 object SessionRoutes {
+    /** Структурированный logger session routes. */
     private val logger = LoggerFactory.getLogger(SessionRoutes::class.java)
+
+    /** Строгий JSON parser для refresh request payload. */
     private val requestJson = Json {
         ignoreUnknownKeys = false
     }
+
+    /** Валидация формата opaque refresh token. */
     private val refreshTokenRegex = Regex("^[A-Za-z0-9_-]{43}$")
 
+    /** Максимально допустимый размер refresh body. */
     private const val MAX_REFRESH_REQUEST_BYTES = 2 * 1024
 
+    /** Регистрирует session validation, refresh и logout endpoints. */
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
         userRepository: UserRepository,
         rateLimiter: AuthRateLimiter,
+        diagnosticsStore: DiagnosticsStore? = null,
     ) {
         route.route("/api/v1/auth") {
             route("") {
@@ -47,6 +58,12 @@ object SessionRoutes {
                         val requestId = call.callId ?: "n/a"
                         val principal = call.requireSessionPrincipal()
                         if (!rateLimiter.allow(key = "session_me:${principal.user.id}", limit = 120, windowMs = 60_000L)) {
+                            diagnosticsStore?.recordCall(
+                                call = call,
+                                stage = "auth.session.me.rate_limited",
+                                status = HttpStatusCode.TooManyRequests.value,
+                                safeErrorCode = "rate_limited",
+                            )
                             call.respond(
                                 HttpStatusCode.TooManyRequests,
                                 ErrorResponse("rate_limited", "Too many requests"),
@@ -58,6 +75,11 @@ object SessionRoutes {
                             "auth.session.me.success requestId={} userId={}",
                             requestId,
                             user.id,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "auth.session.me.success",
+                            status = HttpStatusCode.OK.value,
                         )
                         call.respond(
                             HttpStatusCode.OK,
@@ -71,6 +93,12 @@ object SessionRoutes {
                         val requestId = call.callId ?: "n/a"
                         val principal = call.requireSessionPrincipal()
                         if (!rateLimiter.allow(key = "logout:${principal.user.id}", limit = 30, windowMs = 60_000L)) {
+                            diagnosticsStore?.recordCall(
+                                call = call,
+                                stage = "auth.logout.rate_limited",
+                                status = HttpStatusCode.TooManyRequests.value,
+                                safeErrorCode = "rate_limited",
+                            )
                             call.respond(
                                 HttpStatusCode.TooManyRequests,
                                 ErrorResponse("rate_limited", "Too many requests"),
@@ -79,6 +107,11 @@ object SessionRoutes {
                         }
                         userRepository.revokeSessions(principal.user.id, Instant.now())
                         logger.info("auth.logout.success requestId={} userId={}", requestId, principal.user.id)
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "auth.logout.success",
+                            status = HttpStatusCode.NoContent.value,
+                        )
                         call.respond(HttpStatusCode.NoContent)
                     }
                 }
@@ -88,6 +121,13 @@ object SessionRoutes {
                 val requestId = call.callId ?: "n/a"
                 val directPeer = call.directPeerFingerprint()
                 if (!rateLimiter.allow(key = "refresh_peer:$directPeer", limit = 600, windowMs = 60_000L)) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "auth.refresh.rate_limited",
+                        status = HttpStatusCode.TooManyRequests.value,
+                        safeErrorCode = "rate_limited",
+                        metadata = mapOf("scope" to "peer"),
+                    )
                     call.respond(
                         HttpStatusCode.TooManyRequests,
                         ErrorResponse("rate_limited", "Too many requests"),
@@ -100,6 +140,12 @@ object SessionRoutes {
                 ).getOrElse { error ->
                     if (error is PayloadTooLargeException) {
                         logger.warn("auth.refresh.payload_too_large requestId={} peer={}", requestId, directPeer)
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "auth.refresh.payload_too_large",
+                            status = HttpStatusCode.PayloadTooLarge.value,
+                            safeErrorCode = "payload_too_large",
+                        )
                         call.respond(
                             HttpStatusCode.PayloadTooLarge,
                             ErrorResponse("payload_too_large", "Request body is too large"),
@@ -107,6 +153,12 @@ object SessionRoutes {
                         return@post
                     }
                     logger.warn("auth.refresh.invalid_payload requestId={} peer={}", requestId, directPeer)
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "auth.refresh.invalid_payload",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
                     call.respond(
                         HttpStatusCode.BadRequest,
                         ErrorResponse("bad_request", "Invalid refresh request payload"),
@@ -114,6 +166,12 @@ object SessionRoutes {
                     return@post
                 }
                 if (!refreshTokenRegex.matches(request.refreshToken)) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "auth.refresh.invalid_token_format",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
                     call.respond(
                         HttpStatusCode.BadRequest,
                         ErrorResponse("bad_request", "Invalid refresh token format"),
@@ -124,6 +182,13 @@ object SessionRoutes {
                 val now = Instant.now()
                 val refreshHash = tokenService.refreshTokenHash(request.refreshToken)
                 if (!rateLimiter.allow(key = "refresh_token:$refreshHash", limit = 30, windowMs = 60_000L)) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "auth.refresh.rate_limited",
+                        status = HttpStatusCode.TooManyRequests.value,
+                        safeErrorCode = "rate_limited",
+                        metadata = mapOf("scope" to "token"),
+                    )
                     call.respond(
                         HttpStatusCode.TooManyRequests,
                         ErrorResponse("rate_limited", "Too many requests"),
@@ -133,6 +198,12 @@ object SessionRoutes {
                 val user = userRepository.consumeRefreshToken(refreshHash, now)
                 if (user == null) {
                     logger.warn("auth.refresh.invalid_token requestId={}", requestId)
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "auth.refresh.invalid_token",
+                        status = HttpStatusCode.Unauthorized.value,
+                        safeErrorCode = "invalid_refresh_token",
+                    )
                     call.respond(
                         HttpStatusCode.Unauthorized,
                         ErrorResponse("unauthorized", "Invalid refresh token"),
@@ -141,6 +212,12 @@ object SessionRoutes {
                 }
                 if (user.sessionRevokedAt != null) {
                     logger.warn("auth.refresh.revoked requestId={} userId={}", requestId, user.id)
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "auth.refresh.revoked",
+                        status = HttpStatusCode.Unauthorized.value,
+                        safeErrorCode = "session_revoked",
+                    )
                     call.respond(
                         HttpStatusCode.Unauthorized,
                         ErrorResponse("unauthorized", "Session revoked"),
@@ -158,6 +235,11 @@ object SessionRoutes {
                     expiresAt = tokenService.refreshExpiryInstant(now),
                 )
                 logger.info("auth.refresh.success requestId={} userId={}", requestId, user.id)
+                diagnosticsStore?.recordCall(
+                    call = call,
+                    stage = "auth.refresh.success",
+                    status = HttpStatusCode.OK.value,
+                )
                 call.respond(
                     HttpStatusCode.OK,
                     RefreshResponse(

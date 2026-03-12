@@ -12,6 +12,7 @@ servers:
     description: Local development
 tags:
   - name: Health
+  - name: Diagnostics
   - name: Auth
   - name: Identity
   - name: Organizer
@@ -28,6 +29,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+  /api/v1/diagnostics/events:
+    get:
+      tags: [Diagnostics]
+      summary: Retrieve recent sanitized backend diagnostic events
+      description: |
+        Operator-only endpoint for correlating device/server failures by request id without exposing raw server logs.
+        The endpoint is enabled only when diagnostics access token is configured on the server.
+      operationId: getDiagnosticsEvents
+      parameters:
+        - in: header
+          name: X-Diagnostics-Token
+          required: true
+          description: Operator-only diagnostics access token.
+          schema:
+            type: string
+        - in: query
+          name: request_id
+          required: false
+          description: Exact request correlation id (`X-Request-ID`) filter.
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: route_prefix
+          required: false
+          description: Prefix filter for HTTP path.
+          schema:
+            type: string
+        - in: query
+          name: stage
+          required: false
+          description: Exact diagnostics stage filter.
+          schema:
+            type: string
+        - in: query
+          name: status
+          required: false
+          description: Exact HTTP status filter.
+          schema:
+            type: integer
+        - in: query
+          name: from
+          required: false
+          description: Inclusive ISO-8601 lower time bound.
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          required: false
+          description: Inclusive ISO-8601 upper time bound.
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: limit
+          required: false
+          description: Maximum number of newest-first events to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Diagnostics events returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticsEventsResponse"
+        "400":
+          description: Invalid diagnostics query filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid diagnostics token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /auth/telegram/callback:
     get:
       tags: [Auth]
@@ -544,6 +627,58 @@ components:
         status:
           type: string
           example: ok
+    DiagnosticsEventsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticsEventResponse"
+    DiagnosticsEventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - recordedAt
+        - requestId
+        - method
+        - route
+        - stage
+        - status
+        - metadata
+      properties:
+        id:
+          type: integer
+          format: int64
+        recordedAt:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+          example: 123e4567-e89b-12d3-a456-426614174000
+        method:
+          type: string
+          example: POST
+        route:
+          type: string
+          example: /api/v1/auth/telegram/verify
+        stage:
+          type: string
+          example: auth.telegram.verify.failed
+        status:
+          type: integer
+          example: 401
+        safeErrorCode:
+          type: string
+          nullable: true
+          example: telegram_auth_hash_invalid
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
     TelegramVerifyRequest:
       type: object
       additionalProperties: false

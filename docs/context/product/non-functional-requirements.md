@@ -25,6 +25,7 @@
 - Sensitive data must be protected in transit and at rest according to platform best practices.
 - PII must be masked/omitted in logs and analytics.
 - Mobile auth tokens must remain in secure storage only.
+- Any operator-facing diagnostics retrieval path must be access-controlled, sanitized, and must not expose tokens, bot secrets, or unnecessary PII.
 - RBAC is mandatory for organizer workspace and staff actions.
 - Public auth/payment/webhook entrypoints require request-size limits, rate limiting, and replay protection where applicable.
 - Critical organizer actions (pricing, refunds, lineup live changes, staff invites) require audit log coverage.
@@ -34,6 +35,7 @@
 - Backend should support rolling deploy without data loss.
 - Health checks and basic alerting must exist for production services.
 - Incident triage path must be documented for payment and ticketing failures.
+- Active staging/production backends must support request-id-based retrieval of recent sanitized diagnostic events for operator troubleshooting.
 - Hold expiration, refund reconciliation, and payout sync require background-job observability.
 
 ## Accessibility and UX Quality

@@ -100,3 +100,71 @@
 - Required docs updates:
   - `docs/context/engineering/test-strategy.md`
   - `docs/context/governance/session-log.md`
+
+---
+
+## Latest Formalized Request (Secure Server Diagnostics Retrieval)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/engineering-standards.md`
+  - `docs/context/engineering/quality-rules.md`
+  - `docs/context/product/non-functional-requirements.md`
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `D-041`, `D-042`, `D-043`, `D-044`, `D-051`
+- Current constraints:
+  - Repository already emits ordinary backend logs and request ids, but there is no safe operator-facing mechanism to retrieve sanitized diagnostics from a running server and correlate them with device-side failures.
+  - The immediate debugging need is Telegram auth failure analysis, but the mechanism must be general for backend domains rather than auth-only.
+  - Retrieval access must not rely on embedding server secrets in the mobile client.
+
+## Goal
+
+- What should be delivered:
+  - Implement a secure, general-purpose server diagnostics retrieval mechanism that allows correlating device-side failures with sanitized backend diagnostic events from a live server.
+
+## Scope
+
+- In scope:
+  - define a general backend diagnostics event format with request correlation id, route/domain, stage, status, safe error code, and bounded safe metadata
+  - store recent sanitized diagnostic events on the server with bounded retention
+  - add a protected backend retrieval endpoint for querying diagnostic events by filters such as request id, route, stage, status, and time window
+  - expose a repository-local CLI/helper command so future chats can fetch server diagnostics when the required operator credentials are configured
+  - surface backend request correlation ids on the client side strongly enough to match device logs with server diagnostics
+  - update docs and tests for the new diagnostics mechanism
+- Out of scope:
+  - shipping raw server logs directly to the mobile app
+  - introducing a full external observability platform such as ELK/Loki/Grafana
+  - storing secrets or operator diagnostics credentials in the mobile client
+
+## Constraints
+
+- Tech/business constraints:
+  - Solution must work with the current `Ktor` backend and current mobile/shared auth stack.
+  - Retrieved diagnostics must be sanitized: no access tokens, refresh tokens, bot tokens, DB credentials, or unnecessary PII.
+  - Retrieval access must be explicitly protected by operator-only credentials configured on the server.
+  - The mechanism must remain useful beyond auth and cover the current backend route surface as a common diagnostics path.
+- Deadlines or milestones:
+  - This diagnostics slice should land before deeper debugging of the Telegram auth failure continues.
+
+## Definition of Done
+
+- Functional result:
+  - running servers expose a protected diagnostics retrieval path for sanitized recent events
+  - device-side failures can be matched to server diagnostics by correlation id
+  - the repository contains a local helper command to fetch diagnostics from a configured server
+  - current auth/session failures become diagnosable through this general mechanism
+- Required tests:
+  - backend tests for diagnostics access control, filtering, and sanitization behavior
+  - backend tests confirming diagnostic capture on current auth/session error paths
+- Required docs updates:
+  - `docs/context/engineering/engineering-standards.md`
+  - `docs/context/engineering/quality-rules.md`
+  - `docs/context/product/non-functional-requirements.md`
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `docs/context/governance/decisions-log.md`
+  - `docs/context/governance/session-log.md`
+  - `docs/context/governance/decision-traceability.md`
+  - `server/README.md`

@@ -54,6 +54,8 @@ This document defines mandatory engineering rules for InComedy.
   - verification/exchange success,
   - verification/exchange failure.
 - Every backend auth request log must include request trace identifier (`X-Request-ID`/call-id).
+- Operator-facing backend diagnostics must be retrievable through a sanitized, token-protected mechanism; raw server logs must not be the only debugging path for live environments.
+- Mobile/shared clients that call backend APIs must surface backend request correlation identifiers strongly enough to match device logs with server diagnostics.
 - Logs must never include secrets or raw auth tokens.
 
 ## Auth Session Security
