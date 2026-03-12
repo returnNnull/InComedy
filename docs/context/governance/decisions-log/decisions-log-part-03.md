@@ -47,3 +47,11 @@
 - Decision: Move backend database evolution to versioned SQL migrations executed during startup, and stop relying on ad-hoc schema bootstrap DDL embedded in application code as the primary rollout mechanism.
 - Rationale: The project has already accumulated multiple schema changes across auth hardening and identity/workspace work. Without versioned migrations, deploy safety depends on mutable startup code, there is no persistent schema history, and existing databases cannot be reasoned about or upgraded confidently across environments.
 - Consequences: Backend stack now includes a migration tool and `db/migration` scripts. Schema changes must be forward-only and recorded as versioned migrations with rollout compatibility for both clean databases and already initialized deployments. Application startup may trigger migration execution, but should no longer contain the schema definition itself.
+
+## D-051
+
+- Date: 2026-03-12
+- Status: accepted
+- Decision: Require repository code comments at class/object/interface, method/function, and field/property level, and enforce comment backfill for touched classes in the same change.
+- Rationale: The project is moving from foundation slices to broader product surfaces, and handoff/debugging cost rises quickly when classes and public behavior are under-documented. A mandatory comment baseline improves maintainability across shared, Android, iOS, and server code.
+- Consequences: `engineering-standards.md` and `quality-rules.md` now treat code comments as a required engineering rule. When editing an existing class, its class/method/property comments must be brought up to the rule in the same change instead of leaving mixed documentation quality behind.

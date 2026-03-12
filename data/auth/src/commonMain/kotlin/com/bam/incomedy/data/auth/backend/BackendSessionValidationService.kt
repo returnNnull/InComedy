@@ -7,9 +7,17 @@ import com.bam.incomedy.feature.auth.domain.SessionValidationFailureReason
 import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.ValidatedSession
 
+/**
+ * Реализация `SessionValidationService`, которая валидирует access token на backend
+ * и при необходимости выполняет refresh.
+ *
+ * @property telegramBackendApi HTTP-клиент backend API сессии.
+ */
 class BackendSessionValidationService(
     private val telegramBackendApi: TelegramBackendApi,
 ) : SessionValidationService {
+
+    /** Проверяет access token и при необходимости обновляет сессию по refresh token. */
     override suspend fun validate(accessToken: String, refreshToken: String?): Result<ValidatedSession> {
         val directValidation = telegramBackendApi.getSessionUser(accessToken)
         if (directValidation.isSuccess) {
@@ -24,6 +32,9 @@ class BackendSessionValidationService(
                         displayName = user.displayName,
                         username = user.username,
                         photoUrl = user.photoUrl,
+                        roles = user.roles,
+                        activeRole = user.activeRole,
+                        linkedProviders = user.linkedProviders,
                     ),
                 )
             }
@@ -32,6 +43,7 @@ class BackendSessionValidationService(
         val validationError = directValidation.exceptionOrNull()
             ?: IllegalStateException("Session validation failed")
         val validationReason = classifyFailure(validationError)
+
         if (validationReason == SessionValidationFailureReason.UNAUTHORIZED && !refreshToken.isNullOrBlank()) {
             return telegramBackendApi.refreshSession(refreshToken)
                 .map { refreshed ->
@@ -59,6 +71,7 @@ class BackendSessionValidationService(
         )
     }
 
+    /** Классифицирует backend-ошибку по типу отказа валидации сессии. */
     private fun classifyFailure(error: Throwable): SessionValidationFailureReason {
         if (error is BackendStatusException && error.statusCode == 401) {
             return SessionValidationFailureReason.UNAUTHORIZED
@@ -68,6 +81,7 @@ class BackendSessionValidationService(
             "resolve host" in message || "timeout" in message || "connection" in message -> {
                 SessionValidationFailureReason.NETWORK
             }
+
             else -> SessionValidationFailureReason.UNKNOWN
         }
     }

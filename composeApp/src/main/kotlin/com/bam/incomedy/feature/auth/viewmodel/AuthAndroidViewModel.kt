@@ -22,14 +22,28 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+/**
+ * Android-адаптер общего auth `ViewModel`, который хранит токены в защищенном хранилище
+ * и прокидывает callback URL в общую авторизационную логику.
+ *
+ * @property application Android application context.
+ */
 class AuthAndroidViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
+    /** Общая модель авторизации из KMP-слоя. */
     private val sharedViewModel: AuthViewModel = InComedyKoin.getAuthViewModel()
+
+    /** IO-скоуп для работы с защищенным хранилищем и эффектами. */
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Защищенное хранилище токенов Android. */
     private val securePrefs = createSecurePreferences(application)
 
+    /** Состояние общего auth-потока для Android UI. */
     val state: StateFlow<AuthState> = sharedViewModel.state
+
+    /** Эффекты общего auth-потока для Android UI. */
     val effects: SharedFlow<AuthEffect> = sharedViewModel.effects
 
     init {
@@ -38,10 +52,12 @@ class AuthAndroidViewModel(
         persistSessionToken()
     }
 
+    /** Передает интент в общий auth-слой. */
     fun onIntent(intent: AuthIntent) {
         sharedViewModel.onIntent(intent)
     }
 
+    /** Обрабатывает callback URL от внешнего auth-провайдера. */
     fun onAuthCallbackUrl(callbackUrl: String?) {
         AuthFlowLogger.event(
             stage = "android.callback_url.received",
@@ -62,6 +78,7 @@ class AuthAndroidViewModel(
         )
     }
 
+    /** Пытается восстановить сессию из локально сохраненных токенов. */
     private fun restoreSessionIfPossible() {
         val accessToken = loadAccessToken() ?: return
         val refreshToken = loadRefreshToken()
@@ -73,6 +90,7 @@ class AuthAndroidViewModel(
         )
     }
 
+    /** Сохраняет токены после успешного изменения общего auth-состояния. */
     private fun persistSessionToken() {
         ioScope.launch {
             state.collectLatest { current ->
@@ -89,6 +107,7 @@ class AuthAndroidViewModel(
         }
     }
 
+    /** Следит за эффектами invalidation и удаляет локальные токены при выходе. */
     private fun observeEffects() {
         ioScope.launch {
             effects.collectLatest { effect ->
@@ -103,33 +122,39 @@ class AuthAndroidViewModel(
     override fun onCleared() {
         super.onCleared()
         ioScope.cancel()
-        sharedViewModel.clear()
     }
 
+    /** Сохраняет access token в защищенное хранилище. */
     private fun saveAccessToken(token: String) {
         securePrefs?.edit { putString(KEY_ACCESS_TOKEN, token) }
     }
 
+    /** Удаляет access token из защищенного хранилища. */
     private fun deleteAccessToken() {
         securePrefs?.edit { remove(KEY_ACCESS_TOKEN) }
     }
 
+    /** Сохраняет refresh token в защищенное хранилище. */
     private fun saveRefreshToken(token: String) {
         securePrefs?.edit { putString(KEY_REFRESH_TOKEN, token) }
     }
 
+    /** Удаляет refresh token из защищенного хранилища. */
     private fun deleteRefreshToken() {
         securePrefs?.edit { remove(KEY_REFRESH_TOKEN) }
     }
 
+    /** Загружает access token из защищенного хранилища. */
     private fun loadAccessToken(): String? {
         return securePrefs?.getString(KEY_ACCESS_TOKEN, null)?.takeIf { it.isNotBlank() }
     }
 
+    /** Загружает refresh token из защищенного хранилища. */
     private fun loadRefreshToken(): String? {
         return securePrefs?.getString(KEY_REFRESH_TOKEN, null)?.takeIf { it.isNotBlank() }
     }
 
+    /** Создает Android secure storage или возвращает `null`, если платформа недоступна. */
     private fun createSecurePreferences(application: Application): SharedPreferences? {
         return runCatching {
             val masterKey = MasterKey.Builder(application)
@@ -152,8 +177,13 @@ class AuthAndroidViewModel(
     }
 
     private companion object {
+        /** Ключ сохранения access token. */
         const val KEY_ACCESS_TOKEN = "access_token"
+
+        /** Ключ сохранения refresh token. */
         const val KEY_REFRESH_TOKEN = "refresh_token"
+
+        /** Имя защищенного набора настроек для auth-сессии. */
         const val SECURE_PREFS_NAME = "auth_session_secure"
     }
 }

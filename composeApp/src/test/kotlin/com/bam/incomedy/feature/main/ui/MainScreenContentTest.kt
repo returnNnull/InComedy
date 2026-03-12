@@ -1,0 +1,230 @@
+package com.bam.incomedy.feature.main.ui
+
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import com.bam.incomedy.testsupport.AndroidUiStateFactory
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import kotlin.test.assertEquals
+
+/**
+ * UI-тесты содержимого главного экрана после авторизации.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [30])
+class MainScreenContentTest {
+
+    /** Правило Compose, которое поднимает экран внутри JVM-теста. */
+    @get:Rule
+    val composeRule = createAndroidComposeRule<ComposeUiTestActivity>()
+
+    /** Проверяет, что домашняя вкладка показывает сводку и рабочие пространства. */
+    @Test
+    fun homeTabShowsWorkspaceSummary() {
+        setMainScreenContent()
+
+        composeRule.onNodeWithTag(MainScreenTags.BOTTOM_BAR).assertIsDisplayed()
+        composeRule.onNodeWithTag(MainScreenTags.HOME_CONTENT).assertIsDisplayed()
+        composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_COUNT).assertTextEquals("1")
+        composeRule.onNodeWithText("Moscow Cellar").assertIsDisplayed()
+    }
+
+    /** Проверяет пустое состояние рабочих пространств без привязки к длинной строке счетчика. */
+    @Test
+    fun homeTabShowsEmptyWorkspaceState() {
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(workspaces = emptyList()),
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_COUNT).assertTextEquals("0")
+        composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_EMPTY).assertIsDisplayed()
+    }
+
+    /** Показывает глобальный индикатор загрузки, когда контекст сессии еще обновляется. */
+    @Test
+    fun mainScreenShowsLoadingIndicatorWhileContextLoads() {
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(isLoadingContext = true),
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.LOADING).assertIsDisplayed()
+    }
+
+    /** Проверяет, что вкладка аккаунта показывает профиль и прокидывает действия роли и выхода. */
+    @Test
+    fun accountTabShowsProfileAndInvokesActions() {
+        var requestedRole: String? = null
+        var signOutClicks = 0
+
+        setMainScreenContent(
+            onSetActiveRole = { requestedRole = it },
+            onSignOut = { signOutClicks += 1 },
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_ACCOUNT).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(MainScreenTags.ACCOUNT_CONTENT).assertIsDisplayed()
+        composeRule.onNodeWithTag(MainScreenTags.ACCOUNT_AVATAR).assertIsDisplayed()
+        composeRule.onNodeWithTag(MainScreenTags.PROFILE_NAME).assertIsDisplayed()
+        composeRule.onNodeWithTag("${MainScreenTags.ROLE_BUTTON_PREFIX}audience")
+            .performScrollTo()
+            .assertIsDisplayed()
+
+        composeRule.onNodeWithTag("${MainScreenTags.ROLE_BUTTON_PREFIX}organizer")
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag(MainScreenTags.SIGN_OUT_BUTTON)
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("organizer", requestedRole)
+        assertEquals(1, signOutClicks)
+    }
+
+    /** Проверяет fallback-поля профиля, если сервер еще не вернул данные пользователя и роли. */
+    @Test
+    fun accountTabShowsFallbackProfileValues() {
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(
+                userId = null,
+                displayName = null,
+                username = null,
+                roles = emptyList(),
+                activeRole = null,
+                linkedProviders = emptyList(),
+                workspaces = emptyList(),
+            ),
+        )
+
+        openAccountTab()
+
+        composeRule.onNodeWithTag(MainScreenTags.PROFILE_NAME).assertTextEquals("Не указано")
+        composeRule.onNodeWithTag(MainScreenTags.PROFILE_USERNAME).assertTextEquals("Не указан")
+        composeRule.onNodeWithTag(MainScreenTags.PROFILE_USER_ID).assertTextEquals("Недоступен")
+        composeRule.onNodeWithTag(MainScreenTags.PROFILE_LINKED_PROVIDERS).assertTextEquals("Не указаны")
+        composeRule.onNodeWithTag(MainScreenTags.ACTIVE_ROLE).assertTextEquals("Роль не выбрана")
+        composeRule.onNodeWithTag(MainScreenTags.NO_ROLES).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(MainScreenTags.ACCOUNT_AVATAR_FALLBACK).assertTextEquals("?")
+    }
+
+    /** Проверяет, что кнопки смены роли блокируются на время серверного переключения. */
+    @Test
+    fun accountTabDisablesRoleButtonsWhileRoleUpdateRuns() {
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(isUpdatingRole = true),
+        )
+
+        openAccountTab()
+
+        composeRule.onNodeWithTag("${MainScreenTags.ROLE_BUTTON_PREFIX}audience")
+            .performScrollTo()
+            .assertIsNotEnabled()
+        composeRule.onNodeWithTag("${MainScreenTags.ROLE_BUTTON_PREFIX}organizer")
+            .performScrollTo()
+            .assertIsNotEnabled()
+    }
+
+    /** Проверяет форму создания рабочего пространства и передачу необязательного slug. */
+    @Test
+    fun workspaceFormSendsNameAndBlankSlugAsNull() {
+        var createdName: String? = null
+        var createdSlug: String? = "sentinel"
+
+        setMainScreenContent(
+            onCreateWorkspace = { name, slug ->
+                createdName = name
+                createdSlug = slug
+            },
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_NAME_INPUT).performTextInput("Fresh Space")
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(MainScreenTags.CREATE_WORKSPACE_BUTTON)
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+
+        assertEquals("Fresh Space", createdName)
+        assertEquals(null, createdSlug)
+    }
+
+    /** Проверяет блокировку создания рабочего пространства во время фонового запроса. */
+    @Test
+    fun workspaceFormDisablesCreateButtonWhileCreateRequestRuns() {
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(isCreatingWorkspace = true),
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_NAME_INPUT).performTextInput("Fresh Space")
+        composeRule.onNodeWithTag(MainScreenTags.CREATE_WORKSPACE_BUTTON)
+            .performScrollTo()
+            .assertIsNotEnabled()
+    }
+
+    /** Проверяет, что баннер ошибки исчезает после очистки состояния. */
+    @Test
+    fun errorBannerHidesAfterClearCallbackUpdatesState() {
+        val state = mutableStateOf(
+            AndroidUiStateFactory.sessionState(errorMessage = "Что-то пошло не так"),
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                MainScreenContent(
+                    state = state.value,
+                    onSetActiveRole = {},
+                    onCreateWorkspace = { _, _ -> },
+                    onClearError = { state.value = state.value.copy(errorMessage = null) },
+                    onSignOut = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(MainScreenTags.ERROR_BANNER).assertIsDisplayed()
+        composeRule.onNodeWithText("Скрыть").performClick()
+        composeRule.onAllNodesWithTag(MainScreenTags.ERROR_BANNER).assertCountEquals(0)
+    }
+
+    /** Поднимает содержимое главного экрана в Material-теме для проверки UI-поведения. */
+    private fun setMainScreenContent(
+        state: com.bam.incomedy.shared.session.SessionState = AndroidUiStateFactory.sessionState(),
+        onSetActiveRole: (String) -> Unit = {},
+        onCreateWorkspace: (String, String?) -> Unit = { _, _ -> },
+        onClearError: () -> Unit = {},
+        onSignOut: () -> Unit = {},
+    ) {
+        composeRule.setContent {
+            MaterialTheme {
+                MainScreenContent(
+                    state = state,
+                    onSetActiveRole = onSetActiveRole,
+                    onCreateWorkspace = onCreateWorkspace,
+                    onClearError = onClearError,
+                    onSignOut = onSignOut,
+                )
+            }
+        }
+    }
+
+    /** Переключает тестовый экран на вкладку аккаунта и дожидается завершения композиции. */
+    private fun openAccountTab() {
+        composeRule.onNodeWithTag(MainScreenTags.TAB_ACCOUNT).performClick()
+        composeRule.waitForIdle()
+    }
+}

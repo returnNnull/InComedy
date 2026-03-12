@@ -5,6 +5,7 @@ import com.bam.incomedy.feature.auth.domain.SocialAuthService
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import org.koin.dsl.module
 
+/** DI-модуль feature-слоя авторизации. */
 val authFeatureModule = module {
     single {
         SocialAuthService(
@@ -12,7 +13,7 @@ val authFeatureModule = module {
         )
     }
 
-    factory {
+    single {
         AuthViewModel(
             socialAuthService = get(),
             sessionValidationService = get(),

@@ -8,10 +8,18 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import com.bam.incomedy.viewmodel.AndroidViewModelFactories
 
+/**
+ * Корневая Android activity, которая поднимает Compose-приложение и принимает auth callback intent.
+ */
 class MainActivity : ComponentActivity() {
-    private val authViewModel: AuthAndroidViewModel by viewModels()
+    /** Android-адаптер auth-состояния, создаваемый через явную фабрику без дефолтной рефлексии. */
+    private val authViewModel: AuthAndroidViewModel by viewModels {
+        AndroidViewModelFactories.auth(application)
+    }
 
+    /** Инициализирует системные insets, пробрасывает callback URL и запускает корневой Compose UI. */
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -22,12 +30,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Передает новый auth callback в уже созданный `AuthAndroidViewModel`. */
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         authViewModel.onAuthCallbackUrl(intent.dataString)
     }
 }
 
+/** Превью корневого Android Compose-контейнера. */
 @Preview
 @Composable
 fun AppAndroidPreview() {

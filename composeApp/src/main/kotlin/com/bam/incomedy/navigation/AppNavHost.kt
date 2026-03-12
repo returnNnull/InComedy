@@ -1,30 +1,82 @@
 package com.bam.incomedy.navigation
 
+import android.app.Application
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.bam.incomedy.feature.auth.navigation.authGraph
+import com.bam.incomedy.feature.auth.ui.AuthScreen
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.main.navigation.mainGraph
+import com.bam.incomedy.feature.main.ui.MainScreen
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.viewmodel.AndroidViewModelFactories
 
+/**
+ * Корневой Compose navigation host Android-приложения.
+ *
+ * @param authViewModel Android-адаптер авторизации, управляющий переходом между auth и main графами.
+ * @param modifier Внешний модификатор `NavHost`.
+ */
 @Composable
 fun AppNavHost(
     authViewModel: AuthAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
+    /** Application context, используемый для явного создания session `ViewModel`. */
+    val application = LocalContext.current.applicationContext as Application
     val navController = rememberNavController()
-    val sessionViewModel: SessionAndroidViewModel = viewModel()
+    val sessionViewModel: SessionAndroidViewModel = viewModel(
+        factory = AndroidViewModelFactories.session(application),
+    )
     val state by authViewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.isAuthorized) {
-        if (state.isAuthorized) {
+    AppNavHostContent(
+        isAuthorized = state.isAuthorized,
+        navController = navController,
+        authContent = { contentModifier ->
+            AuthScreen(
+                viewModel = authViewModel,
+                modifier = contentModifier,
+            )
+        },
+        mainContent = { contentModifier ->
+            MainScreen(
+                sessionViewModel = sessionViewModel,
+                modifier = contentModifier,
+            )
+        },
+        modifier = modifier,
+    )
+}
+
+/**
+ * Тестируемое содержимое корневой Android-навигации без прямой зависимости от Android `ViewModel`.
+ *
+ * @param isAuthorized Показывает, должен ли пользователь видеть auth- или main-граф.
+ * @param authContent Composable-содержимое auth-графа.
+ * @param mainContent Composable-содержимое основного графа.
+ * @param modifier Внешний модификатор `NavHost`.
+ * @param navController Контроллер навигации, который можно подменить в тестах.
+ */
+@Composable
+internal fun AppNavHostContent(
+    isAuthorized: Boolean,
+    authContent: @Composable (Modifier) -> Unit,
+    mainContent: @Composable (Modifier) -> Unit,
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+) {
+    LaunchedEffect(isAuthorized) {
+        if (isAuthorized) {
             navigateToGraph(navController, AppGraph.MAIN)
         } else {
             navigateToGraph(navController, AppGraph.AUTH)
@@ -37,14 +89,24 @@ fun AppNavHost(
         startDestination = AppGraph.AUTH,
         modifier = modifier,
     ) {
-        authGraph(authViewModel = authViewModel)
-        mainGraph(sessionViewModel = sessionViewModel)
+        authGraph(content = authContent)
+        mainGraph(content = mainContent)
     }
 }
 
+/**
+ * Переключает верхнеуровневый граф приложения только при фактической смене auth-состояния.
+ *
+ * @param navController Контроллер навигации приложения.
+ * @param route Целевой верхнеуровневый граф.
+ */
 private fun navigateToGraph(navController: NavHostController, route: String) {
-    val currentRoute = navController.currentDestination?.route
-    if (currentRoute == route) return
+    val isAlreadyInTargetGraph = (
+        navController.currentDestination
+            ?.hierarchy
+            ?.any { destination -> destination.route == route }
+        ) == true
+    if (isAlreadyInTargetGraph) return
     navController.navigate(route) {
         popUpTo(AppGraph.ROOT) {
             inclusive = false

@@ -40,6 +40,12 @@ This document defines mandatory engineering rules for InComedy.
 - Business logic should be isolated from framework code when possible.
 - Side effects (network, storage, time, random) must be abstracted behind interfaces.
 
+## Code Documentation
+
+- Code comments are mandatory for repository code at class/object/interface level, method/function level, and field/property level.
+- Comments must explain purpose and responsibility, not restate syntax mechanically.
+- When editing an existing file, bring touched classes and their methods/properties into compliance with this documentation rule in the same change.
+
 ## Observability
 
 - Auth and payment-related flows must emit structured logs on every critical stage:

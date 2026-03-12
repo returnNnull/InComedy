@@ -29,6 +29,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -49,4 +54,6 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.compose.uiTest.junit4)
+    testImplementation(libs.robolectric)
 }

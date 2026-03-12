@@ -29,6 +29,7 @@ flyway = "9.22.3"
 h2 = "2.2.224"
 javaJwt = "4.5.0"
 jedis = "5.2.0"
+robolectric = "4.14.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -48,6 +49,8 @@ compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.re
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+compose-uiTest-junit4 = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "composeMultiplatform" }
+compose-uiTest-manifest = { module = "org.jetbrains.compose.ui:ui-test-manifest", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlinStdlib" }
@@ -78,6 +81,7 @@ flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
 java-jwt = { module = "com.auth0:java-jwt", version.ref = "javaJwt" }
 jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

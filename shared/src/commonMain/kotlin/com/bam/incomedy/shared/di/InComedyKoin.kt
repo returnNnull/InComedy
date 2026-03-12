@@ -9,17 +9,28 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
+/**
+ * Точка входа в общий Koin-контейнер приложения.
+ */
 object InComedyKoin {
+    /** Удерживает запущенный экземпляр Koin-приложения. */
     private var koinApp: KoinApplication? = null
 
+    /** Базовый набор общих модулей DI для auth и session слоев. */
     private val baseModules: List<Module> = listOf(
         authDataModule,
         authFeatureModule,
         module {
-            factory { SessionViewModel(authViewModel = get()) }
+            single {
+                SessionViewModel(
+                    authViewModel = get(),
+                    sessionContextService = get(),
+                )
+            }
         },
     )
 
+    /** Инициализирует Koin-контейнер, если он еще не был создан. */
     fun init(extraModules: List<Module> = emptyList()) {
         if (koinApp != null) return
         koinApp = startKoin {
@@ -27,11 +38,13 @@ object InComedyKoin {
         }
     }
 
+    /** Возвращает общий auth `ViewModel`. */
     fun getAuthViewModel(): AuthViewModel {
         init()
         return requireNotNull(koinApp).koin.get()
     }
 
+    /** Возвращает общую модель сессии. */
     fun getSessionViewModel(): SessionViewModel {
         init()
         return requireNotNull(koinApp).koin.get()

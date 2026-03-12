@@ -48,3 +48,45 @@
 - Changes: Added ADR `D-050`, updated tooling/quality/architecture/test docs, introduced Flyway-based startup migration runner, moved backend schema to versioned SQL migrations under `server/src/main/resources/db/migration`, removed ad-hoc schema bootstrap DDL from application startup, added automated migration-path tests for clean and legacy schemas, and refreshed server runtime docs with volume/migration behavior.
 - Decisions: Accepted `D-050`: backend DB schema evolution must be managed through versioned migrations rather than mutable startup DDL.
 - Next: Run a first staging deploy with the Flyway transition and verify migration history plus auth/session/workspace smoke flows against the persisted Postgres volume.
+
+## 2026-03-12 22:51
+
+- Context: Requested to continue the next development slice after the backend identity/workspace foundation and formalize the task from free-form input.
+- Changes: Split `task-request-template` again and added a new formalized request for client/shared role and workspace integration, expanded shared auth/session models with roles / active role / linked providers, added shared data-layer support for `me/roles`, `me/active-role`, and organizer `workspaces` endpoints, wired shared session state into Android and iOS main flows for role switching and workspace create/list, aligned Koin session/auth instances with app-level shared state, added shared session tests, and verified the result with Gradle plus `xcodebuild`.
+- Decisions: No new ADR added; implementation advances accepted decisions `D-038`, `D-045`, and `D-049` without changing scope.
+- Next: Deploy the updated build to staging and run auth/roles/workspaces smoke checks against the persisted PostgreSQL volume, then continue with organizer member invitations and permission operations before venue/event domains.
+
+## 2026-03-12 23:50
+
+- Context: Requested a real post-auth main shell with bottom navigation and account UI, mandatory UI coverage, and a new repository-wide comment rule with backfill for previously touched classes.
+- Changes: Formalized the free-form request in `task-request-template-part-04.md`, added Android and iOS post-auth bottom navigation with dedicated account tab, avatar/profile data, role switching, sign-out, and workspace actions, introduced Android Robolectric Compose UI tests plus a real `iosAppUITests` XCUITest target/fixture, updated iOS accessibility identifiers for stable automation, and backfilled class/method/property comments in the classes touched by the previous auth/session slice.
+- Decisions: Accepted `D-051`: repository code comments are mandatory at class/object/interface, method/function, and field/property level, and touched classes must be backfilled in the same change.
+- Next: Run the first staging deploy after the identity/workspace and mobile-shell changes, verify auth/roles/workspaces smoke flows against persisted PostgreSQL, then move to organizer member invitations and permission operations.
+
+## 2026-03-13 00:05
+
+- Context: Reported Android runtime crash on `MainActivity` startup when creating `AuthAndroidViewModel`, plus a follow-up log suggesting a possible missing `INTERNET` permission.
+- Changes: Formalized the hotfix request in `task-request-template-part-04.md`, replaced default reflective Android `ViewModel` creation with explicit factories for `AuthAndroidViewModel` and `SessionAndroidViewModel`, updated the root Compose entry points to use the same deterministic factory path, added Android regression tests for factory creation, and verified that `composeApp/src/main/AndroidManifest.xml` already declares `android.permission.INTERNET`.
+- Decisions: No new ADR added; this is an implementation hardening fix within existing Android/KMP architecture and comment rules.
+- Next: Rebuild and reinstall the Android app from the current sources, verify that startup/auth restore works on device, then continue with the planned staging smoke checks for `auth/roles/workspaces`.
+
+## 2026-03-13 00:10
+
+- Context: Requested to proceed with the first Android UI coverage iteration and keep `docs/context/*` synchronized during the same change.
+- Changes: Formalized the testing slice in `task-request-template-part-04.md`, hardened `MainScreen` with stable state tags for count/empty/fallback assertions, extracted test-friendly `AuthScreenContent` plus `AuthScreenTags`, introduced shared Android UI state factories, expanded Robolectric Compose UI coverage for `MainScreen` and added new executable UI coverage for `AuthScreen`, and verified the slice with `./gradlew :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin`.
+- Decisions: No new ADR added; this change extends the executable-mobile-coverage interpretation already captured in the repository test strategy and reinforces comment-rule compliance in the touched Android/test files.
+- Next: If the repository stays on the Android testing track, start iteration 2 with root auth/main navigation coverage and CI wiring for `:composeApp:testDebugUnitTest`; otherwise resume the previously planned staging smoke checks for `auth/roles/workspaces`.
+
+## 2026-03-13 00:18
+
+- Context: Requested to continue immediately with Android UI testing iteration 2 after the first coverage pass.
+- Changes: Split `task-request-template` again because part 04 exceeded the context-size threshold, formalized the new request in `task-request-template-part-05.md`, extracted a test-friendly `AppNavHostContent` root navigation container, generalized Android auth/main graph builders to accept composable content for tests, added Robolectric Compose coverage for `unauthorized -> auth`, `authorized -> main`, and `state reset/logout -> auth`, introduced GitHub Actions workflow `.github/workflows/ci-android.yml` for `./gradlew :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin`, validated the workflow YAML syntax locally, and verified the Android slice with `./gradlew :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin`.
+- Decisions: No new ADR added; this change operationalizes the existing executable-mobile-coverage rule by extending it to root navigation behavior and repository CI.
+- Next: Either continue the Android testing track with deeper integration coverage around real auth/main screen wiring, or return to the previously deferred staging deploy and smoke checks for `auth/roles/workspaces`.
+
+## 2026-03-13 00:19
+
+- Context: Asked to explicitly record in context docs what the two proposed next steps mean and to defer deeper Android integration coverage for a later return.
+- Changes: Formalized the deferral in `task-request-template-part-05.md`, updated `test-strategy.md` to keep deeper Android integration coverage visible as a postponed follow-up, and locked the immediate next execution step back to staging smoke validation for `auth/roles/workspaces`.
+- Decisions: No new ADR added; this is a sequencing clarification, not a scope or architecture change.
+- Next: Return to the deferred staging deploy/smoke track and validate `auth/roles/workspaces` on staging before resuming deeper Android integration coverage.

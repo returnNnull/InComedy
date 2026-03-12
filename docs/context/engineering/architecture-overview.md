@@ -23,20 +23,20 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-10)
+## Current Implementation Status (2026-03-12)
 
 - Implemented:
   - auth/session foundation across mobile and server;
   - provider-agnostic backend `User + AuthIdentity` persistence foundation behind the current Telegram login;
   - backend role storage, active-role context, and minimal organizer workspace create/list routes;
-  - shared session-focused ViewModel/bridge state;
-  - Android root navigation + auth subgraph;
-  - iOS root graph container with auth/main shells;
+  - shared session-focused ViewModel/bridge state with role context, linked providers, and organizer workspace list/create wiring;
+  - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
+  - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
   - Telegram verify + session restore/refresh/logout backend contract.
 - Partial:
   - VK and Google auth provider wiring exists in mobile data layer, but server-backed linked-identity exchange is not complete;
-  - organizer workspace is backend-foundational only for now (owner create/list), without invites or full staff operations;
-  - iOS bridge/navigation rollout is structural and still limited to auth/main placeholder scope.
+  - organizer workspace currently supports owner create/list only; invites, member management, and permission editing are still missing;
+  - current Android/iOS main flow exposes a foundation shell for account/workspace context, but dedicated organizer feature graphs and deeper operational flows are still missing.
 - Planned next bounded contexts:
   - venues,
   - events,

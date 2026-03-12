@@ -50,6 +50,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Follow project naming conventions and module/package boundaries.
 - Avoid oversized classes/files that mix unrelated responsibilities.
 - Do not embed primary database schema DDL in mutable application startup/service logic once a migration system is in place.
+- Code changes must include required repository code comments at class/object/interface, method/function, and field/property level according to `engineering-standards.md`.
 
 ## Observability
 
