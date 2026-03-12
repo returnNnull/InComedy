@@ -59,16 +59,63 @@
       if (!hasTelegramPayload) hasTelegramPayload = params.has("tgAuthResult");
       if (!hasTelegramPayload) return;
 
-      var target = "incomedy://auth/telegram?" + query;
+      var deepLinkTarget = "incomedy://auth/telegram?" + query;
+      var isAndroid = /android/i.test(window.navigator.userAgent || "");
+      var intentTarget = isAndroid
+        ? "intent://auth/telegram?" + query + "#Intent;scheme=incomedy;package=com.bam.incomedy;end"
+        : deepLinkTarget;
       var openAppButton = document.getElementById("openAppButton");
       var hintText = document.getElementById("hintText");
       var statusText = document.getElementById("statusText");
+      var autoLaunchSettled = false;
+
+      if (window.history && typeof window.history.replaceState === "function") {
+        window.history.replaceState(null, "", "/auth/telegram/callback");
+      }
 
       statusText.textContent = "Returning to InComedy app...";
-      openAppButton.setAttribute("href", target);
+      openAppButton.setAttribute("href", intentTarget);
       openAppButton.style.display = "inline-block";
+      hintText.textContent = isAndroid
+        ? "If the app did not open automatically, tap the button to continue in InComedy."
+        : "If redirect did not happen automatically, tap the button.";
       hintText.style.display = "block";
-      window.location.replace(target);
+
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") {
+          autoLaunchSettled = true;
+        }
+      });
+      window.addEventListener("pagehide", function () {
+        autoLaunchSettled = true;
+      });
+
+      function markFallbackState() {
+        if (autoLaunchSettled) return;
+        statusText.textContent = "Tap Open app to finish signing in.";
+      }
+
+      function tryDeepLinkWithHiddenFrame() {
+        var frame = document.createElement("iframe");
+        frame.setAttribute("title", "incomedy-auth-bridge");
+        frame.style.display = "none";
+        frame.src = deepLinkTarget;
+        document.body.appendChild(frame);
+        window.setTimeout(function () {
+          if (frame.parentNode) {
+            frame.parentNode.removeChild(frame);
+          }
+          markFallbackState();
+        }, 900);
+      }
+
+      window.setTimeout(function () {
+        if (isAndroid) {
+          tryDeepLinkWithHiddenFrame();
+          return;
+        }
+        window.location.replace(deepLinkTarget);
+      }, 120);
     })();
   </script>
 </body>

@@ -40,6 +40,8 @@ val authDataModule = module {
         TelegramAuthProvider(
             botId = "8649746631",
             origin = "https://incomedy.ru",
+            // HTTPS callback bridge keeps Telegram OAuth return on the approved domain
+            // and then hands control back to the mobile app via deep link / intent URL.
             redirectUri = "https://incomedy.ru/auth/telegram/callback",
             backendApi = get(),
         )

@@ -3,6 +3,7 @@ package com.bam.incomedy.server
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.SessionRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthRoutes
+import com.bam.incomedy.server.auth.telegram.TelegramCallbackBridgeRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthService
 import com.bam.incomedy.server.auth.telegram.TelegramAuthVerifier
 import com.bam.incomedy.server.config.AppConfig
@@ -112,12 +113,10 @@ fun Application.module() {
             call.respond(mapOf("status" to "ok"))
         }
 
-        get("/auth/telegram/callback") {
-            call.respondText(
-                text = telegramMobileBridgeHtml(),
-                contentType = ContentType.Text.Html,
-            )
-        }
+        TelegramCallbackBridgeRoutes.register(
+            route = this,
+            diagnosticsStore = diagnosticsStore,
+        )
 
         TelegramAuthRoutes.register(
             route = this,
@@ -156,7 +155,7 @@ fun Application.module() {
 
         get("/") {
             call.respondText(
-                text = telegramMobileBridgeHtml(),
+                text = TelegramCallbackBridgeRoutes.bridgeHtml(),
                 contentType = ContentType.Text.Html,
             )
         }
@@ -168,9 +167,3 @@ data class ErrorResponse(
     val code: String,
     val message: String,
 )
-
-private fun telegramMobileBridgeHtml(): String {
-    val stream = Application::class.java.classLoader.getResourceAsStream("static/telegram-callback.html")
-        ?: error("Missing static/telegram-callback.html resource")
-    return stream.bufferedReader().use { it.readText() }
-}

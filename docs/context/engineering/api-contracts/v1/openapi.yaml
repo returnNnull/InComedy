@@ -116,8 +116,9 @@ paths:
       tags: [Auth]
       summary: Telegram web callback bridge page
       description: |
-        Returns HTML page that redirects from web callback to deep link
-        `incomedy://auth/telegram?...` for mobile app continuation.
+        Returns HTML page that sanitizes the browser callback URL, attempts to
+        reopen the mobile app through `incomedy://auth/telegram?...`, and leaves
+        an explicit fallback button for Android browser handoff continuation.
       operationId: getTelegramCallbackBridge
       responses:
         "200":

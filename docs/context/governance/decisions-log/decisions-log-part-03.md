@@ -63,3 +63,11 @@
 - Decision: Expose recent backend diagnostic events through an operator-only, sanitized retrieval mechanism keyed by request correlation ids instead of relying on raw server logs as the only live-debugging path.
 - Rationale: Current mobile/server troubleshooting depends on separately reading device logs and server logs without a safe retrieval channel. That slows down auth and production incident analysis, and raw log access is a poor default because it increases secret/PII exposure risk.
 - Consequences: Backend must retain a bounded set of sanitized diagnostic events, protect retrieval with a dedicated operator token, and keep request-id correlation visible in client-side failures. New backend routes should emit safe diagnostic stages instead of assuming SSH/log tailing will remain the primary investigation path.
+
+## D-053
+
+- Date: 2026-03-13
+- Status: accepted
+- Decision: Keep Telegram mobile auth on an HTTPS callback bridge hosted on `https://incomedy.ru/auth/telegram/callback`, and let that bridge page hand control back to the app via the registered deep link rather than sending Telegram directly to a custom-scheme `return_to`.
+- Rationale: Real-device Telegram/browser behavior is not reliable when the OAuth flow attempts to jump straight from Telegram to the custom scheme. An HTTPS bridge keeps the return on the approved domain, gives the browser a stable page to run handoff logic from, and provides a place to attach safe diagnostics when the app callback does not arrive.
+- Consequences: `data/auth` must generate Telegram launch URLs with the HTTPS callback bridge, server/OpenAPI/docs must treat `/auth/telegram/callback` as a first-class auth surface, and Android/iOS callback debugging should distinguish `Telegram -> bridge` from `bridge -> app` rather than treating the handoff as a single opaque step.
