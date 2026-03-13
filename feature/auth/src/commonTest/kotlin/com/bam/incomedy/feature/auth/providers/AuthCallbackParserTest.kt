@@ -10,10 +10,10 @@ import kotlin.test.assertNotNull
  */
 class AuthCallbackParserTest {
 
-    /** Telegram deep link с query payload должен корректно определяться как callback Telegram. */
+    /** Telegram deep link с OIDC `code/state` должен корректно определяться как callback Telegram. */
     @Test
-    fun `parses telegram callback from direct deep link query`() {
-        val url = "incomedy://auth/telegram?tgAuthResult=payload&state=test_state"
+    fun `parses telegram callback from oidc deep link query`() {
+        val url = "incomedy://auth/telegram?code=oidc_code&state=test_state"
 
         val parsed = AuthCallbackParser.parse(url)
 
@@ -23,16 +23,16 @@ class AuthCallbackParserTest {
         assertEquals("test_state", parsed.state)
     }
 
-    /** Telegram deep link с fragment payload тоже должен проходить в общий auth flow. */
+    /** Telegram deep link с OIDC fragment payload тоже должен проходить в общий auth flow. */
     @Test
-    fun `parses telegram callback from direct deep link fragment`() {
-        val url = "incomedy://auth/telegram#tgAuthResult=payload"
+    fun `parses telegram callback from oidc deep link fragment`() {
+        val url = "incomedy://auth/telegram#code=oidc_code&state=test_state"
 
         val parsed = AuthCallbackParser.parse(url)
 
         assertNotNull(parsed)
         assertEquals(AuthProviderType.TELEGRAM, parsed.provider)
         assertEquals(url, parsed.code)
-        assertEquals("", parsed.state)
+        assertEquals("test_state", parsed.state)
     }
 }

@@ -32,7 +32,8 @@
   - shared session-focused ViewModel/bridge state with role context, linked providers, and organizer workspace list/create wiring;
   - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
   - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
-  - Telegram verify + session restore/refresh/logout backend contract;
+  - official Telegram OIDC browser auth start (`/api/v1/auth/telegram/start`) with backend-owned PKCE/state, HTTPS callback bridge return into `incomedy://auth/telegram`, and backend code exchange / `id_token` verification before session issuance;
+  - Telegram session restore/refresh/logout backend contract;
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
   - shared/mobile backend error correlation via surfaced backend request ids in failure messages.
 - Partial:

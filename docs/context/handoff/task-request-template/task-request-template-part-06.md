@@ -162,3 +162,54 @@
   - `docs/context/governance/decisions-log.md`
   - `docs/context/governance/session-log.md`
   - `docs/context/governance/decision-traceability.md`
+
+---
+
+## Latest Formalized Request (Telegram Android Bridge Manual Return + Bridge Telemetry)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/governance/decisions-log/decisions-log-part-03.md` (`D-053`)
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `D-032`, `D-052`, `D-053`
+- Current constraints:
+  - Live diagnostics now prove Telegram reaches `/auth/telegram/callback`, but fresh attempts still do not produce `/api/v1/auth/telegram/verify`, which means the remaining gap is the browser bridge handing control back to Android.
+  - User observed that after successful Telegram authorization the browser page simply closes before the explicit fallback button becomes usable.
+  - Existing diagnostics capture the bridge route hit, but they do not yet show whether the bridge page rendered, attempted auto-launch, or surfaced manual fallback.
+
+## Goal
+
+- What should be delivered:
+  - Make the Android Telegram bridge stop auto-closing before the user can continue, and add bridge-side telemetry so future attempts can be split into `bridge loaded`, `manual open shown`, `manual open clicked`, and `app/page hidden`.
+
+## Scope
+
+- In scope:
+  - switch Android bridge behavior to user-gesture-first app return instead of immediate auto-launch
+  - keep non-Android automatic deep-link continuation
+  - add a safe public bridge telemetry endpoint captured by the diagnostics store
+  - update tests/contracts/docs for the new telemetry route and Android handoff behavior
+- Out of scope:
+  - redesigning auth UI outside the bridge page
+  - changing Telegram payload verification or session issuance
+
+## Constraints
+
+- Tech/business constraints:
+  - telemetry must stay sanitized and low-cardinality
+  - Android bridge page must remain usable even when auto-launch is blocked by browser policy
+  - the solution must preserve repository-based diagnostics retrieval
+
+## Definition of Done
+
+- Functional result:
+  - Android users see a stable `Open app` fallback instead of an immediate disappearing callback page
+  - diagnostics can distinguish bridge rendering from manual handoff click
+- Required tests:
+  - server bridge route/telemetry tests
+  - existing auth/mobile tests remain green
+- Required docs updates:
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `docs/context/governance/session-log.md`
+  - `docs/context/governance/decision-traceability.md`

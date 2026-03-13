@@ -3,6 +3,7 @@ package com.bam.incomedy.data.auth.di
 import com.bam.incomedy.data.auth.backend.BackendSessionTerminationService
 import com.bam.incomedy.data.auth.backend.BackendSessionValidationService
 import com.bam.incomedy.data.auth.backend.BackendSessionContextService
+import com.bam.incomedy.data.auth.backend.TelegramAuthGateway
 import com.bam.incomedy.data.auth.backend.TelegramBackendApi
 import com.bam.incomedy.data.auth.providers.GoogleAuthProvider
 import com.bam.incomedy.data.auth.providers.TelegramAuthProvider
@@ -18,7 +19,7 @@ import org.koin.dsl.module
 val authDataModule = module {
     single {
         TelegramBackendApi()
-    }
+    } bind TelegramAuthGateway::class
     single<SessionValidationService> {
         BackendSessionValidationService(telegramBackendApi = get())
     }
@@ -38,12 +39,7 @@ val authDataModule = module {
 
     single {
         TelegramAuthProvider(
-            botId = "8649746631",
-            origin = "https://incomedy.ru",
-            // HTTPS callback bridge keeps Telegram OAuth return on the approved domain
-            // and then hands control back to the mobile app via deep link / intent URL.
-            redirectUri = "https://incomedy.ru/auth/telegram/callback",
-            backendApi = get(),
+            gateway = get(),
         )
     } bind SocialAuthProvider::class
 

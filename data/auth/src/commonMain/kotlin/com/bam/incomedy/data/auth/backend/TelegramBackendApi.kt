@@ -36,9 +36,18 @@ class TelegramBackendApi(
             json(Json { ignoreUnknownKeys = true })
         }
     },
-) {
+) : TelegramAuthGateway {
+    /** Запрашивает backend launch URL для официального Telegram browser auth flow. */
+    override suspend fun startTelegramAuth(): Result<TelegramAuthLaunch> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/auth/telegram/start")
+            ensureSuccess(response)
+            response.body<TelegramAuthLaunchResponse>().toDomain()
+        }
+    }
+
     /** Отправляет Telegram verify payload и возвращает серверную сессию. */
-    suspend fun verifyTelegram(payload: TelegramVerifyPayload): Result<TelegramBackendSession> {
+    override suspend fun verifyTelegram(payload: TelegramVerifyPayload): Result<TelegramBackendSession> {
         return runCatching {
             val response = httpClient
                 .post("$baseUrl/api/v1/auth/telegram/verify") {
@@ -183,29 +192,26 @@ class TelegramBackendApi(
 }
 
 /**
- * Payload подтверждения входа через Telegram Login Widget.
+ * Launch-конфигурация Telegram auth, полученная от backend-а.
  *
- * @property id Telegram identifier пользователя.
- * @property firstName Имя пользователя из Telegram.
- * @property lastName Фамилия пользователя из Telegram.
- * @property username Username пользователя из Telegram.
- * @property photoUrl URL фотографии профиля из Telegram.
- * @property authDate Время авторизации в формате Unix timestamp.
- * @property hash Контрольная подпись Telegram.
+ * @property authUrl Официальный Telegram auth URL для открытия во внешнем браузере.
+ * @property state Серверно выданный state текущей auth-попытки.
+ */
+data class TelegramAuthLaunch(
+    val authUrl: String,
+    val state: String,
+)
+
+/**
+ * Payload завершения Telegram auth после возврата из callback bridge.
+ *
+ * @property code Telegram authorization code из callback URL.
+ * @property state Серверно выданный state текущей auth-попытки.
  */
 @Serializable
 data class TelegramVerifyPayload(
-    val id: Long,
-    @SerialName("first_name")
-    val firstName: String,
-    @SerialName("last_name")
-    val lastName: String? = null,
-    val username: String? = null,
-    @SerialName("photo_url")
-    val photoUrl: String? = null,
-    @SerialName("auth_date")
-    val authDate: Long,
-    val hash: String,
+    val code: String,
+    val state: String,
 )
 
 /**
@@ -260,6 +266,27 @@ private data class TelegramBackendSessionResponse(
             accessToken = accessToken,
             refreshToken = refreshToken,
             user = user.toDomain(),
+        )
+    }
+}
+
+/**
+ * DTO backend-ответа на успешный Telegram auth start.
+ *
+ * @property authUrl Официальный Telegram auth URL.
+ * @property state Серверно выданный state.
+ */
+@Serializable
+private data class TelegramAuthLaunchResponse(
+    @SerialName("auth_url")
+    val authUrl: String,
+    val state: String,
+) {
+    /** Преобразует backend launch response в доменную launch-модель. */
+    fun toDomain(): TelegramAuthLaunch {
+        return TelegramAuthLaunch(
+            authUrl = authUrl,
+            state = state,
         )
     }
 }

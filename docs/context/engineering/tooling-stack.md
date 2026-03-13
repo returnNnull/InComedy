@@ -22,7 +22,7 @@ Status labels:
 ## Candidate
 
 - Authentication providers:
-  - Telegram login (server verify + mobile callback wiring) in progress
+  - Telegram login via official `oauth.telegram.org` OIDC authorization-code flow with backend `/token` exchange, PKCE, and HTTPS callback bridge back into the app
   - VK ID
   - Google Identity / Credential Manager wrappers
   - Sign in with Apple (required for iOS release if third-party login remains)

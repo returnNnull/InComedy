@@ -1,43 +1,99 @@
 package com.bam.incomedy.data.auth.providers
 
-import com.bam.incomedy.data.auth.di.authDataModule
+import com.bam.incomedy.data.auth.backend.TelegramAuthGateway
+import com.bam.incomedy.data.auth.backend.TelegramAuthLaunch
+import com.bam.incomedy.data.auth.backend.TelegramBackendSession
+import com.bam.incomedy.data.auth.backend.TelegramVerifyPayload
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
+import com.bam.incomedy.feature.auth.domain.AuthorizedUser
 import kotlinx.coroutines.runBlocking
-import org.koin.core.context.stopKoin
-import org.koin.core.context.startKoin
-import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Тесты Telegram launch URL конфигурации в data-layer DI.
+ * Тесты Telegram provider-а, работающего через backend-driven launch/verify flow.
  */
 class TelegramAuthProviderLaunchUrlTest {
 
-    /** Закрывает глобальный Koin-контекст после каждого теста. */
-    @AfterTest
-    fun tearDown() {
-        stopKoin()
-    }
-
-    /** Telegram launch URL должен возвращать пользователя на HTTPS callback bridge домена. */
+    /** Provider должен возвращать auth URL и state, полученные от backend-а. */
     @Test
-    fun `telegram auth launch request uses domain callback bridge`() {
-        val koin = startKoin {
-            modules(authDataModule)
-        }.koin
-        val telegramProvider = koin.getAll<SocialAuthProvider>()
-            .single { it.type == AuthProviderType.TELEGRAM }
+    fun `telegram auth launch request uses backend launch response`() {
+        val provider = TelegramAuthProvider(
+            gateway = FakeTelegramAuthGateway(
+                launch = TelegramAuthLaunch(
+                    authUrl = "https://oauth.telegram.org/auth?client_id=test&response_type=code",
+                    state = "server_state",
+                ),
+            ),
+        )
 
         val request = runBlocking {
-            telegramProvider.createLaunchRequest(state = "fixed_state").getOrThrow()
+            provider.createLaunchRequest(state = "ignored_client_state").getOrThrow()
         }
 
         assertEquals(AuthProviderType.TELEGRAM, request.provider)
-        assertTrue(request.url.contains("origin=https%3A%2F%2Fincomedy.ru"))
-        assertTrue(request.url.contains("return_to=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback"))
-        assertTrue(!request.url.contains("return_to=incomedy%3A%2F%2Fauth%2Ftelegram"))
+        assertEquals("server_state", request.state)
+        assertTrue(request.url.contains("https://oauth.telegram.org/auth"))
+        assertTrue(request.url.contains("response_type=code"))
+    }
+
+    /** Provider должен извлекать `code/state` из callback URL и передавать их backend-у. */
+    @Test
+    fun `telegram auth exchange forwards code and state from callback`() {
+        val gateway = FakeTelegramAuthGateway(
+            launch = TelegramAuthLaunch(
+                authUrl = "https://oauth.telegram.org/auth?client_id=test",
+                state = "server_state",
+            ),
+        )
+        val provider = TelegramAuthProvider(gateway = gateway)
+
+        val session = runBlocking {
+            provider.exchangeCode(
+                code = "incomedy://auth/telegram?code=oidc_code&state=server_state",
+                state = "server_state",
+            ).getOrThrow()
+        }
+
+        assertEquals("oidc_code", gateway.lastVerifyPayload?.code)
+        assertEquals("server_state", gateway.lastVerifyPayload?.state)
+        assertEquals("user-1", session.userId)
+    }
+}
+
+/**
+ * Простой fake gateway для unit-тестов Telegram auth provider-а.
+ *
+ * @property launch Статический launch-ответ backend-а.
+ */
+private class FakeTelegramAuthGateway(
+    private val launch: TelegramAuthLaunch,
+) : TelegramAuthGateway {
+    /** Последний verify payload, переданный provider-ом в fake backend. */
+    var lastVerifyPayload: TelegramVerifyPayload? = null
+        private set
+
+    /** Возвращает заранее заданный launch-ответ. */
+    override suspend fun startTelegramAuth(): Result<TelegramAuthLaunch> {
+        return Result.success(launch)
+    }
+
+    /** Сохраняет verify payload и возвращает фиктивную backend-сессию. */
+    override suspend fun verifyTelegram(payload: TelegramVerifyPayload): Result<TelegramBackendSession> {
+        lastVerifyPayload = payload
+        return Result.success(
+            TelegramBackendSession(
+                userId = "user-1",
+                accessToken = "access-token",
+                refreshToken = "refresh-token",
+                user = AuthorizedUser(
+                    id = "user-1",
+                    displayName = "Telegram User",
+                    username = "telegram_user",
+                    photoUrl = null,
+                ),
+            ),
+        )
     }
 }
