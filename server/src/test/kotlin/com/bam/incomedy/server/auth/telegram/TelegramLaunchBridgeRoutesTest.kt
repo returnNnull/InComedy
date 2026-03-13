@@ -180,7 +180,7 @@ private class FakeTelegramLaunchBridgeOidcGateway : TelegramOidcGateway {
             "?client_id=test-client-id" +
             "&redirect_uri=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback" +
             "&response_type=code" +
-            "&scope=openid%20profile" +
+            "&scope=openid%20profile%20phone" +
             "&state=$state" +
             "&code_challenge=test_challenge" +
             "&code_challenge_method=S256"

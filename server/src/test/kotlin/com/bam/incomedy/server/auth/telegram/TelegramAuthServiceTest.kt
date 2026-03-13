@@ -88,6 +88,7 @@ class TelegramAuthServiceTest {
         assertTrue(officialUrl.contains("https://oauth.telegram.org/auth"))
         assertTrue(officialUrl.contains("response_type=code"))
         assertTrue(officialUrl.contains("client_id=test-client-id"))
+        assertTrue(officialUrl.contains("scope=openid%20profile%20phone"))
         assertTrue(officialUrl.contains("state=${launch.state}"))
     }
 
@@ -154,7 +155,7 @@ private class FakeTelegramServiceOidcGateway : TelegramOidcGateway {
             "?client_id=test-client-id" +
             "&redirect_uri=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback" +
             "&response_type=code" +
-            "&scope=openid%20profile" +
+            "&scope=openid%20profile%20phone" +
             "&state=$state" +
             "&code_challenge=test_challenge" +
             "&code_challenge_method=S256"

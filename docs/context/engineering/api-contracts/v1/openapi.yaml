@@ -133,7 +133,8 @@ paths:
       summary: Telegram first-party launch bridge page
       description: |
         Returns HTML page on the approved InComedy origin that resumes the current
-        Telegram OIDC attempt and navigates the browser to `oauth.telegram.org/auth`.
+        Telegram OIDC attempt with documented `openid profile phone` scope and
+        navigates the browser to `oauth.telegram.org/auth`.
         The page strips the signed `state` from browser history, exposes a manual
         fallback button, and emits safe launch telemetry.
       operationId: getTelegramLaunchBridge
@@ -237,7 +238,8 @@ paths:
       description: |
         Returns an InComedy first-party launch URL together with a server-issued
         signed `state` value for the current mobile login attempt. The launch page
-        then resumes the official Telegram OIDC browser flow on an approved origin.
+        then resumes the official Telegram OIDC browser flow with documented
+        `openid profile phone` scope on an approved origin.
       operationId: getTelegramAuthStart
       parameters:
         - in: header

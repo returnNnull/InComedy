@@ -66,7 +66,7 @@ class TelegramOidcClient(
                 "client_id" to clientId,
                 "redirect_uri" to redirectUri,
                 "response_type" to "code",
-                "scope" to "openid profile",
+                "scope" to "openid profile phone",
                 "state" to state,
                 "code_challenge" to codeChallenge,
                 "code_challenge_method" to "S256",
