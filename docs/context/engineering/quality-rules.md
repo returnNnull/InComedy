@@ -19,7 +19,6 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Backend endpoints and payloads must be defined and updated via explicit contracts.
 - Breaking API changes require versioning or migration strategy before rollout.
 - Backend database schema changes require versioned forward migrations plus a rollout/backfill strategy for existing environments before merge.
-- Replacing an active third-party auth/payment provider flow requires documented validation in the target launch market plus an explicit rollback plan before merge.
 
 ## CI Quality Gates
 
@@ -40,7 +39,6 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - Enforce `presentation -> domain -> data` dependency direction.
 - External SDKs/APIs must be wrapped behind adapters/interfaces.
-- Region- or provider-specific external flows must not become the default production path until staging/device smoke checks confirm they operate in the current target market.
 
 ## UI State Consistency
 

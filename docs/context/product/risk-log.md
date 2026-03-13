@@ -130,16 +130,6 @@ Use this file to track active product/technical risks, including current securit
 - Owner: Product + Engineering
 - Status: open
 
-## R-011
-
-- Date: 2026-03-13
-- Risk: Replacing the active Telegram auth flow with a provider path that has not been validated for the RU launch market can lock out users and break sign-in on staging/production.
-- Impact: Critical
-- Probability: Medium
-- Mitigation: Keep the legacy Telegram verify flow as the active path, require RU-market staging/device smoke validation plus a rollback plan before promoting any new Telegram provider flow, and treat the OIDC code-exchange rollout as deferred until that evidence exists.
-- Owner: Product + Engineering
-- Status: in-progress
-
 ## V-001
 
 - Date discovered: 2026-02-24

@@ -68,8 +68,8 @@ Security defaults:
 
 - Caddy config adds baseline security headers and CSP.
 - Server container runs as non-root `appuser`.
-- Telegram auth payload is validated for format/length/https constraints before hash verification.
-- Telegram auth assertions are single-use server-side and default auth-age is `300` seconds.
+- Telegram auth uses the official `oauth.telegram.org` authorization-code flow with backend `/token` exchange, signed server-side `state`, PKCE, and `id_token` verification against Telegram JWKS.
+- Telegram auth assertions remain single-use server-side after successful OIDC verification.
 - Public auth JSON bodies are capped in application code (`4 KiB` for Telegram verify, `2 KiB` for refresh).
 - `X-Request-ID` is accepted only in UUID format; invalid values are replaced by a server-generated id.
 - If `DIAGNOSTICS_ACCESS_TOKEN` is configured, the server keeps a bounded in-memory store of sanitized diagnostics events and exposes an operator-only retrieval endpoint.
@@ -80,7 +80,8 @@ Security defaults:
 - `DB_USER`
 - `DB_PASSWORD`
 - `JWT_SECRET`
-- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_LOGIN_CLIENT_ID`
+- `TELEGRAM_LOGIN_CLIENT_SECRET`
 
 Optional:
 
@@ -88,7 +89,10 @@ Optional:
 - `DB_SSL_MODE` - PostgreSQL SSL mode (`disable`, `require`, `verify-full`, ...). Default: `disable` for local DB hosts, `require` for remote hosts.
 - `DB_ALLOW_INSECURE` - set `true` only to allow remote DB without TLS.
 - `REDIS_ALLOW_INSECURE` - set `true` only to allow remote `redis://` without TLS.
-- `TELEGRAM_AUTH_MAX_AGE_SECONDS` - maximum accepted Telegram auth assertion age. Default: `300`.
+- `TELEGRAM_LOGIN_REDIRECT_URI` - registered Telegram login redirect URI. Default: `https://incomedy.ru/auth/telegram/callback`.
+- `TELEGRAM_LOGIN_STATE_SECRET` - HMAC secret for server-issued Telegram login `state`. Defaults to `JWT_SECRET` when omitted.
+- `TELEGRAM_LOGIN_STATE_TTL_SECONDS` - maximum lifetime of a Telegram login `state`. Default: `600`.
+- `TELEGRAM_BOT_TOKEN` - optional Telegram bot token if other backend slices still need bot access.
 - `DIAGNOSTICS_ACCESS_TOKEN` - enables operator-only diagnostics retrieval endpoint when set.
 - `DIAGNOSTICS_RETENTION_LIMIT` - bounded number of sanitized diagnostics events to retain in memory. Default: `1000`.
 
@@ -139,6 +143,19 @@ Notes:
 
 - `GET /health`
 
+### Telegram auth start
+
+- `GET /api/v1/auth/telegram/start`
+
+Response body:
+
+```json
+{
+  "auth_url": "https://oauth.telegram.org/auth?client_id=8649746631&redirect_uri=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback&response_type=code&scope=openid%20profile&state=signed_state&code_challenge=pkce_challenge&code_challenge_method=S256",
+  "state": "signed_state"
+}
+```
+
 ### Telegram auth verify
 
 - `POST /api/v1/auth/telegram/verify`
@@ -146,13 +163,8 @@ Notes:
 
 ```json
 {
-  "id": 123456789,
-  "first_name": "John",
-  "last_name": "Doe",
-  "username": "johndoe",
-  "photo_url": "https://t.me/i/userpic/320/johndoe.jpg",
-  "auth_date": 1700000000,
-  "hash": "telegram_hash"
+  "code": "tg_login_authorization_code",
+  "state": "signed_state"
 }
 ```
 
@@ -201,10 +213,7 @@ Runtime `.env` is managed directly on the server at:
     "id": "uuid",
     "display_name": "John Doe",
     "username": "johndoe",
-    "photo_url": "https://...",
-    "roles": ["audience"],
-    "active_role": "audience",
-    "linked_providers": ["telegram"]
+    "photo_url": "https://..."
   }
 }
 ```
