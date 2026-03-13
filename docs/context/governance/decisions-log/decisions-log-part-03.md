@@ -63,3 +63,11 @@
 - Decision: Expose recent backend diagnostic events through an operator-only, sanitized retrieval mechanism keyed by request correlation ids instead of relying on raw server logs as the only live-debugging path.
 - Rationale: Current mobile/server troubleshooting depends on separately reading device logs and server logs without a safe retrieval channel. That slows down auth and production incident analysis, and raw log access is a poor default because it increases secret/PII exposure risk.
 - Consequences: Backend must retain a bounded set of sanitized diagnostic events, protect retrieval with a dedicated operator token, and keep request-id correlation visible in client-side failures. New backend routes should emit safe diagnostic stages instead of assuming SSH/log tailing will remain the primary investigation path.
+
+## D-053
+
+- Date: 2026-03-13
+- Status: accepted
+- Decision: Roll back the active Telegram auth implementation to the legacy payload-verify flow (`id` / `auth_date` / `hash`) and defer the Telegram OIDC authorization-code rollout (`client_id` / `redirect_uri` / backend `/token` exchange) until target-market validation exists for the RU launch slice.
+- Rationale: The repository switched the active auth contract from the existing Telegram payload-verify flow to an OIDC-style code-exchange flow on top of `oauth.telegram.org` based on provider documentation and a callback mismatch investigation, but that rollout happened without confirming operability for the actual RU target market. The result is a product regression in the only currently shipped auth entry path, so the correct short-term action is rollback rather than further iteration on an unvalidated path.
+- Consequences: Active Telegram auth contracts, env examples, server docs, and mobile/backend implementations must return to the legacy verify flow. Any future Telegram flow replacement must include explicit RU-market staging/device validation and a rollback plan before merge.

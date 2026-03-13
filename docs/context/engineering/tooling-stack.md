@@ -22,7 +22,7 @@ Status labels:
 ## Candidate
 
 - Authentication providers:
-  - Telegram login via official `oauth.telegram.org` OIDC authorization-code flow with backend `/token` exchange, PKCE, and HTTPS callback bridge back into the app
+  - Telegram login via legacy Telegram payload verify (`hash` / `auth_date`) with backend session issuance and mobile callback wiring
   - VK ID
   - Google Identity / Credential Manager wrappers
   - Sign in with Apple (required for iOS release if third-party login remains)
@@ -40,6 +40,10 @@ Status labels:
 - KMP iOS interop helpers:
   - KMP-NativeCoroutines (bridge Flow/suspend to Swift async/Combine)
   - KMP-ObservableViewModel (optional ViewModel bridge convenience)
+
+## Deferred
+
+- Active mobile rollout of the Telegram OIDC-style authorization-code flow (`client_id` / `redirect_uri` / backend `/token` exchange on top of `oauth.telegram.org`) until target-market validation for the RU launch slice is documented and staging/device smoke checks prove operability.
 
 ## Decision Rule
 

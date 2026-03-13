@@ -126,91 +126,10 @@ paths:
             text/html:
               schema:
                 type: string
-  /auth/telegram/callback/telemetry:
-    get:
-      tags: [Auth]
-      summary: Telegram callback bridge client telemetry
-      description: |
-        Internal bridge-side telemetry endpoint used by the callback page to emit
-        safe low-cardinality client-side stages such as bridge load and button click.
-      operationId: getTelegramCallbackBridgeTelemetry
-      parameters:
-        - in: query
-          name: stage
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: is_android
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_query
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_fragment
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_payload
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: launch_mode
-          required: false
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Telemetry accepted
-  /api/v1/auth/telegram/start:
-    get:
-      tags: [Auth]
-      summary: Start official Telegram login flow
-      description: |
-        Returns the official Telegram browser auth URL together with a server-issued
-        signed `state` value for the current mobile login attempt.
-      operationId: getTelegramAuthStart
-      parameters:
-        - in: header
-          name: X-Request-ID
-          required: false
-          description: Optional client-provided UUID request id for tracing.
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Telegram auth start data generated successfully
-          headers:
-            X-Request-ID:
-              description: Server trace identifier
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TelegramAuthStartResponse"
-        "429":
-          description: Rate limit exceeded
-          headers:
-            X-Request-ID:
-              description: Server trace identifier
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/telegram/verify:
     post:
       tags: [Auth]
-      summary: Verify Telegram authorization code and issue app session
+      summary: Verify Telegram login payload and issue app session
       operationId: postTelegramVerify
       parameters:
         - in: header
@@ -250,7 +169,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-          description: Verification failed (invalid code, invalid id_token, or replayed assertion)
+          description: Verification failed (expired/invalid/replayed Telegram assertion)
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -755,41 +674,49 @@ components:
         safeErrorCode:
           type: string
           nullable: true
-          example: telegram_auth_code_exchange_failed
+          example: telegram_auth_hash_invalid
         metadata:
           type: object
           additionalProperties:
             type: string
-    TelegramAuthStartResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - auth_url
-        - state
-      properties:
-        auth_url:
-          type: string
-          format: uri
-          example: https://oauth.telegram.org/auth?client_id=8649746631&redirect_uri=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback&response_type=code&scope=openid%20profile&state=signed_state&code_challenge=abc123&code_challenge_method=S256
-        state:
-          type: string
-          minLength: 32
-          example: ZXlKaFpHUmxjaUk2SW5OMFlYUmxJaXdpWTI5a1pWOTJaWEpwWm1sbGNpSTZJbUZpWXpFeU15SXNJbVY0Y0NJNk1UY3dNREF3TURBd2ZRLnNpZ25hdHVyZQ
     TelegramVerifyRequest:
       type: object
       additionalProperties: false
       required:
-        - code
-        - state
+        - id
+        - first_name
+        - auth_date
+        - hash
       properties:
-        code:
+        id:
+          type: integer
+          format: int64
+          example: 123456789
+        first_name:
           type: string
           minLength: 1
-          example: tg_login_authorization_code
-        state:
+          example: John
+        last_name:
           type: string
-          minLength: 32
-          example: ZXlKaFpHUmxjaUk2SW5OMFlYUmxJaXdpWTI5a1pWOTJaWEpwWm1sbGNpSTZJbUZpWXpFeU15SXNJbVY0Y0NJNk1UY3dNREF3TURBd2ZRLnNpZ25hdHVyZQ
+          nullable: true
+          example: Doe
+        username:
+          type: string
+          nullable: true
+          example: johndoe
+        photo_url:
+          type: string
+          nullable: true
+          example: https://t.me/i/userpic/320/johndoe.jpg
+        auth_date:
+          type: integer
+          format: int64
+          example: 1700000000
+        hash:
+          type: string
+          minLength: 64
+          maxLength: 64
+          example: 84e3cf9be4e4a0087d2ce0f3f9385cbf1f4ce3bd5c32f5e6a00c88cba8f66ef6
     TelegramAuthResponse:
       type: object
       additionalProperties: false

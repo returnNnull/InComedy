@@ -32,14 +32,14 @@
   - shared session-focused ViewModel/bridge state with role context, linked providers, and organizer workspace list/create wiring;
   - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
   - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
-  - official Telegram OIDC browser auth start (`/api/v1/auth/telegram/start`) with backend-owned PKCE/state, HTTPS callback bridge return into `incomedy://auth/telegram`, and backend code exchange / `id_token` verification before session issuance;
-  - Telegram session restore/refresh/logout backend contract;
+  - legacy Telegram payload verify (`id` / `auth_date` / `hash`) + session restore/refresh/logout backend contract;
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
   - shared/mobile backend error correlation via surfaced backend request ids in failure messages.
 - Partial:
   - VK and Google auth provider wiring exists in mobile data layer, but server-backed linked-identity exchange is not complete;
   - organizer workspace currently supports owner create/list only; invites, member management, and permission editing are still missing;
-  - current Android/iOS main flow exposes a foundation shell for account/workspace context, but dedicated organizer feature graphs and deeper operational flows are still missing.
+  - current Android/iOS main flow exposes a foundation shell for account/workspace context, but dedicated organizer feature graphs and deeper operational flows are still missing;
+  - Telegram OIDC code-exchange rollout was reverted; the legacy Telegram payload verify path remains active until RU-market validation exists for any replacement.
 - Planned next bounded contexts:
   - venues,
   - events,
@@ -81,4 +81,5 @@
 - Prefer REST for CRUD and WebSocket/push for live event updates.
 - For PSP/push/payout side effects, prefer transactional outbox + background workers once those domains are introduced.
 - Cross-cutting diagnostics infrastructure must stay sanitized and operator-only; client-visible correlation should use request ids rather than exposing raw server logs.
+- External auth-flow replacements must be validated against the target launch market before they replace an already working provider path.
 - Update this file when introducing major modules or cross-cutting infrastructure.

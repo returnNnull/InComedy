@@ -12,7 +12,6 @@ import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,79 +31,19 @@ object TelegramAuthRoutes {
     /** Максимально допустимый размер Telegram verify body. */
     private const val MAX_VERIFY_REQUEST_BYTES = 4 * 1024
 
-    /** Rate limit по direct peer для Telegram auth start. */
-    private const val START_DIRECT_PEER_LIMIT = 120
-
     /** Rate limit по direct peer для Telegram verify. */
     private const val VERIFY_DIRECT_PEER_LIMIT = 600
 
-    /** Регистрирует Telegram auth start/verify endpoints. */
+    /** Rate limit по Telegram account id для Telegram verify. */
+    private const val VERIFY_TELEGRAM_ID_LIMIT = 20
+
+    /** Регистрирует Telegram auth verification endpoint. */
     fun register(
         route: Route,
         authService: TelegramAuthService,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {
-        route.get("/api/v1/auth/telegram/start") {
-            val requestId = call.callId ?: "n/a"
-            val directPeer = call.directPeerFingerprint()
-            if (!rateLimiter.allow(
-                    key = "telegram_start_peer:$directPeer",
-                    limit = START_DIRECT_PEER_LIMIT,
-                    windowMs = 60_000L,
-                )
-            ) {
-                logger.warn("auth.telegram.start.rate_limited requestId={} peer={}", requestId, directPeer)
-                diagnosticsStore?.recordCall(
-                    call = call,
-                    stage = "auth.telegram.start.rate_limited",
-                    status = HttpStatusCode.TooManyRequests.value,
-                    safeErrorCode = "rate_limited",
-                )
-                call.respond(
-                    HttpStatusCode.TooManyRequests,
-                    ErrorResponse("rate_limited", "Too many requests"),
-                )
-                return@get
-            }
-
-            val result = authService.createLaunchRequest()
-            result.fold(
-                onSuccess = { launch ->
-                    logger.info("auth.telegram.start.success requestId={}", requestId)
-                    diagnosticsStore?.recordCall(
-                        call = call,
-                        stage = "auth.telegram.start.success",
-                        status = HttpStatusCode.OK.value,
-                    )
-                    call.respond(
-                        HttpStatusCode.OK,
-                        TelegramAuthStartResponse(
-                            authUrl = launch.authUrl,
-                            state = launch.state,
-                        ),
-                    )
-                },
-                onFailure = { error ->
-                    logger.error(
-                        "auth.telegram.start.failed requestId={} reason={}",
-                        requestId,
-                        error.message ?: "unknown",
-                    )
-                    diagnosticsStore?.recordCall(
-                        call = call,
-                        stage = "auth.telegram.start.failed",
-                        status = HttpStatusCode.InternalServerError.value,
-                        safeErrorCode = "telegram_auth_start_failed",
-                    )
-                    call.respond(
-                        HttpStatusCode.InternalServerError,
-                        ErrorResponse("telegram_auth_start_failed", "Unable to start Telegram auth"),
-                    )
-                },
-            )
-        }
-
         route.post("/api/v1/auth/telegram/verify") {
             val requestId = call.callId ?: "n/a"
             val directPeer = call.directPeerFingerprint()
@@ -159,11 +98,32 @@ object TelegramAuthRoutes {
                 )
                 return@post
             }
+            if (!rateLimiter.allow(
+                    key = "telegram_verify_id:${request.id}",
+                    limit = VERIFY_TELEGRAM_ID_LIMIT,
+                    windowMs = 60_000L,
+                )
+            ) {
+                logger.warn("auth.telegram.verify.rate_limited requestId={} telegramId={}", requestId, request.id)
+                diagnosticsStore?.recordCall(
+                    call = call,
+                    stage = "auth.telegram.verify.rate_limited",
+                    status = HttpStatusCode.TooManyRequests.value,
+                    safeErrorCode = "rate_limited",
+                    metadata = mapOf("scope" to "telegram_id"),
+                )
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    ErrorResponse("rate_limited", "Too many requests"),
+                )
+                return@post
+            }
             logger.info(
-                "auth.telegram.verify.received requestId={} hasCode={} statePresent={}",
+                "auth.telegram.verify.received requestId={} telegramId={} hasUsername={} hasPhoto={}",
                 requestId,
-                request.code.isNotBlank(),
-                request.state.isNotBlank(),
+                request.id,
+                !request.username.isNullOrBlank(),
+                !request.photoUrl.isNullOrBlank(),
             )
 
             val result = authService.verifyAndCreateSession(request)
@@ -195,7 +155,14 @@ object TelegramAuthRoutes {
                     )
                 },
                 onFailure = { error ->
-                    val status = failureStatus(error)
+                    val status = if (error.message?.contains("hash", ignoreCase = true) == true ||
+                        error.message?.contains("expired", ignoreCase = true) == true ||
+                        error is ReplayedTelegramAuthException
+                    ) {
+                        HttpStatusCode.Unauthorized
+                    } else {
+                        HttpStatusCode.BadRequest
+                    }
                     val safeMessage = if (status == HttpStatusCode.Unauthorized) {
                         "Telegram auth failed"
                     } else {
@@ -225,39 +192,22 @@ object TelegramAuthRoutes {
 
     /** Преобразует внутреннюю причину verify failure в безопасный машинный код. */
     private fun safeFailureCode(error: Throwable, status: HttpStatusCode): String {
-        return when (error) {
-            is ReplayedTelegramAuthException -> "telegram_auth_replayed"
-            is InvalidTelegramAuthStateException -> "telegram_auth_state_invalid"
-            is TelegramOidcExchangeException -> "telegram_auth_code_exchange_failed"
-            is TelegramIdTokenVerificationException -> "telegram_auth_id_token_invalid"
-            else -> if (status == HttpStatusCode.BadRequest) {
-                "telegram_auth_bad_request"
-            } else {
-                "telegram_auth_failed"
-            }
+        if (error is ReplayedTelegramAuthException) {
+            return "telegram_auth_replayed"
         }
-    }
-
-    /** Определяет HTTP-статус для конкретной Telegram auth failure причины. */
-    private fun failureStatus(error: Throwable): HttpStatusCode {
-        return when (error) {
-            is ReplayedTelegramAuthException,
-            is TelegramOidcExchangeException,
-            is TelegramIdTokenVerificationException -> HttpStatusCode.Unauthorized
-            is InvalidTelegramAuthStateException -> HttpStatusCode.BadRequest
-            else -> HttpStatusCode.BadRequest
+        val message = error.message?.lowercase().orEmpty()
+        return when {
+            "hash" in message -> "telegram_auth_hash_invalid"
+            "expired" in message -> "telegram_auth_expired"
+            "auth_date" in message -> "telegram_auth_date_invalid"
+            "username" in message -> "telegram_username_invalid"
+            "photo_url" in message -> "telegram_photo_url_invalid"
+            status == HttpStatusCode.BadRequest -> "telegram_auth_bad_request"
+            else -> "telegram_auth_failed"
         }
     }
 }
 
-/**
- * Успешный backend-ответ после завершения Telegram auth.
- *
- * @property accessToken Внутренний access token.
- * @property refreshToken Внутренний refresh token.
- * @property expiresInSeconds TTL access token в секундах.
- * @property user Профиль авторизованного пользователя.
- */
 @Serializable
 data class TelegramAuthResponse(
     @SerialName("access_token")
@@ -269,14 +219,6 @@ data class TelegramAuthResponse(
     val user: TelegramAuthUserResponse,
 )
 
-/**
- * Профиль пользователя в успешном Telegram auth response.
- *
- * @property id Внутренний user id.
- * @property displayName Отображаемое имя профиля.
- * @property username Username профиля, если он привязан.
- * @property photoUrl Ссылка на аватар профиля.
- */
 @Serializable
 data class TelegramAuthUserResponse(
     val id: String,
