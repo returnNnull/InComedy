@@ -130,6 +130,16 @@ Use this file to track active product/technical risks, including current securit
 - Owner: Product + Engineering
 - Status: open
 
+## R-011
+
+- Date: 2026-03-13
+- Risk: Switching the active Telegram auth path without device/browser validation for the current RU launch slice can lock out users and leave the mobile login flow stuck before backend verification.
+- Impact: Critical
+- Probability: Medium
+- Mitigation: Keep the official Telegram OIDC + HTTPS callback bridge as the active path, require RU-market staging/device smoke validation plus a rollback plan before promoting any future Telegram auth replacement, and avoid unvalidated direct raw mobile launch patterns as production defaults.
+- Owner: Product + Engineering
+- Status: in-progress
+
 ## V-001
 
 - Date discovered: 2026-02-24

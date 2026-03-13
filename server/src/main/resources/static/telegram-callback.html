@@ -55,20 +55,65 @@
       if (hash.length > 1) parts.push(hash.substring(1));
       var query = parts.filter(Boolean).join("&");
       var params = new URLSearchParams(query);
-      var hasTelegramPayload = params.has("id") && params.has("auth_date") && params.has("hash");
+      var hasTelegramPayload = params.has("code");
+      if (!hasTelegramPayload) hasTelegramPayload = params.has("id") && params.has("auth_date") && params.has("hash");
       if (!hasTelegramPayload) hasTelegramPayload = params.has("tgAuthResult");
       if (!hasTelegramPayload) return;
 
-      var target = "incomedy://auth/telegram?" + query;
+      var deepLinkTarget = "incomedy://auth/telegram?" + query;
+      var isAndroid = /android/i.test(window.navigator.userAgent || "");
       var openAppButton = document.getElementById("openAppButton");
       var hintText = document.getElementById("hintText");
       var statusText = document.getElementById("statusText");
 
-      statusText.textContent = "Returning to InComedy app...";
-      openAppButton.setAttribute("href", target);
+      if (window.history && typeof window.history.replaceState === "function") {
+        window.history.replaceState(null, "", "/auth/telegram/callback");
+      }
+
+      function emitTelemetry(stage, launchMode) {
+        var payload = new URLSearchParams();
+        payload.set("stage", stage);
+        payload.set("is_android", String(isAndroid));
+        payload.set("has_query", String(search.length > 1));
+        payload.set("has_fragment", String(hash.length > 1));
+        payload.set("has_payload", String(hasTelegramPayload));
+        payload.set("launch_mode", launchMode || "n/a");
+        var beacon = new Image();
+        beacon.src = "/auth/telegram/callback/telemetry?" + payload.toString();
+      }
+
+      statusText.textContent = isAndroid
+        ? "Tap Open app to finish signing in."
+        : "Returning to InComedy app...";
+      openAppButton.setAttribute("href", deepLinkTarget);
       openAppButton.style.display = "inline-block";
+      hintText.textContent = isAndroid
+        ? "If the app did not open automatically, tap the button to continue in InComedy."
+        : "If redirect did not happen automatically, tap the button.";
       hintText.style.display = "block";
-      window.location.replace(target);
+      emitTelemetry("bridge_loaded", isAndroid ? "manual_button" : "auto_deeplink");
+
+      openAppButton.addEventListener("click", function () {
+        emitTelemetry("open_app_clicked", isAndroid ? "manual_button" : "manual_deeplink");
+      });
+
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") {
+          emitTelemetry("page_hidden", isAndroid ? "manual_button" : "auto_deeplink");
+        }
+      });
+      window.addEventListener("pagehide", function () {
+        emitTelemetry("page_hidden", isAndroid ? "manual_button" : "auto_deeplink");
+      });
+
+      window.setTimeout(function () {
+        if (isAndroid) {
+          emitTelemetry("manual_open_presented", "manual_button");
+          return;
+        }
+        emitTelemetry("autolaunch_attempted", "auto_deeplink");
+        window.location.replace(deepLinkTarget);
+      }, 120);
     })();
   </script>
 </body>

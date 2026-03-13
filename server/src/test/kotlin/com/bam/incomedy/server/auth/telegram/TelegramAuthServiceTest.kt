@@ -111,7 +111,7 @@ class TelegramAuthServiceTest {
         const val REDIRECT_URI = "https://incomedy.ru/auth/telegram/callback"
 
         /** Фиксированное текущее время для предсказуемой проверки state TTL. */
-        val NOW: Instant = Instant.parse("2026-03-13T08:00:00Z")
+        val NOW: Instant = Instant.parse("2036-03-13T08:00:00Z")
     }
 }
 

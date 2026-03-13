@@ -55,7 +55,6 @@ data class AppConfig(
                 ),
                 telegram = TelegramConfig(
                     botToken = env["TELEGRAM_BOT_TOKEN"]?.takeIf { it.isNotBlank() },
-                    maxAuthAgeSeconds = env["TELEGRAM_AUTH_MAX_AGE_SECONDS"]?.toLongOrNull() ?: 300L,
                     loginClientId = env.require("TELEGRAM_LOGIN_CLIENT_ID"),
                     loginClientSecret = env.require("TELEGRAM_LOGIN_CLIENT_SECRET"),
                     loginRedirectUri = env["TELEGRAM_LOGIN_REDIRECT_URI"]
@@ -105,10 +104,9 @@ data class JwtConfig(
 )
 
 /**
- * Конфиг Telegram login и связанных legacy-совместимых параметров.
+ * Конфиг Telegram login и связанных интеграций.
  *
  * @property botToken Текущий bot token Telegram, если он нужен другим backend-срезам.
- * @property maxAuthAgeSeconds Legacy TTL для старого hash-based verify flow.
  * @property loginClientId Client ID официального Telegram login flow.
  * @property loginClientSecret Client secret официального Telegram login flow.
  * @property loginRedirectUri Зарегистрированный redirect URI Telegram login flow.
@@ -117,7 +115,6 @@ data class JwtConfig(
  */
 data class TelegramConfig(
     val botToken: String?,
-    val maxAuthAgeSeconds: Long,
     val loginClientId: String,
     val loginClientSecret: String,
     val loginRedirectUri: String,
