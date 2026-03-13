@@ -3,10 +3,8 @@ package com.bam.incomedy.server
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.SessionRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthRoutes
-import com.bam.incomedy.server.auth.telegram.TelegramCallbackBridgeRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthService
-import com.bam.incomedy.server.auth.telegram.TelegramLoginStateCodec
-import com.bam.incomedy.server.auth.telegram.TelegramOidcClient
+import com.bam.incomedy.server.auth.telegram.TelegramAuthVerifier
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
@@ -50,23 +48,12 @@ fun Application.module() {
     DatabaseMigrationRunner.migrate(dataSource)
 
     val repository = PostgresTelegramUserRepository(dataSource)
+    val verifier = TelegramAuthVerifier(
+        botToken = config.telegram.botToken,
+        maxAuthAgeSeconds = config.telegram.maxAuthAgeSeconds,
+    )
     val tokenService = JwtSessionTokenService(config.jwt)
-    val loginStateCodec = TelegramLoginStateCodec(
-        redirectUri = config.telegram.loginRedirectUri,
-        secret = config.telegram.loginStateSecret,
-        ttlSeconds = config.telegram.loginStateTtlSeconds,
-    )
-    val oidcClient = TelegramOidcClient(
-        clientId = config.telegram.loginClientId,
-        clientSecret = config.telegram.loginClientSecret,
-        redirectUri = config.telegram.loginRedirectUri,
-    )
-    val authService = TelegramAuthService(
-        loginStateCodec = loginStateCodec,
-        oidcClient = oidcClient,
-        repository = repository,
-        tokenService = tokenService,
-    )
+    val authService = TelegramAuthService(verifier, repository, tokenService)
     val rateLimiter: AuthRateLimiter = config.redis?.let { redis ->
         runCatching {
             RedisAuthRateLimiter(JedisPooled(redis.url))
@@ -125,11 +112,12 @@ fun Application.module() {
             call.respond(mapOf("status" to "ok"))
         }
 
-        TelegramCallbackBridgeRoutes.register(
-            route = this,
-            diagnosticsStore = diagnosticsStore,
-            rateLimiter = rateLimiter,
-        )
+        get("/auth/telegram/callback") {
+            call.respondText(
+                text = telegramMobileBridgeHtml(),
+                contentType = ContentType.Text.Html,
+            )
+        }
 
         TelegramAuthRoutes.register(
             route = this,
@@ -168,21 +156,21 @@ fun Application.module() {
 
         get("/") {
             call.respondText(
-                text = TelegramCallbackBridgeRoutes.bridgeHtml(),
+                text = telegramMobileBridgeHtml(),
                 contentType = ContentType.Text.Html,
             )
         }
     }
 }
 
-/**
- * Унифицированная безопасная ошибка HTTP API.
- *
- * @property code Машинно-читаемый код ошибки.
- * @property message Безопасное сообщение для клиента.
- */
 @Serializable
 data class ErrorResponse(
     val code: String,
     val message: String,
 )
+
+private fun telegramMobileBridgeHtml(): String {
+    val stream = Application::class.java.classLoader.getResourceAsStream("static/telegram-callback.html")
+        ?: error("Missing static/telegram-callback.html resource")
+    return stream.bufferedReader().use { it.readText() }
+}

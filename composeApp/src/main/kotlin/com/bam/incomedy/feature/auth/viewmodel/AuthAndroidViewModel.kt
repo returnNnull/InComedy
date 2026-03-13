@@ -61,30 +61,11 @@ class AuthAndroidViewModel(
     fun onAuthCallbackUrl(callbackUrl: String?) {
         AuthFlowLogger.event(
             stage = "android.callback_url.received",
-            details = safeAuthCallbackSummary(callbackUrl),
+            details = "hasUrl=${!callbackUrl.isNullOrBlank()}",
         )
-        if (callbackUrl.isNullOrBlank()) {
-            AuthFlowLogger.event(
-                stage = "android.callback_url.ignored",
-                details = "reason=empty",
-            )
-            return
-        }
-        val parsed = AuthCallbackParser.parse(callbackUrl)
-        if (parsed == null) {
-            AuthFlowLogger.event(
-                stage = "android.callback_url.ignored",
-                details = "reason=unrecognized ${safeAuthCallbackSummary(callbackUrl)}",
-            )
-            return
-        }
+        val parsed = callbackUrl?.let { AuthCallbackParser.parse(it) } ?: return
         AuthFlowLogger.event(
             stage = "android.callback_url.parsed",
-            provider = parsed.provider,
-            details = "statePresent=${parsed.state.isNotBlank()} ${safeAuthCallbackSummary(callbackUrl)}",
-        )
-        AuthFlowLogger.event(
-            stage = "android.callback_url.forwarded",
             provider = parsed.provider,
             details = "statePresent=${parsed.state.isNotBlank()}",
         )
