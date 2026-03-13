@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 import java.time.Instant
 
 /**
- * Ответ backend-а с официальным Telegram auth URL и серверно подписанным state.
+ * Ответ backend-а с first-party Telegram launch URL и серверно подписанным state.
  *
- * @property authUrl URL, который нужно открыть во внешнем браузере.
+ * @property authUrl URL на домене InComedy, который нужно открыть во внешнем браузере.
  * @property state Серверно подписанный state текущей попытки входа.
  */
 @Serializable
@@ -32,7 +32,7 @@ data class TelegramVerifyRequest(
 /**
  * Внутреннее представление Telegram launch-конфигурации для мобильного клиента.
  *
- * @property authUrl URL авторизации, который должен быть открыт во внешнем браузере.
+ * @property authUrl First-party launch URL, который должен быть открыт во внешнем браузере.
  * @property state Серверно подписанный state конкретной auth-попытки.
  */
 data class TelegramAuthLaunch(

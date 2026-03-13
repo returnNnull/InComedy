@@ -28,6 +28,7 @@ class TelegramAuthServiceTest {
             oidcClient = FakeTelegramServiceOidcGateway(),
             repository = repository,
             tokenService = testTokenService(),
+            launchUri = LAUNCH_URI,
         )
         val launch = service.createLaunchRequest().getOrThrow()
         val request = TelegramVerifyRequest(
@@ -43,9 +44,9 @@ class TelegramAuthServiceTest {
         assertIs<ReplayedTelegramAuthException>(secondResult.exceptionOrNull())
     }
 
-    /** Серверный auth start должен возвращать официальный launch URL и state. */
+    /** Серверный auth start должен возвращать first-party launch URL и state. */
     @Test
-    fun `createLaunchRequest returns official auth url and state`() {
+    fun `createLaunchRequest returns first party launch url and state`() {
         val service = TelegramAuthService(
             loginStateCodec = TelegramLoginStateCodec(
                 redirectUri = REDIRECT_URI,
@@ -56,14 +57,38 @@ class TelegramAuthServiceTest {
             oidcClient = FakeTelegramServiceOidcGateway(),
             repository = InMemoryTelegramUserRepository(),
             tokenService = testTokenService(),
+            launchUri = LAUNCH_URI,
         )
 
         val launch = service.createLaunchRequest().getOrThrow()
 
-        assertTrue(launch.authUrl.contains("https://oauth.telegram.org/auth"))
-        assertTrue(launch.authUrl.contains("response_type=code"))
-        assertTrue(launch.authUrl.contains("client_id=test-client-id"))
+        assertTrue(launch.authUrl.startsWith("$LAUNCH_URI?state="))
         assertTrue(launch.state.isNotBlank())
+    }
+
+    /** Launch bridge должен уметь восстановить официальный auth URL из выданного state. */
+    @Test
+    fun `resolveOfficialAuthUrl rebuilds telegram oidc url from state`() {
+        val service = TelegramAuthService(
+            loginStateCodec = TelegramLoginStateCodec(
+                redirectUri = REDIRECT_URI,
+                secret = "state-secret",
+                ttlSeconds = 600L,
+                nowProvider = { NOW },
+            ),
+            oidcClient = FakeTelegramServiceOidcGateway(),
+            repository = InMemoryTelegramUserRepository(),
+            tokenService = testTokenService(),
+            launchUri = LAUNCH_URI,
+        )
+
+        val launch = service.createLaunchRequest().getOrThrow()
+        val officialUrl = service.resolveOfficialAuthUrl(launch.state).getOrThrow()
+
+        assertTrue(officialUrl.contains("https://oauth.telegram.org/auth"))
+        assertTrue(officialUrl.contains("response_type=code"))
+        assertTrue(officialUrl.contains("client_id=test-client-id"))
+        assertTrue(officialUrl.contains("state=${launch.state}"))
     }
 
     /** Успешный verify flow должен создавать внутреннюю сессию для Telegram user id из OIDC. */
@@ -79,6 +104,7 @@ class TelegramAuthServiceTest {
             oidcClient = FakeTelegramServiceOidcGateway(),
             repository = InMemoryTelegramUserRepository(),
             tokenService = testTokenService(),
+            launchUri = LAUNCH_URI,
         )
         val launch = service.createLaunchRequest().getOrThrow()
 
@@ -109,6 +135,9 @@ class TelegramAuthServiceTest {
     private companion object {
         /** Фиксированный redirect URI для server-side Telegram auth тестов. */
         const val REDIRECT_URI = "https://incomedy.ru/auth/telegram/callback"
+
+        /** Фиксированный first-party launch URI для server-side Telegram auth тестов. */
+        const val LAUNCH_URI = "https://incomedy.ru/auth/telegram/launch"
 
         /** Фиксированное текущее время для предсказуемой проверки state TTL. */
         val NOW: Instant = Instant.parse("2036-03-13T08:00:00Z")

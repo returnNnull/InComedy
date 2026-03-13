@@ -98,6 +98,7 @@ class TelegramAuthDiagnosticsTest {
             oidcClient = FakeTelegramDiagnosticsOidcGateway(),
             repository = repository,
             tokenService = tokenService,
+            launchUri = "https://incomedy.ru/auth/telegram/launch",
         )
     }
 }

@@ -18,7 +18,7 @@ Status labels:
 - Redis: shared short-lived state / distributed coordination / rate limiting
 - CI/CD: `GitHub Actions`
 - Server packaging/runtime: `Docker` + `Docker Compose`
-- Active Telegram auth: official `oauth.telegram.org` OIDC authorization-code flow with backend `/token` exchange, PKCE, and HTTPS callback bridge back into the app
+- Active Telegram auth: official `oauth.telegram.org` OIDC authorization-code flow started from a first-party `https://incomedy.ru/auth/telegram/launch` page, with backend `/token` exchange, PKCE, and HTTPS callback bridge back into the app
 
 ## Candidate
 

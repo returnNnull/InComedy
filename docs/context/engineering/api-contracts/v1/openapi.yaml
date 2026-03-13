@@ -127,6 +127,67 @@ paths:
             text/html:
               schema:
                 type: string
+  /auth/telegram/launch:
+    get:
+      tags: [Auth]
+      summary: Telegram first-party launch bridge page
+      description: |
+        Returns HTML page on the approved InComedy origin that resumes the current
+        Telegram OIDC attempt and navigates the browser to `oauth.telegram.org/auth`.
+        The page strips the signed `state` from browser history, exposes a manual
+        fallback button, and emits safe launch telemetry.
+      operationId: getTelegramLaunchBridge
+      parameters:
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: HTML launch bridge page
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Invalid or expired Telegram auth state
+          content:
+            text/html:
+              schema:
+                type: string
+  /auth/telegram/launch/telemetry:
+    get:
+      tags: [Auth]
+      summary: Telegram launch bridge client telemetry
+      description: |
+        Internal launch-bridge telemetry endpoint used by the first-party page to emit
+        safe low-cardinality client-side stages such as redirect readiness and button click.
+      operationId: getTelegramLaunchBridgeTelemetry
+      parameters:
+        - in: query
+          name: stage
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: is_android
+          required: false
+          schema:
+            type: boolean
+        - in: query
+          name: has_auth_url
+          required: false
+          schema:
+            type: boolean
+        - in: query
+          name: redirect_mode
+          required: false
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Telemetry accepted
   /auth/telegram/callback/telemetry:
     get:
       tags: [Auth]
@@ -174,8 +235,9 @@ paths:
       tags: [Auth]
       summary: Start official Telegram login flow
       description: |
-        Returns the official Telegram browser auth URL together with a server-issued
-        signed `state` value for the current mobile login attempt.
+        Returns an InComedy first-party launch URL together with a server-issued
+        signed `state` value for the current mobile login attempt. The launch page
+        then resumes the official Telegram OIDC browser flow on an approved origin.
       operationId: getTelegramAuthStart
       parameters:
         - in: header
@@ -771,7 +833,7 @@ components:
         auth_url:
           type: string
           format: uri
-          example: https://oauth.telegram.org/auth?client_id=8649746631&redirect_uri=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback&response_type=code&scope=openid%20profile&state=signed_state&code_challenge=abc123&code_challenge_method=S256
+          example: https://incomedy.ru/auth/telegram/launch?state=signed_state
         state:
           type: string
           minLength: 32

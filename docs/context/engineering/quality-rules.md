@@ -41,6 +41,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Enforce `presentation -> domain -> data` dependency direction.
 - External SDKs/APIs must be wrapped behind adapters/interfaces.
 - Region- or provider-specific external flows must not become the default production path until staging/device smoke checks confirm they operate in the current target market.
+- When a provider's live browser behavior requires an approved first-party web origin, mobile clients must open a backend-issued first-party launch surface instead of direct raw provider URLs.
 
 ## UI State Consistency
 

@@ -8,6 +8,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -67,6 +68,7 @@ class TelegramAuthRoutesTest {
         val response = client.get("/api/v1/auth/telegram/start")
 
         assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(true, response.bodyAsText().contains("/auth/telegram/launch?state="))
     }
 
     /** Rate limit verify должен оставаться независимым от spoofed forwarded headers. */
@@ -139,6 +141,7 @@ class TelegramAuthRoutesTest {
                     refreshTtlSeconds = 86400L,
                 ),
             ),
+            launchUri = "https://incomedy.ru/auth/telegram/launch",
         )
     }
 }

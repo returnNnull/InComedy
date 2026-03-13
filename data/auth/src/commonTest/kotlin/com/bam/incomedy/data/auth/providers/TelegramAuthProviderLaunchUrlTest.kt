@@ -22,7 +22,7 @@ class TelegramAuthProviderLaunchUrlTest {
         val provider = TelegramAuthProvider(
             gateway = FakeTelegramAuthGateway(
                 launch = TelegramAuthLaunch(
-                    authUrl = "https://oauth.telegram.org/auth?client_id=test&response_type=code",
+                    authUrl = "https://incomedy.ru/auth/telegram/launch?state=server_state",
                     state = "server_state",
                 ),
             ),
@@ -34,8 +34,8 @@ class TelegramAuthProviderLaunchUrlTest {
 
         assertEquals(AuthProviderType.TELEGRAM, request.provider)
         assertEquals("server_state", request.state)
-        assertTrue(request.url.contains("https://oauth.telegram.org/auth"))
-        assertTrue(request.url.contains("response_type=code"))
+        assertTrue(request.url.contains("https://incomedy.ru/auth/telegram/launch"))
+        assertTrue(request.url.contains("state=server_state"))
     }
 
     /** Provider должен извлекать `code/state` из callback URL и передавать их backend-у. */
@@ -43,7 +43,7 @@ class TelegramAuthProviderLaunchUrlTest {
     fun `telegram auth exchange forwards code and state from callback`() {
         val gateway = FakeTelegramAuthGateway(
             launch = TelegramAuthLaunch(
-                authUrl = "https://oauth.telegram.org/auth?client_id=test",
+                authUrl = "https://incomedy.ru/auth/telegram/launch?state=server_state",
                 state = "server_state",
             ),
         )

@@ -23,20 +23,29 @@ class TelegramAuthService(
     private val oidcClient: TelegramOidcGateway,
     private val repository: UserRepository,
     private val tokenService: JwtSessionTokenService,
+    private val launchUri: String,
 ) {
     /** Структурированный logger Telegram auth orchestration слоя. */
     private val logger = LoggerFactory.getLogger(TelegramAuthService::class.java)
 
-    /** Выпускает стартовую Telegram auth-конфигурацию с official OIDC URL и signed state. */
+    /** Выпускает стартовую Telegram auth-конфигурацию с first-party launch URL и signed state. */
     fun createLaunchRequest(): Result<TelegramAuthLaunch> {
         return runCatching {
             val issuedState = loginStateCodec.issue()
             TelegramAuthLaunch(
-                authUrl = oidcClient.buildAuthorizationUrl(
-                    state = issuedState.state,
-                    codeVerifier = issuedState.codeVerifier,
-                ),
+                authUrl = buildLaunchUrl(issuedState.state),
                 state = issuedState.state,
+            )
+        }
+    }
+
+    /** Восстанавливает официальный Telegram OIDC URL для first-party launch bridge page. */
+    fun resolveOfficialAuthUrl(state: String): Result<String> {
+        val verifiedState = loginStateCodec.verify(state).getOrElse { return Result.failure(it) }
+        return runCatching {
+            oidcClient.buildAuthorizationUrl(
+                state = state,
+                codeVerifier = verifiedState.codeVerifier,
             )
         }
     }
@@ -91,6 +100,34 @@ class TelegramAuthService(
                 ),
             ),
         )
+    }
+
+    /** Собирает first-party launch URL на домене InComedy, который уже инициирует Telegram browser auth. */
+    private fun buildLaunchUrl(state: String): String {
+        val delimiter = if ('?' in launchUri) '&' else '?'
+        return buildString {
+            append(launchUri)
+            append(delimiter)
+            append("state=")
+            append(percentEncode(state))
+        }
+    }
+
+    /** Выполняет percent-encoding state без platform-specific URI builder-ов. */
+    private fun percentEncode(value: String): String {
+        val safe = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"
+        val builder = StringBuilder(value.length * 2)
+        for (byte in value.toByteArray(Charsets.UTF_8)) {
+            val intValue = byte.toInt() and 0xFF
+            val charValue = intValue.toChar()
+            if (charValue in safe) {
+                builder.append(charValue)
+            } else {
+                builder.append('%')
+                builder.append(intValue.toString(16).uppercase().padStart(2, '0'))
+            }
+        }
+        return builder.toString()
     }
 }
 

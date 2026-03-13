@@ -194,7 +194,7 @@ class TelegramBackendApi(
 /**
  * Launch-конфигурация Telegram auth, полученная от backend-а.
  *
- * @property authUrl Официальный Telegram auth URL для открытия во внешнем браузере.
+ * @property authUrl First-party InComedy launch URL для открытия во внешнем браузере.
  * @property state Серверно выданный state текущей auth-попытки.
  */
 data class TelegramAuthLaunch(
@@ -273,7 +273,7 @@ private data class TelegramBackendSessionResponse(
 /**
  * DTO backend-ответа на успешный Telegram auth start.
  *
- * @property authUrl Официальный Telegram auth URL.
+ * @property authUrl First-party InComedy launch URL.
  * @property state Серверно выданный state.
  */
 @Serializable

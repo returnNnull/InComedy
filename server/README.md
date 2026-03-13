@@ -68,7 +68,7 @@ Security defaults:
 
 - Caddy config adds baseline security headers and CSP.
 - Server container runs as non-root `appuser`.
-- Telegram auth uses the official `oauth.telegram.org` authorization-code flow with backend `/token` exchange, signed server-side `state`, PKCE, and `id_token` verification against Telegram JWKS.
+- Telegram auth uses the official `oauth.telegram.org` authorization-code flow, but mobile clients first open a first-party `https://incomedy.ru/auth/telegram/launch` page so the browser starts Telegram auth from an approved InComedy origin before backend `/token` exchange, signed server-side `state`, PKCE, and `id_token` verification against Telegram JWKS.
 - Telegram auth assertions remain single-use server-side after successful OIDC verification.
 - Public auth JSON bodies are capped in application code (`4 KiB` for Telegram verify, `2 KiB` for refresh).
 - `X-Request-ID` is accepted only in UUID format; invalid values are replaced by a server-generated id.
@@ -151,7 +151,7 @@ Response body:
 
 ```json
 {
-  "auth_url": "https://oauth.telegram.org/auth?client_id=8649746631&redirect_uri=https%3A%2F%2Fincomedy.ru%2Fauth%2Ftelegram%2Fcallback&response_type=code&scope=openid%20profile&state=signed_state&code_challenge=pkce_challenge&code_challenge_method=S256",
+  "auth_url": "https://incomedy.ru/auth/telegram/launch?state=signed_state",
   "state": "signed_state"
 }
 ```

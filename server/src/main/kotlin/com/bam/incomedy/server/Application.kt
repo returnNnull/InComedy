@@ -5,6 +5,7 @@ import com.bam.incomedy.server.auth.session.SessionRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramAuthService
 import com.bam.incomedy.server.auth.telegram.TelegramCallbackBridgeRoutes
+import com.bam.incomedy.server.auth.telegram.TelegramLaunchBridgeRoutes
 import com.bam.incomedy.server.auth.telegram.TelegramLoginStateCodec
 import com.bam.incomedy.server.auth.telegram.TelegramOidcClient
 import com.bam.incomedy.server.config.AppConfig
@@ -66,6 +67,7 @@ fun Application.module() {
         oidcClient = oidcClient,
         repository = repository,
         tokenService = tokenService,
+        launchUri = TelegramLaunchBridgeRoutes.launchUriFromRedirectUri(config.telegram.loginRedirectUri),
     )
     val rateLimiter: AuthRateLimiter = config.redis?.let { redis ->
         runCatching {
@@ -127,6 +129,12 @@ fun Application.module() {
 
         TelegramCallbackBridgeRoutes.register(
             route = this,
+            diagnosticsStore = diagnosticsStore,
+            rateLimiter = rateLimiter,
+        )
+        TelegramLaunchBridgeRoutes.register(
+            route = this,
+            authService = authService,
             diagnosticsStore = diagnosticsStore,
             rateLimiter = rateLimiter,
         )
