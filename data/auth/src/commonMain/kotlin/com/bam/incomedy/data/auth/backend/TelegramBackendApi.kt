@@ -1,8 +1,11 @@
 package com.bam.incomedy.data.auth.backend
 
 import com.bam.incomedy.feature.auth.domain.OrganizerWorkspace
-import com.bam.incomedy.feature.auth.domain.SessionRoleContext
+import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
+import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthorizedUser
+import com.bam.incomedy.feature.auth.domain.SessionRoleContext
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -37,6 +40,52 @@ class TelegramBackendApi(
         }
     },
 ) : TelegramAuthGateway {
+    suspend fun registerWithPassword(login: String, password: String): Result<AuthSession> {
+        return runCatching {
+            val response = httpClient
+                .post("$baseUrl/api/v1/auth/register") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CredentialAuthRequest(login = login, password = password))
+                }
+            ensureSuccess(response)
+            response.body<TelegramBackendSessionResponse>().toAuthSession()
+        }
+    }
+
+    suspend fun signInWithPassword(login: String, password: String): Result<AuthSession> {
+        return runCatching {
+            val response = httpClient
+                .post("$baseUrl/api/v1/auth/login") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CredentialAuthRequest(login = login, password = password))
+                }
+            ensureSuccess(response)
+            response.body<TelegramBackendSessionResponse>().toAuthSession()
+        }
+    }
+
+    suspend fun startVkAuth(): Result<AuthLaunchRequest> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/auth/vk/start")
+            ensureSuccess(response)
+            response.body<VkAuthLaunchResponse>().toDomain()
+        }
+    }
+
+    suspend fun verifyVk(callbackUrl: String): Result<AuthSession> {
+        return runCatching {
+            val payload = parseVkCallback(callbackUrl)
+                ?: error("Invalid VK auth callback payload")
+            val response = httpClient
+                .post("$baseUrl/api/v1/auth/vk/verify") {
+                    contentType(ContentType.Application.Json)
+                    setBody(payload)
+                }
+            ensureSuccess(response)
+            response.body<TelegramBackendSessionResponse>().toAuthSession()
+        }
+    }
+
     /** Запрашивает backend launch URL для официального Telegram browser auth flow. */
     override suspend fun startTelegramAuth(): Result<TelegramAuthLaunch> {
         return runCatching {
@@ -69,10 +118,11 @@ class TelegramBackendApi(
                     bearer(accessToken)
                 }
             ensureSuccess(response)
-            response
-                .body<SessionMeResponse>()
-                .user
-                .toDomain()
+            response.body<SessionMeResponse>().let { session ->
+                session.user.toDomain(
+                    provider = session.provider.toAuthProviderType(),
+                )
+            }
         }
     }
 
@@ -189,6 +239,29 @@ class TelegramBackendApi(
     private fun io.ktor.client.request.HttpRequestBuilder.bearer(accessToken: String) {
         header(HttpHeaders.Authorization, "Bearer $accessToken")
     }
+
+    private fun parseVkCallback(callbackUrl: String): VkVerifyPayload? {
+        val query = callbackUrl.substringAfter('?', missingDelimiterValue = "")
+        val fragment = callbackUrl.substringAfter('#', missingDelimiterValue = "")
+        val params = listOf(query, fragment)
+            .flatMap { section ->
+                section.split('&')
+                    .filter { it.contains('=') }
+                    .map { part ->
+                        val index = part.indexOf('=')
+                        part.substring(0, index) to part.substring(index + 1)
+                    }
+            }
+            .toMap()
+        val code = params["code"]?.takeIf { it.isNotBlank() } ?: return null
+        val state = params["state"]?.takeIf { it.isNotBlank() } ?: return null
+        val deviceId = params["device_id"]?.takeIf { it.isNotBlank() } ?: return null
+        return VkVerifyPayload(
+            code = code,
+            state = state,
+            deviceId = deviceId,
+        )
+    }
 }
 
 /**
@@ -223,6 +296,7 @@ data class TelegramVerifyPayload(
  * @property user Обогащенный профиль пользователя.
  */
 data class TelegramBackendSession(
+    val provider: AuthProviderType,
     val userId: String,
     val accessToken: String,
     val refreshToken: String?,
@@ -238,6 +312,7 @@ data class TelegramBackendSession(
  * @property user Обновленный профиль пользователя.
  */
 data class RefreshedBackendSession(
+    val provider: AuthProviderType,
     val userId: String,
     val accessToken: String,
     val refreshToken: String,
@@ -253,6 +328,7 @@ data class RefreshedBackendSession(
  */
 @Serializable
 private data class TelegramBackendSessionResponse(
+    val provider: String? = null,
     @SerialName("access_token")
     val accessToken: String,
     @SerialName("refresh_token")
@@ -262,6 +338,17 @@ private data class TelegramBackendSessionResponse(
     /** Преобразует verify-ответ в доменную модель сессии. */
     fun toSession(): TelegramBackendSession {
         return TelegramBackendSession(
+            provider = provider.toAuthProviderType(),
+            userId = user.id,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            user = user.toDomain(),
+        )
+    }
+
+    fun toAuthSession(): AuthSession {
+        return AuthSession(
+            provider = provider.toAuthProviderType(),
             userId = user.id,
             accessToken = accessToken,
             refreshToken = refreshToken,
@@ -291,6 +378,35 @@ private data class TelegramAuthLaunchResponse(
     }
 }
 
+@Serializable
+private data class CredentialAuthRequest(
+    val login: String,
+    val password: String,
+)
+
+@Serializable
+private data class VkAuthLaunchResponse(
+    @SerialName("auth_url")
+    val authUrl: String,
+    val state: String,
+) {
+    fun toDomain(): AuthLaunchRequest {
+        return AuthLaunchRequest(
+            provider = AuthProviderType.VK,
+            state = state,
+            url = authUrl,
+        )
+    }
+}
+
+@Serializable
+private data class VkVerifyPayload(
+    val code: String,
+    val state: String,
+    @SerialName("device_id")
+    val deviceId: String,
+)
+
 /**
  * DTO refresh-запроса.
  *
@@ -311,6 +427,7 @@ private data class RefreshRequest(
  */
 @Serializable
 private data class RefreshResponse(
+    val provider: String? = null,
     @SerialName("access_token")
     val accessToken: String,
     @SerialName("refresh_token")
@@ -320,6 +437,7 @@ private data class RefreshResponse(
     /** Преобразует refresh-ответ в доменную модель обновленной сессии. */
     fun toDomain(): RefreshedBackendSession {
         return RefreshedBackendSession(
+            provider = provider.toAuthProviderType(),
             userId = user.id,
             accessToken = accessToken,
             refreshToken = refreshToken,
@@ -379,6 +497,7 @@ private data class TelegramBackendUserResponse(
  * @property linkedProviders Привязанные способы входа.
  */
 data class SessionUser(
+    val provider: AuthProviderType,
     val id: String,
     val displayName: String,
     val username: String? = null,
@@ -395,6 +514,7 @@ data class SessionUser(
  */
 @Serializable
 private data class SessionMeResponse(
+    val provider: String? = null,
     val user: SessionUserResponse,
 )
 
@@ -424,8 +544,9 @@ private data class SessionUserResponse(
     val linkedProviders: List<String> = emptyList(),
 ) {
     /** Преобразует DTO пользователя в доменный профиль текущей сессии. */
-    fun toDomain(): SessionUser {
+    fun toDomain(provider: AuthProviderType): SessionUser {
         return SessionUser(
+            provider = provider,
             id = id,
             displayName = displayName,
             username = username,
@@ -560,3 +681,15 @@ class BackendStatusException(
 ) : Exception(
     requestId?.takeIf { it.isNotBlank() }?.let { "$message (requestId=$it)" } ?: message,
 )
+
+/** Нормализует wire-имя backend provider-а в общий `AuthProviderType`. */
+private fun String?.toAuthProviderType(): AuthProviderType {
+    return when (this?.trim()?.lowercase()) {
+        "password" -> AuthProviderType.PASSWORD
+        "phone" -> AuthProviderType.PHONE
+        "google" -> AuthProviderType.GOOGLE
+        "telegram" -> AuthProviderType.TELEGRAM
+        "vk" -> AuthProviderType.VK
+        else -> AuthProviderType.PASSWORD
+    }
+}

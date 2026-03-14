@@ -32,10 +32,18 @@ Additional operational permissions exist inside organizer workspace (`owner`, `m
 - Live show state matters: current performer and lineup changes are product-level concerns.
 - Compliance by design: auth/payment/donation flows must fit App Store / Google Play constraints from the start.
 
+## Current Delivery Constraints
+
+- No Apple Developer Program account is currently available for the project.
+- No Google Play developer account is currently available for the project.
+- Any task that depends on paid Apple capabilities, App Store Connect, Play Console, store review/distribution, or provider setup available only through platform developer accounts must be treated as blocked or partially unvalidated until those accounts exist.
+- Prefer implementation and validation paths that can be completed locally, through direct device builds, or through backend/web infrastructure without assuming platform-console access.
+
 ## MVP Scope
 
 - Multi-role onboarding and profile context switching.
-- Auth via Telegram, VK, Google, plus Sign in with Apple for iOS release.
+- Auth via standard login + password as the primary login/registration standard.
+- Provider-agnostic auth foundation with VK ID as the external auth provider.
 - Organizer workspace with team permissions.
 - Venue and hall template builder v1.
 - Event creation/editing/publication and sales states.

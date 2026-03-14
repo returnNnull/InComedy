@@ -7,14 +7,14 @@ Priority scale:
 
 ## P0
 
-Current implementation sequence note (`2026-03-10`):
-- Keep Telegram as the only implemented login temporarily, but treat it as the first linked auth identity only.
-- Build provider-agnostic identity, roles, active-role context, and organizer workspace membership before adding more auth providers.
-- Add VK, Google, and Sign in with Apple on top of that internal identity model before public release.
+Current implementation sequence note (`2026-03-14`):
+- Reset the active MVP auth standard to login + password.
+- Keep provider-agnostic identity, roles, active-role context, and organizer workspace membership as the internal auth foundation.
+- Implement credential auth first, then VK ID as the external provider; phone OTP, Telegram, and Google are no longer part of the active MVP auth scope.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
-- Auth via Telegram, VK, Google, and Sign in with Apple for iOS release.
-- Real auth completion via backend (`provider -> internal session`) + secure session restore.
+- Auth via standard login + password, with provider-agnostic extension points and VK ID as the external provider.
+- Real auth completion via backend (`credentials/VK -> internal session`) + secure session restore.
 - Organizer workspace with member invitations and permission roles (`owner`, `manager`, `checker`, `host`).
 - Venue management and hall template builder v1.
 - Event creation/editing/publication and sales lifecycle states.

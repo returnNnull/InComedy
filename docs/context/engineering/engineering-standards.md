@@ -58,6 +58,21 @@ This document defines mandatory engineering rules for InComedy.
 - Mobile/shared clients that call backend APIs must surface backend request correlation identifiers strongly enough to match device logs with server diagnostics.
 - Logs must never include secrets or raw auth tokens.
 
+## Governance Memory
+
+- Each meaningful user task/session must leave a concise written trace in `docs/context/governance/session-log.md` (latest part file).
+- Session-log entries must summarize the conversation/work path in compact analytical form, not as a raw transcript.
+- Minimum session-log shape remains:
+  - `Context`
+  - `Changes`
+  - `Decisions`
+  - `Next`
+- Entries must capture request evolution when scope changes during the chat, so later reviews can reconstruct why the implementation moved in a certain direction.
+- Session-log entries must stay sanitized:
+  - no secrets,
+  - no raw tokens,
+  - no unnecessary verbatim user transcript dumps.
+
 ## Auth Session Security
 
 - Mobile auth/session tokens must be stored only in secure platform storage:

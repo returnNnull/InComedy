@@ -84,6 +84,7 @@ private class FakeTelegramAuthGateway(
         lastVerifyPayload = payload
         return Result.success(
             TelegramBackendSession(
+                provider = AuthProviderType.TELEGRAM,
                 userId = "user-1",
                 accessToken = "access-token",
                 refreshToken = "refresh-token",

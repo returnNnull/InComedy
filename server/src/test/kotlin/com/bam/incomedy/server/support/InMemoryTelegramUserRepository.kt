@@ -2,6 +2,8 @@ package com.bam.incomedy.server.support
 
 import com.bam.incomedy.server.auth.telegram.TelegramUser
 import com.bam.incomedy.server.db.AuthProvider
+import com.bam.incomedy.server.db.DuplicateCredentialLoginException
+import com.bam.incomedy.server.db.StoredCredentialAccount
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.StoredWorkspace
 import com.bam.incomedy.server.db.UserRepository
@@ -12,11 +14,78 @@ import java.util.UUID
 
 class InMemoryTelegramUserRepository : UserRepository {
     private val usersById = linkedMapOf<String, MutableStoredUser>()
+    private val usersByNormalizedLogin = linkedMapOf<String, String>()
     private val usersByTelegramId = linkedMapOf<Long, String>()
+    private val usersByVkId = linkedMapOf<String, String>()
+    private val passwordHashesByUserId = linkedMapOf<String, String>()
     private val refreshTokens = linkedMapOf<String, RefreshTokenRecord>()
     private val telegramAssertions = linkedMapOf<String, Instant>()
     private val workspacesById = linkedMapOf<String, StoredWorkspaceRecord>()
     private val workspaceIdsByUserId = linkedMapOf<String, MutableList<String>>()
+
+    override fun createPasswordIdentity(login: String, normalizedLogin: String, passwordHash: String): StoredUser {
+        if (usersByNormalizedLogin.containsKey(normalizedLogin)) {
+            throw DuplicateCredentialLoginException(normalizedLogin)
+        }
+        val mutableUser = MutableStoredUser(
+            id = UUID.randomUUID().toString(),
+            displayName = login,
+            username = login,
+            photoUrl = null,
+            sessionRevokedAt = null,
+            linkedProviders = linkedSetOf(AuthProvider.PASSWORD),
+            roles = linkedSetOf(UserRole.AUDIENCE),
+            activeRole = UserRole.AUDIENCE,
+        )
+        usersById[mutableUser.id] = mutableUser
+        usersByNormalizedLogin[normalizedLogin] = mutableUser.id
+        passwordHashesByUserId[mutableUser.id] = passwordHash
+        return mutableUser.toStored()
+    }
+
+    override fun findPasswordIdentity(normalizedLogin: String): StoredCredentialAccount? {
+        val userId = usersByNormalizedLogin[normalizedLogin] ?: return null
+        val user = usersById[userId]?.toStored() ?: return null
+        val passwordHash = passwordHashesByUserId[userId] ?: return null
+        return StoredCredentialAccount(
+            user = user,
+            login = user.username ?: user.displayName,
+            normalizedLogin = normalizedLogin,
+            passwordHash = passwordHash,
+        )
+    }
+
+    override fun upsertVkIdentity(
+        providerUserId: String,
+        displayName: String,
+        username: String?,
+        photoUrl: String?,
+    ): StoredUser {
+        val existingUserId = usersByVkId[providerUserId]
+        val mutableUser = existingUserId
+            ?.let(usersById::getValue)
+            ?: MutableStoredUser(
+                id = UUID.randomUUID().toString(),
+                displayName = displayName,
+                username = username,
+                photoUrl = photoUrl,
+                sessionRevokedAt = null,
+                linkedProviders = linkedSetOf(AuthProvider.VK),
+                roles = linkedSetOf(UserRole.AUDIENCE),
+                activeRole = UserRole.AUDIENCE,
+            )
+        mutableUser.displayName = displayName
+        mutableUser.username = username
+        mutableUser.photoUrl = photoUrl
+        mutableUser.linkedProviders += AuthProvider.VK
+        mutableUser.roles += UserRole.AUDIENCE
+        if (mutableUser.activeRole == null) {
+            mutableUser.activeRole = UserRole.AUDIENCE
+        }
+        usersById[mutableUser.id] = mutableUser
+        usersByVkId[providerUserId] = mutableUser.id
+        return mutableUser.toStored()
+    }
 
     override fun upsertTelegramIdentity(user: TelegramUser): StoredUser {
         val existingUserId = usersByTelegramId[user.id]
@@ -120,6 +189,10 @@ class InMemoryTelegramUserRepository : UserRepository {
             roles = user.roles.toMutableSet(),
             activeRole = user.activeRole,
         )
+        if (user.linkedProviders.contains(AuthProvider.PASSWORD)) {
+            user.username?.lowercase()?.let { usersByNormalizedLogin[it] = user.id }
+            passwordHashesByUserId.putIfAbsent(user.id, "test-password-hash")
+        }
     }
 
     private data class RefreshTokenRecord(

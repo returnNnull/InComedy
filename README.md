@@ -4,20 +4,22 @@ InComedy is a Kotlin Multiplatform + Ktor repository for a standup-event platfor
 
 ## Current Status
 
-Repository snapshot: `2026-03-10`.
+Repository snapshot: `2026-03-14`.
 
 - Implemented foundation:
-  - mobile auth/session flow with shared `MVI` logic;
-  - Telegram backend verification and internal JWT session issuance;
+  - first-party credential auth flow with shared `MVI` logic across Android/iOS and backend-issued sessions;
+  - VK ID auth flow wired through shared mobile callback handling and backend verification contracts, with Android preferring the installed VK app and falling back to browser launch;
   - provider-agnostic backend user/auth-identity persistence foundation;
   - backend role storage, active-role switching, and minimal organizer workspace create/list routes;
   - versioned backend database migrations for clean deploys and in-place schema upgrades;
   - refresh-token rotation, secure mobile token storage, and auth security hardening;
   - Android root `NavHost` + feature subgraph structure;
   - iOS root graph container with auth/main graph shells;
-  - OpenAPI contract and CI/CD/deploy baseline for the current server scope.
+  - OpenAPI contract and CI/CD/deploy baseline for the current server scope;
+  - product-level auth standard set to `login + password`, with `VK ID` as the supported external provider.
 - Partial:
-  - VK and Google auth launch flows exist in client data layer, but backend identity exchange is still stubbed;
+  - VK ID now has a public HTTPS callback bridge and iOS associated-domain plumbing in the repository, but still requires runtime client configuration, Apple app-id metadata, and live smoke validation before rollout;
+  - legacy Telegram/Google/phone-first assumptions still exist in parts of the repository and should be archived or removed from the active supported surface;
   - iOS Sign in with Apple is not implemented yet.
 - Not started:
   - venues, hall templates, and events;
@@ -33,7 +35,7 @@ Repository snapshot: `2026-03-10`.
 - `core/common/`: cross-platform core utilities.
 - `feature/auth/`: shared auth domain and `MVI` ViewModel logic.
 - `data/auth/`: auth provider integrations and backend API adapters.
-- `server/`: Ktor backend for current auth/session scope.
+- `server/`: Ktor backend for current session/identity/workspace scope.
 - `deploy/server/`: Docker Compose and Caddy deployment assets.
 - `docs/context/`: compact project memory and governance records.
 - `docs/standup-platform-ru/`: detailed Russian-language target-state product/technical specification.
@@ -42,12 +44,15 @@ Repository snapshot: `2026-03-10`.
 
 ```bash
 ./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:assembleRelease
 ./gradlew :feature:auth:allTests
 ./gradlew :server:test :server:installDist
 ./gradlew :server:run
 ```
 
 For iOS, open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp` target.
+
+Android release signing is wired through Gradle using the local keystore at `signing/android/incomedy-release.jks` plus ignored credentials from `signing/android/release-signing.properties` or `INCOMEDY_RELEASE_*` Gradle/environment properties.
 
 ## Documentation
 

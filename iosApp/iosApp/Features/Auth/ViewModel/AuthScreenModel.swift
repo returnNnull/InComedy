@@ -6,7 +6,7 @@ final class AuthScreenModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var isAuthorized: Bool = false
-    @Published var statusText: String = "Выберите провайдера"
+    @Published var statusText: String = "Основной вход: логин и пароль"
     @Published var pendingOpenURL: URL?
 
     private let bridge: AuthFeatureBridge
@@ -30,18 +30,25 @@ final class AuthScreenModel: ObservableObject {
         bridge.dispose()
     }
 
-    func onTap(provider: AuthProvider) {
-        print("AUTH_FLOW stage=ios.start_auth.requested provider=\(provider.rawValue)")
-        bridge.startAuth(providerKey: provider.rawValue)
+    func signIn(login: String, password: String) {
+        bridge.signIn(login: login, password: password)
+    }
+
+    func register(login: String, password: String) {
+        bridge.register(login: login, password: password)
+    }
+
+    func startVkAuth() {
+        print("AUTH_FLOW stage=ios.start_auth.requested provider=vk")
+        bridge.startAuth(providerKey: AuthProvider.vk.rawValue)
+    }
+
+    func handleCallback(url: URL) {
+        bridge.completeAuthFromCallbackUrl(callbackUrl: url.absoluteString)
     }
 
     func onOpenURLHandled() {
         pendingOpenURL = nil
-    }
-
-    func onIncomingCallback(url: URL) {
-        print("AUTH_FLOW stage=ios.callback_url.received hasUrl=true")
-        bridge.completeAuthFromCallbackUrl(callbackUrl: url.absoluteString)
     }
 
     private func bind() {
@@ -55,7 +62,7 @@ final class AuthScreenModel: ObservableObject {
                         self.isAuthorized = snapshot.isAuthorized
 
                         if snapshot.isAuthorized, let provider = snapshot.authorizedProviderKey {
-                            self.statusText = "Успешная авторизация через \(provider.uppercased())"
+                            self.statusText = "Успешная авторизация через \(Self.providerTitle(provider))"
                             if let accessToken = snapshot.authorizedAccessToken {
                                 self.accessTokenStore.save(token: accessToken)
                             }
@@ -68,7 +75,7 @@ final class AuthScreenModel: ObservableObject {
                                   let knownProvider = AuthProvider(rawValue: provider) {
                             self.statusText = knownProvider.openedStatus
                         } else {
-                            self.statusText = "Выберите провайдера"
+                            self.statusText = "Основной вход: логин и пароль"
                         }
                     }
                 },
@@ -143,6 +150,23 @@ final class AuthScreenModel: ObservableObject {
         refreshTokenStore.deleteToken()
         UserDefaults.standard.removeObject(forKey: accessTokenKey)
         UserDefaults.standard.removeObject(forKey: refreshTokenKey)
+    }
+
+    private static func providerTitle(_ key: String) -> String {
+        switch key {
+        case "password":
+            return "логин и пароль"
+        case "vk":
+            return "VK"
+        case "telegram":
+            return "Telegram"
+        case "google":
+            return "Google"
+        case "phone":
+            return "телефон"
+        default:
+            return key
+        }
     }
 }
 

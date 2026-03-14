@@ -89,6 +89,7 @@ class TelegramAuthService(
 
         return Result.success(
             TelegramAuthResult(
+                provider = AuthProvider.TELEGRAM.wireName,
                 accessToken = tokens.accessToken,
                 refreshToken = tokens.refreshToken,
                 expiresInSeconds = tokens.expiresInSeconds,
@@ -98,6 +99,9 @@ class TelegramAuthService(
                     username = storedUser.username,
                     photoUrl = storedUser.photoUrl,
                 ),
+                roles = storedUser.roles.map { it.wireName }.sorted(),
+                activeRole = storedUser.activeRole?.wireName,
+                linkedProviders = storedUser.linkedProviders.map { it.wireName }.sorted(),
             ),
         )
     }
@@ -140,8 +144,12 @@ class TelegramAuthService(
  * @property user Нормализованный backend-пользователь текущей сессии.
  */
 data class TelegramAuthResult(
+    val provider: String,
     val accessToken: String,
     val refreshToken: String,
     val expiresInSeconds: Long,
     val user: SessionUser,
+    val roles: List<String>,
+    val activeRole: String?,
+    val linkedProviders: List<String>,
 )

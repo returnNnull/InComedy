@@ -674,6 +674,8 @@ private fun roleTitle(role: String): String {
  */
 private fun providerTitle(provider: String): String {
     return when (provider) {
+        "password" -> "Логин и пароль"
+        "phone" -> "Телефон"
         "telegram" -> "Telegram"
         "vk" -> "VK"
         "google" -> "Google"

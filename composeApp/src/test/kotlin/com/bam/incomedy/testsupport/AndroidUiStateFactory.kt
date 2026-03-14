@@ -17,7 +17,7 @@ object AndroidUiStateFactory {
      */
     fun sessionState(
         isAuthorized: Boolean = true,
-        provider: AuthProviderType = AuthProviderType.TELEGRAM,
+        provider: AuthProviderType = AuthProviderType.PASSWORD,
         accessToken: String? = "access-token",
         refreshToken: String? = "refresh-token",
         userId: String? = "user-1",
@@ -26,7 +26,7 @@ object AndroidUiStateFactory {
         photoUrl: String? = null,
         roles: List<String> = listOf("audience", "organizer"),
         activeRole: String? = "audience",
-        linkedProviders: List<String> = listOf("telegram"),
+        linkedProviders: List<String> = listOf("password"),
         workspaces: List<OrganizerWorkspace> = listOf(workspace()),
         isLoadingContext: Boolean = false,
         isUpdatingRole: Boolean = false,
@@ -74,7 +74,7 @@ object AndroidUiStateFactory {
      * Возвращает авторизованную сессию для состояния после успешного входа.
      */
     fun authSession(
-        provider: AuthProviderType = AuthProviderType.TELEGRAM,
+        provider: AuthProviderType = AuthProviderType.PASSWORD,
         userId: String = "user-1",
         accessToken: String = "access-token",
         refreshToken: String? = "refresh-token",
@@ -99,7 +99,7 @@ object AndroidUiStateFactory {
         photoUrl: String? = null,
         roles: List<String> = listOf("audience", "organizer"),
         activeRole: String? = "audience",
-        linkedProviders: List<String> = listOf("telegram"),
+        linkedProviders: List<String> = listOf("password"),
     ): AuthorizedUser {
         return AuthorizedUser(
             id = id,

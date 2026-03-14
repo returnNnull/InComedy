@@ -19,3 +19,6 @@ captures
 node_modules/
 .env
 *.env
+signing/android/*.jks
+signing/android/*.keystore
+signing/android/release-signing.properties

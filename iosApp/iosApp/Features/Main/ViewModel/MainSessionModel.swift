@@ -269,10 +269,10 @@ struct MainSessionFixture {
         username: "test_user",
         userId: "user-1",
         photoURL: nil,
-        providerKey: "telegram",
+        providerKey: "password",
         roles: ["audience", "organizer"],
         activeRoleKey: "audience",
-        linkedProviderKeys: ["telegram"],
+        linkedProviderKeys: ["password"],
         workspaces: [
             MainWorkspaceItem(
                 id: "ws-1",

@@ -3,12 +3,9 @@ package com.bam.incomedy.feature.auth.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.main.ui.ComposeUiTestActivity
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
@@ -30,40 +27,25 @@ class AuthScreenContentTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComposeUiTestActivity>()
 
-    /** Проверяет отображение кнопок провайдеров и корректную отправку интентов на нажатие. */
+    /** Проверяет отображение нового auth-стандарта и ближайшего roadmap без legacy-кнопок. */
     @Test
-    fun authScreenShowsProviderButtonsAndDispatchesProviderIntents() {
-        val intents = mutableListOf<AuthIntent>()
-
-        setAuthScreenContent(
-            onIntent = { intents += it },
-        )
+    fun authScreenShowsCurrentAuthStandardAndNoLegacyProviderButtons() {
+        setAuthScreenContent()
 
         composeRule.onNodeWithTag(AuthScreenTags.ROOT).assertIsDisplayed()
-        composeRule.onNodeWithTag(AuthScreenTags.BUTTON_VK).assertIsDisplayed().performClick()
-        composeRule.onNodeWithTag(AuthScreenTags.BUTTON_TELEGRAM).assertIsDisplayed().performClick()
-        composeRule.onNodeWithTag(AuthScreenTags.BUTTON_GOOGLE).assertIsDisplayed().performClick()
-
-        assertEquals(
-            listOf<AuthIntent>(
-                AuthIntent.OnProviderClick(AuthProviderType.VK),
-                AuthIntent.OnProviderClick(AuthProviderType.TELEGRAM),
-                AuthIntent.OnProviderClick(AuthProviderType.GOOGLE),
-            ),
-            intents,
-        )
+        composeRule.onNodeWithTag(AuthScreenTags.AUTH_STANDARD).assertIsDisplayed()
+        composeRule.onNodeWithTag(AuthScreenTags.NEXT_STEP).assertIsDisplayed()
     }
 
-    /** Проверяет, что во время загрузки все кнопки входа блокируются. */
+    /** Проверяет, что состояние загрузки не возвращает legacy auth-кнопки. */
     @Test
-    fun authScreenDisablesProviderButtonsWhileLoading() {
+    fun authScreenDoesNotShowLegacyProviderButtonsWhileLoading() {
         setAuthScreenContent(
             state = AndroidUiStateFactory.authState(isLoading = true),
         )
 
-        composeRule.onNodeWithTag(AuthScreenTags.BUTTON_VK).assertIsNotEnabled()
-        composeRule.onNodeWithTag(AuthScreenTags.BUTTON_TELEGRAM).assertIsNotEnabled()
-        composeRule.onNodeWithTag(AuthScreenTags.BUTTON_GOOGLE).assertIsNotEnabled()
+        composeRule.onNodeWithTag(AuthScreenTags.AUTH_STANDARD).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(AuthScreenTags.AUTHORIZED_STATE).assertCountEquals(0)
     }
 
     /** Проверяет показ сообщения об ошибке без перехода в авторизованное состояние. */
@@ -86,9 +68,8 @@ class AuthScreenContentTest {
         )
 
         composeRule.onNodeWithTag(AuthScreenTags.AUTHORIZED_STATE).assertIsDisplayed()
-        composeRule.onAllNodesWithTag(AuthScreenTags.BUTTON_VK).assertCountEquals(0)
-        composeRule.onAllNodesWithTag(AuthScreenTags.BUTTON_TELEGRAM).assertCountEquals(0)
-        composeRule.onAllNodesWithTag(AuthScreenTags.BUTTON_GOOGLE).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(AuthScreenTags.AUTH_STANDARD).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(AuthScreenTags.NEXT_STEP).assertCountEquals(0)
     }
 
     /** Поднимает тестируемое содержимое авторизации в Material-теме. */

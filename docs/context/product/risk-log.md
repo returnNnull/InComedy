@@ -132,13 +132,23 @@ Use this file to track active product/technical risks, including current securit
 
 ## R-011
 
-- Date: 2026-03-13
-- Risk: Switching the active Telegram auth path without device/browser validation for the current RU launch slice can lock out users and leave the mobile login flow stuck before backend verification.
+- Date: 2026-03-14
+- Risk: Auth-strategy pivot away from Telegram/Google can leave stale legacy provider entry points exposed in docs, runtime config, or app UI, creating product confusion and unsupported login attempts.
 - Impact: Critical
 - Probability: Medium
-- Mitigation: Keep the official Telegram OIDC + HTTPS callback bridge as the active path, require RU-market staging/device smoke validation plus a rollback plan before promoting any future Telegram auth replacement, and avoid unvalidated direct raw mobile launch patterns as production defaults.
+- Mitigation: Remove Telegram/Google/phone-OTP assumptions from the active app surface and supported runtime contract in the same change as the decision pivot, keep provider abstractions intact for extension, and treat login + password plus VK ID as the only planned next auth slice.
 - Owner: Product + Engineering
 - Status: in-progress
+
+## R-012
+
+- Date: 2026-03-15
+- Risk: The project currently has no Apple Developer Program account and no Google Play developer account, so platform-console-only capabilities, store rollout, and some provider/integration validations can be planned as if they are available when they are not.
+- Impact: High
+- Probability: High
+- Mitigation: Treat Apple/Google developer-account access as an explicit dependency in every task that touches mobile distribution, store compliance, paid Apple entitlements, universal-link/device validation, Play Console setup, or provider flows requiring platform-console metadata; prefer local/device-testable and backend/web-verifiable paths until the accounts are provisioned.
+- Owner: Product + Engineering
+- Status: open
 
 ## V-001
 
@@ -157,16 +167,16 @@ Use this file to track active product/technical risks, including current securit
 ## V-002
 
 - Date discovered: 2026-03-06
-- Vulnerability: Telegram auth payloads can be replayed for up to the accepted auth-age window because backend verification has no one-time nonce/state binding or replay cache.
+- Vulnerability: Legacy Telegram auth payloads can be replayed for up to the accepted auth-age window because backend verification has no one-time nonce/state binding or replay cache.
 - Affected components: `server/auth/telegram/TelegramAuthVerifier`, `server/auth/telegram/TelegramAuthRoutes`, Telegram mobile callback completion flow.
 - Severity: High
 - Exploitability: Medium
-- Current exposure: Mitigated in code via single-use assertion registration and reduced default auth-age; pending deployment of updated server build.
-- Immediate containment: Deploy updated server build and continue treating Telegram callback payloads as sensitive credentials in all logs and client handoff flows.
-- Remediation plan: Keep current single-use assertion protection, add database migration/deploy rollout, and consider restoring explicit challenge/state binding later for defense in depth.
+- Current exposure: Contained only if Telegram auth is removed from the active app/runtime surface; the legacy slice should not be treated as a supported product entry point anymore.
+- Immediate containment: Keep Telegram auth disabled in the active app surface and avoid re-enabling the legacy route family without a dedicated decision.
+- Remediation plan: Remove or archive the legacy Telegram auth slice from supported runtime/docs while the new login/password + VK auth path is implemented.
 - Target fix date: 2026-03-10
 - Owner: Engineering
-- Status: in-progress
+- Status: superseded
 
 ## V-003
 

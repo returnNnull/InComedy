@@ -86,6 +86,8 @@ private fun OrganizerWorkspace.toSnapshot(): SessionWorkspaceSnapshot {
 /** Преобразует enum провайдера в стабильный строковый ключ для iOS. */
 private fun AuthProviderType.toKey(): String {
     return when (this) {
+        AuthProviderType.PASSWORD -> "password"
+        AuthProviderType.PHONE -> "phone"
         AuthProviderType.VK -> "vk"
         AuthProviderType.TELEGRAM -> "telegram"
         AuthProviderType.GOOGLE -> "google"

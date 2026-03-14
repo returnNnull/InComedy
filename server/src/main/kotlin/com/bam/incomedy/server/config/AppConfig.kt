@@ -5,13 +5,13 @@ package com.bam.incomedy.server.config
  *
  * @property database Настройки подключения к PostgreSQL.
  * @property jwt Настройки внутренних JWT-сессий.
- * @property telegram Настройки Telegram auth и связанных интеграций.
  * @property redis Настройки Redis rate limiter-а, если он включен.
  */
 data class AppConfig(
     val database: DatabaseConfig,
     val jwt: JwtConfig,
-    val telegram: TelegramConfig,
+    val vkId: VkIdConfig?,
+    val iosAssociatedDomains: IosAssociatedDomainsConfig?,
     val redis: RedisConfig?,
 ) {
     /** Загружает и валидирует runtime-конфиг приложения из environment variables. */
@@ -53,18 +53,10 @@ data class AppConfig(
                     accessTtlSeconds = env["JWT_ACCESS_TTL_SECONDS"]?.toLongOrNull() ?: 3600L,
                     refreshTtlSeconds = env["JWT_REFRESH_TTL_SECONDS"]?.toLongOrNull() ?: 2592000L,
                 ),
-                telegram = TelegramConfig(
-                    botToken = env["TELEGRAM_BOT_TOKEN"]?.takeIf { it.isNotBlank() },
-                    loginClientId = env.require("TELEGRAM_LOGIN_CLIENT_ID"),
-                    loginClientSecret = env.require("TELEGRAM_LOGIN_CLIENT_SECRET"),
-                    loginRedirectUri = env["TELEGRAM_LOGIN_REDIRECT_URI"]
-                        ?.takeIf { it.isNotBlank() }
-                        ?: "https://incomedy.ru/auth/telegram/callback",
-                    loginStateSecret = env["TELEGRAM_LOGIN_STATE_SECRET"]
-                        ?.takeIf { it.isNotBlank() }
-                        ?: env.require("JWT_SECRET"),
-                    loginStateTtlSeconds = env["TELEGRAM_LOGIN_STATE_TTL_SECONDS"]?.toLongOrNull() ?: 600L,
+                vkId = env.vkIdConfig(
+                    fallbackStateSecret = env.require("JWT_SECRET"),
                 ),
+                iosAssociatedDomains = env.iosAssociatedDomainsConfig(),
                 redis = redisConfig,
             )
         }
@@ -104,25 +96,6 @@ data class JwtConfig(
 )
 
 /**
- * Конфиг Telegram login и связанных интеграций.
- *
- * @property botToken Текущий bot token Telegram, если он нужен другим backend-срезам.
- * @property loginClientId Client ID официального Telegram login flow.
- * @property loginClientSecret Client secret официального Telegram login flow.
- * @property loginRedirectUri Зарегистрированный redirect URI Telegram login flow.
- * @property loginStateSecret Секрет подписи серверно выпущенного Telegram login state.
- * @property loginStateTtlSeconds TTL серверного Telegram login state.
- */
-data class TelegramConfig(
-    val botToken: String?,
-    val loginClientId: String,
-    val loginClientSecret: String,
-    val loginRedirectUri: String,
-    val loginStateSecret: String,
-    val loginStateTtlSeconds: Long,
-)
-
-/**
  * Конфиг Redis rate limiter-а.
  *
  * @property url Полный Redis/Rediss URL.
@@ -131,6 +104,19 @@ data class TelegramConfig(
 data class RedisConfig(
     val url: String,
     val allowInsecure: Boolean,
+)
+
+data class VkIdConfig(
+    val clientId: String,
+    val redirectUri: String,
+    val scope: String,
+    val stateSecret: String,
+    val stateTtlSeconds: Long,
+)
+
+data class IosAssociatedDomainsConfig(
+    val appIds: List<String>,
+    val paths: List<String>,
 )
 
 /** Извлекает обязательную environment variable или завершает startup с понятной ошибкой. */
@@ -144,6 +130,41 @@ private fun withDbSslMode(jdbcUrl: String, sslMode: String): String {
     if ("sslmode=" in jdbcUrl.lowercase()) return jdbcUrl
     val delimiter = if ('?' in jdbcUrl) "&" else "?"
     return "$jdbcUrl${delimiter}sslmode=$sslMode"
+}
+
+private fun Map<String, String>.vkIdConfig(fallbackStateSecret: String): VkIdConfig? {
+    val clientId = this["VK_ID_CLIENT_ID"]?.trim()
+    val redirectUri = this["VK_ID_REDIRECT_URI"]?.trim()
+    if (clientId.isNullOrBlank() && redirectUri.isNullOrBlank()) {
+        return null
+    }
+    require(!clientId.isNullOrBlank()) { "Environment variable 'VK_ID_CLIENT_ID' is required when VK ID auth is enabled" }
+    require(!redirectUri.isNullOrBlank()) { "Environment variable 'VK_ID_REDIRECT_URI' is required when VK ID auth is enabled" }
+    return VkIdConfig(
+        clientId = clientId,
+        redirectUri = redirectUri,
+        scope = this["VK_ID_SCOPE"]?.trim().takeUnless { it.isNullOrBlank() } ?: "vkid.personal_info",
+        stateSecret = this["VK_ID_STATE_SECRET"]?.trim().takeUnless { it.isNullOrBlank() } ?: fallbackStateSecret,
+        stateTtlSeconds = this["VK_ID_STATE_TTL_SECONDS"]?.toLongOrNull() ?: 600L,
+    )
+}
+
+private fun Map<String, String>.iosAssociatedDomainsConfig(): IosAssociatedDomainsConfig? {
+    val rawAppIds = this["IOS_ASSOCIATED_DOMAIN_APP_IDS"]?.trim().orEmpty()
+    if (rawAppIds.isBlank()) return null
+    val appIds = rawAppIds.split(',')
+        .map(String::trim)
+        .filter(String::isNotBlank)
+    require(appIds.isNotEmpty()) {
+        "Environment variable 'IOS_ASSOCIATED_DOMAIN_APP_IDS' must contain at least one app id when associated domains are enabled"
+    }
+    return IosAssociatedDomainsConfig(
+        appIds = appIds,
+        paths = listOf(
+            "/auth/vk/callback",
+            "/auth/vk/callback/*",
+        ),
+    )
 }
 
 /** Извлекает hostname из PostgreSQL JDBC URL для security policy checks. */

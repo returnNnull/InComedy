@@ -18,14 +18,15 @@ Status labels:
 - Redis: shared short-lived state / distributed coordination / rate limiting
 - CI/CD: `GitHub Actions`
 - Server packaging/runtime: `Docker` + `Docker Compose`
-- Active Telegram auth: official `oauth.telegram.org` OIDC authorization-code flow started from a first-party `https://incomedy.ru/auth/telegram/launch` page, with backend `/token` exchange, PKCE, and HTTPS callback bridge back into the app
+- Auth architecture: provider-agnostic internal identity/session foundation with login + password as the active product login standard
+- Password hashing: `Argon2id`
+- Android release signing: Gradle-managed release signing with a local ignored keystore/properties file
+- iOS deep-linking: custom scheme + associated domains for production auth return flows
 
 ## Candidate
 
 - Authentication providers:
   - VK ID
-  - Google Identity / Credential Manager wrappers
-  - Sign in with Apple (required for iOS release if third-party login remains)
 - Payments provider:
   - YooKassa (primary RU-market candidate)
   - CloudPayments (fallback candidate)

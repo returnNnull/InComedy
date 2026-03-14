@@ -11,6 +11,125 @@ class PostgresTelegramUserRepository(
     private val dataSource: DataSource,
 ) : UserRepository {
 
+    override fun createPasswordIdentity(
+        login: String,
+        normalizedLogin: String,
+        passwordHash: String,
+    ): StoredUser {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                if (loadCredentialAccount(connection, normalizedLogin) != null) {
+                    throw DuplicateCredentialLoginException(normalizedLogin)
+                }
+
+                val userId = UUID.randomUUID().toString()
+                insertUser(
+                    connection = connection,
+                    userId = userId,
+                    telegramUserId = null,
+                    firstName = null,
+                    lastName = null,
+                    displayName = login,
+                    username = login,
+                    photoUrl = null,
+                )
+                upsertPasswordAccount(
+                    connection = connection,
+                    userId = userId,
+                    login = login,
+                    normalizedLogin = normalizedLogin,
+                    passwordHash = passwordHash,
+                )
+                upsertAuthIdentity(
+                    connection = connection,
+                    userId = userId,
+                    provider = AuthProvider.PASSWORD,
+                    providerUserId = normalizedLogin,
+                    username = login,
+                )
+                ensureRole(connection, userId, UserRole.AUDIENCE)
+                ensureActiveRole(connection, userId, UserRole.AUDIENCE)
+
+                val storedUser = loadUserById(connection, userId) ?: error("Failed to load stored user")
+                connection.commit()
+                return storedUser
+            } catch (error: Throwable) {
+                connection.rollback()
+                if (error.message?.contains("unique", ignoreCase = true) == true) {
+                    throw DuplicateCredentialLoginException(normalizedLogin)
+                }
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    override fun findPasswordIdentity(normalizedLogin: String): StoredCredentialAccount? {
+        dataSource.connection.use { connection ->
+            return loadCredentialAccount(connection, normalizedLogin)
+        }
+    }
+
+    override fun upsertVkIdentity(
+        providerUserId: String,
+        displayName: String,
+        username: String?,
+        photoUrl: String?,
+    ): StoredUser {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val userId = findUserIdByIdentity(
+                    connection = connection,
+                    provider = AuthProvider.VK,
+                    providerUserId = providerUserId,
+                ) ?: UUID.randomUUID().toString().also {
+                    insertUser(
+                        connection = connection,
+                        userId = it,
+                        telegramUserId = null,
+                        firstName = null,
+                        lastName = null,
+                        displayName = displayName,
+                        username = username,
+                        photoUrl = photoUrl,
+                    )
+                }
+
+                upsertUser(
+                    connection = connection,
+                    userId = userId,
+                    telegramUserId = null,
+                    firstName = null,
+                    lastName = null,
+                    displayName = displayName,
+                    username = username,
+                    photoUrl = photoUrl,
+                )
+                upsertAuthIdentity(
+                    connection = connection,
+                    userId = userId,
+                    provider = AuthProvider.VK,
+                    providerUserId = providerUserId,
+                    username = username,
+                )
+                ensureRole(connection, userId, UserRole.AUDIENCE)
+                ensureActiveRole(connection, userId, UserRole.AUDIENCE)
+
+                val storedUser = loadUserById(connection, userId) ?: error("Failed to load stored user")
+                connection.commit()
+                return storedUser
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
     override fun registerTelegramAuthAssertion(
         assertionHash: String,
         telegramUserId: Long,
@@ -393,6 +512,44 @@ class PostgresTelegramUserRepository(
         }
     }
 
+    private fun upsertPasswordAccount(
+        connection: Connection,
+        userId: String,
+        login: String,
+        normalizedLogin: String,
+        passwordHash: String,
+    ) {
+        connection.prepareStatement(
+            """
+            INSERT INTO credential_accounts (
+                id,
+                user_id,
+                login_normalized,
+                login_display,
+                password_hash,
+                password_algorithm,
+                password_updated_at,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'argon2id', NOW(), NOW(), NOW())
+            ON CONFLICT (user_id) DO UPDATE SET
+                login_normalized = EXCLUDED.login_normalized,
+                login_display = EXCLUDED.login_display,
+                password_hash = EXCLUDED.password_hash,
+                password_algorithm = EXCLUDED.password_algorithm,
+                password_updated_at = NOW(),
+                updated_at = NOW()
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.randomUUID())
+            statement.setObject(2, UUID.fromString(userId))
+            statement.setString(3, normalizedLogin)
+            statement.setString(4, login)
+            statement.setString(5, passwordHash)
+            statement.executeUpdate()
+        }
+    }
+
     private fun upsertUser(
         connection: Connection,
         userId: String,
@@ -467,6 +624,33 @@ class PostgresTelegramUserRepository(
             statement.setString(4, providerUserId)
             statement.setString(5, username)
             statement.executeUpdate()
+        }
+    }
+
+    private fun loadCredentialAccount(
+        connection: Connection,
+        normalizedLogin: String,
+    ): StoredCredentialAccount? {
+        connection.prepareStatement(
+            """
+            SELECT user_id, login_display, login_normalized, password_hash
+            FROM credential_accounts
+            WHERE login_normalized = ?
+            LIMIT 1
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, normalizedLogin)
+            statement.executeQuery().use { result ->
+                if (!result.next()) return null
+                val userId = result.getObject("user_id").toString()
+                val storedUser = loadUserById(connection, userId) ?: return null
+                return StoredCredentialAccount(
+                    user = storedUser,
+                    login = result.getString("login_display"),
+                    normalizedLogin = result.getString("login_normalized"),
+                    passwordHash = result.getString("password_hash"),
+                )
+            }
         }
     }
 

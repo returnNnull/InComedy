@@ -5,6 +5,7 @@ import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
 import com.bam.incomedy.feature.auth.domain.AuthorizedUser
+import com.bam.incomedy.feature.auth.domain.CredentialAuthService
 import com.bam.incomedy.feature.auth.domain.SessionTerminationService
 import com.bam.incomedy.feature.auth.domain.SessionValidationService
 import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
@@ -111,11 +112,32 @@ class AuthViewModelTest {
         assertEquals("launch_failed", viewModel.state.value.errorMessage)
     }
 
+    @Test
+    fun `when sign in succeeds then password session is set`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val credentialService = FakeCredentialAuthService()
+        val viewModel = createViewModel(
+            provider = FakeProvider(AuthProviderType.VK),
+            credentialAuthService = credentialService,
+            dispatcher = dispatcher,
+        )
+
+        viewModel.onIntent(AuthIntent.OnSignInSubmit(login = "tester", password = "password123"))
+        advanceUntilIdle()
+
+        val session = viewModel.state.value.session
+        assertNotNull(session)
+        assertEquals(AuthProviderType.PASSWORD, session.provider)
+        assertEquals("tester", credentialService.lastLogin)
+    }
+
     private fun createViewModel(
         provider: SocialAuthProvider,
+        credentialAuthService: CredentialAuthService = FakeCredentialAuthService(),
         dispatcher: TestDispatcher,
     ): AuthViewModel {
         return AuthViewModel(
+            credentialAuthService = credentialAuthService,
             socialAuthService = SocialAuthService(listOf(provider)),
             sessionValidationService = FakeSessionValidationService(),
             sessionTerminationService = FakeSessionTerminationService(),
@@ -149,6 +171,31 @@ private class FakeSessionValidationService : SessionValidationService {
 private class FakeSessionTerminationService : SessionTerminationService {
     override suspend fun terminate(accessToken: String): Result<Unit> {
         return Result.success(Unit)
+    }
+}
+
+private class FakeCredentialAuthService : CredentialAuthService {
+    var lastLogin: String? = null
+
+    override suspend fun signIn(login: String, password: String): Result<AuthSession> {
+        lastLogin = login
+        return Result.success(
+            AuthSession(
+                provider = AuthProviderType.PASSWORD,
+                userId = "password_user",
+                accessToken = "password_token",
+                refreshToken = "password_refresh",
+                user = AuthorizedUser(
+                    id = "password_user",
+                    displayName = login,
+                    username = login,
+                ),
+            ),
+        )
+    }
+
+    override suspend fun register(login: String, password: String): Result<AuthSession> {
+        return signIn(login = login, password = password)
     }
 }
 

@@ -4,11 +4,23 @@ import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 
 sealed interface AuthIntent {
+    data class OnSignInSubmit(
+        val login: String,
+        val password: String,
+    ) : AuthIntent
+    data class OnRegisterSubmit(
+        val login: String,
+        val password: String,
+    ) : AuthIntent
     data class OnProviderClick(val provider: AuthProviderType) : AuthIntent
     data class OnAuthCallback(
         val provider: AuthProviderType,
         val code: String,
         val state: String,
+    ) : AuthIntent
+    data class OnAuthFailure(
+        val provider: AuthProviderType,
+        val message: String,
     ) : AuthIntent
     data class OnRestoreSessionTokens(
         val accessToken: String,

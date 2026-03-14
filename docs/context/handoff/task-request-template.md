@@ -19,8 +19,12 @@ Use this index for new implementation and review tasks.
 8. `task-request-template/task-request-template-part-08.md` (temporary legacy rollback analysis, Android launch diagnostics, and OIDC reactivation requests from 2026-03-13)
 9. `task-request-template/task-request-template-part-09.md` (push/deploy/live smoke validation and live recheck requests for restored Telegram OIDC flow from 2026-03-13)
 10. `task-request-template/task-request-template-part-10.md` (first-party Telegram launch bridge request from 2026-03-13)
+11. `task-request-template/task-request-template-part-11.md` (Google auth implementation request + auth-strategy pivot to phone number and code from 2026-03-13 to 2026-03-14)
+12. `task-request-template/task-request-template-part-12.md` (phone OTP provider evaluation and implementation planning from 2026-03-14)
+13. `task-request-template/task-request-template-part-13.md` (authorization implementation completion and context resync from 2026-03-14)
+14. `task-request-template/task-request-template-part-14.md` (platform developer-account constraint persistence from 2026-03-15)
 
 ## Append Rule
 
-- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-10.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-11.md`, update this index, and continue appending there.
+- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-14.md`.
+- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-15.md`, update this index, and continue appending there.

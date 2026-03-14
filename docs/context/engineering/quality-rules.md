@@ -5,6 +5,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 ## Definition of Done (DoD)
 
 - A task is complete only when code, tests, and relevant `docs/context/*` updates are included.
+- Every meaningful task must update `docs/context/governance/session-log.md` with a brief trace of the conversation/work path, not only the final code result.
 - CI checks for the changed scope must pass before merge.
 - Mandatory security review is part of DoD for every task, even if the change is not explicitly security-related.
 
@@ -63,6 +64,16 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Auth logs must include provider and stage, but must not include access/refresh tokens, bot tokens, or other secrets.
 - Live-environment backend troubleshooting must have an operator-only sanitized retrieval path for recent diagnostic events; debugging must not require exposing raw server logs to clients.
 - Diagnostics retention and payload shape must stay bounded and low-cardinality to avoid turning troubleshooting data into an uncontrolled log sink.
+
+## Governance Traceability
+
+- The repository must preserve a short analyzable history of collaboration decisions, not just final artifacts.
+- `docs/context/governance/session-log.md` is the mandatory place for a concise per-task/per-session summary of:
+  - what the user asked for,
+  - what changed during the discussion,
+  - which decisions were taken,
+  - what remains next.
+- This trace must be concise enough to scan quickly, but specific enough that a later chat can understand the work trajectory without replaying the full conversation.
 
 ## Security and Privacy
 

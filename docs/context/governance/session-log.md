@@ -14,9 +14,12 @@ Use session log parts as rolling operational memory.
 3. `session-log/session-log-part-03.md` (2026-03-06 13:35 -> 2026-03-13 00:19)
 4. `session-log/session-log-part-04.md` (2026-03-13 00:20 -> 2026-03-13 03:40)
 5. `session-log/session-log-part-05.md` (2026-03-13 12:15 -> 2026-03-13 14:39)
-6. `session-log/session-log-part-06.md` (2026-03-13 14:55 -> present)
+6. `session-log/session-log-part-06.md` (2026-03-13 14:55 -> 2026-03-13 16:31)
+7. `session-log/session-log-part-07.md` (2026-03-13 19:13 -> 2026-03-14 23:52)
+8. `session-log/session-log-part-08.md` (2026-03-15 00:00 -> 2026-03-15 01:28)
+9. `session-log/session-log-part-09.md` (2026-03-15 01:28 -> present)
 
 ## Append Rule
 
-- Append every new entry to the latest part file: `session-log/session-log-part-06.md`.
-- If the latest part grows above ~8,000 characters, create `session-log/session-log-part-07.md`, update this index, and continue appending there.
+- Append every new entry to the latest part file: `session-log/session-log-part-09.md`.
+- If the latest part grows above ~8,000 characters, create `session-log/session-log-part-10.md`, update this index, and continue appending there.

@@ -23,7 +23,7 @@ class BackendSessionValidationService(
         if (directValidation.isSuccess) {
             return directValidation.map { user ->
                 ValidatedSession(
-                    provider = AuthProviderType.TELEGRAM,
+                    provider = user.provider,
                     userId = user.id,
                     accessToken = accessToken,
                     refreshToken = refreshToken,
@@ -48,7 +48,7 @@ class BackendSessionValidationService(
             return telegramBackendApi.refreshSession(refreshToken)
                 .map { refreshed ->
                     ValidatedSession(
-                        provider = AuthProviderType.TELEGRAM,
+                        provider = refreshed.provider,
                         userId = refreshed.userId,
                         accessToken = refreshed.accessToken,
                         refreshToken = refreshed.refreshToken,

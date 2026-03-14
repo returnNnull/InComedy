@@ -84,6 +84,7 @@ object SessionRoutes {
                         call.respond(
                             HttpStatusCode.OK,
                             SessionMeResponse(
+                                provider = principal.verifiedToken.provider,
                                 user = user.toSessionUserResponse(),
                             ),
                         )
@@ -243,6 +244,7 @@ object SessionRoutes {
                 call.respond(
                     HttpStatusCode.OK,
                     RefreshResponse(
+                        provider = principalProvider(user).wireName,
                         accessToken = newTokens.accessToken,
                         refreshToken = newTokens.refreshToken,
                         expiresIn = newTokens.expiresInSeconds,
@@ -256,6 +258,7 @@ object SessionRoutes {
 
 @Serializable
 data class SessionMeResponse(
+    val provider: String,
     val user: SessionUserResponse,
 )
 
@@ -282,6 +285,7 @@ data class RefreshRequest(
 
 @Serializable
 data class RefreshResponse(
+    val provider: String,
     @SerialName("access_token")
     val accessToken: String,
     @SerialName("refresh_token")
@@ -304,4 +308,4 @@ private fun StoredUser.toSessionUserResponse(): SessionUserResponse {
 }
 
 private fun principalProvider(user: StoredUser) = user.linkedProviders.firstOrNull()
-    ?: com.bam.incomedy.server.db.AuthProvider.TELEGRAM
+    ?: com.bam.incomedy.server.db.AuthProvider.PASSWORD

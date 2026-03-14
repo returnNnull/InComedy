@@ -29,6 +29,7 @@ flyway = "9.22.3"
 h2 = "2.2.224"
 javaJwt = "4.5.0"
 jedis = "5.2.0"
+argon2 = "2.12"
 robolectric = "4.14.1"
 
 [libraries]
@@ -81,6 +82,7 @@ flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
 java-jwt = { module = "com.auth0:java-jwt", version.ref = "javaJwt" }
 jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
+argon2-jvm = { module = "de.mkammerer:argon2-jvm", version.ref = "argon2" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 [plugins]

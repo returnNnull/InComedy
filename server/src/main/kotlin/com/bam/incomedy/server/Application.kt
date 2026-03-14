@@ -2,16 +2,17 @@ package com.bam.incomedy.server
 
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.SessionRoutes
-import com.bam.incomedy.server.auth.telegram.TelegramAuthRoutes
-import com.bam.incomedy.server.auth.telegram.TelegramAuthService
-import com.bam.incomedy.server.auth.telegram.TelegramCallbackBridgeRoutes
-import com.bam.incomedy.server.auth.telegram.TelegramLaunchBridgeRoutes
-import com.bam.incomedy.server.auth.telegram.TelegramLoginStateCodec
-import com.bam.incomedy.server.auth.telegram.TelegramOidcClient
+import com.bam.incomedy.server.auth.credentials.Argon2PasswordHasher
+import com.bam.incomedy.server.auth.credentials.CredentialsAuthRoutes
+import com.bam.incomedy.server.auth.credentials.CredentialsAuthService
+import com.bam.incomedy.server.auth.vk.VkIdAuthRoutes
+import com.bam.incomedy.server.auth.vk.VkIdCallbackBridgeRoutes
+import com.bam.incomedy.server.auth.vk.VkIdAuthService
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
 import com.bam.incomedy.server.db.PostgresTelegramUserRepository
+import com.bam.incomedy.server.ios.AppleAppSiteAssociationRoutes
 import com.bam.incomedy.server.identity.IdentityRoutes
 import com.bam.incomedy.server.observability.DiagnosticsConfig
 import com.bam.incomedy.server.observability.DiagnosticsRoutes
@@ -52,23 +53,19 @@ fun Application.module() {
 
     val repository = PostgresTelegramUserRepository(dataSource)
     val tokenService = JwtSessionTokenService(config.jwt)
-    val loginStateCodec = TelegramLoginStateCodec(
-        redirectUri = config.telegram.loginRedirectUri,
-        secret = config.telegram.loginStateSecret,
-        ttlSeconds = config.telegram.loginStateTtlSeconds,
-    )
-    val oidcClient = TelegramOidcClient(
-        clientId = config.telegram.loginClientId,
-        clientSecret = config.telegram.loginClientSecret,
-        redirectUri = config.telegram.loginRedirectUri,
-    )
-    val authService = TelegramAuthService(
-        loginStateCodec = loginStateCodec,
-        oidcClient = oidcClient,
-        repository = repository,
+    val passwordHasher = Argon2PasswordHasher()
+    val credentialsAuthService = CredentialsAuthService(
+        userRepository = repository,
         tokenService = tokenService,
-        launchUri = TelegramLaunchBridgeRoutes.launchUriFromRedirectUri(config.telegram.loginRedirectUri),
+        passwordHasher = passwordHasher,
     )
+    val vkIdAuthService = config.vkId?.let {
+        VkIdAuthService.create(
+            config = it,
+            userRepository = repository,
+            tokenService = tokenService,
+        )
+    }
     val rateLimiter: AuthRateLimiter = config.redis?.let { redis ->
         runCatching {
             RedisAuthRateLimiter(JedisPooled(redis.url))
@@ -126,25 +123,6 @@ fun Application.module() {
         get("/health") {
             call.respond(mapOf("status" to "ok"))
         }
-
-        TelegramCallbackBridgeRoutes.register(
-            route = this,
-            diagnosticsStore = diagnosticsStore,
-            rateLimiter = rateLimiter,
-        )
-        TelegramLaunchBridgeRoutes.register(
-            route = this,
-            authService = authService,
-            diagnosticsStore = diagnosticsStore,
-            rateLimiter = rateLimiter,
-        )
-
-        TelegramAuthRoutes.register(
-            route = this,
-            authService = authService,
-            rateLimiter = rateLimiter,
-            diagnosticsStore = diagnosticsStore,
-        )
         SessionRoutes.register(
             route = this,
             tokenService = tokenService,
@@ -152,6 +130,29 @@ fun Application.module() {
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )
+        CredentialsAuthRoutes.register(
+            route = this,
+            authService = credentialsAuthService,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        VkIdAuthRoutes.register(
+            route = this,
+            authService = vkIdAuthService,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        VkIdCallbackBridgeRoutes.register(
+            route = this,
+            diagnosticsStore = diagnosticsStore,
+            rateLimiter = rateLimiter,
+        )
+        config.iosAssociatedDomains?.let { associatedDomains ->
+            AppleAppSiteAssociationRoutes.register(
+                route = this,
+                config = associatedDomains,
+            )
+        }
         IdentityRoutes.register(
             route = this,
             tokenService = tokenService,
@@ -176,7 +177,7 @@ fun Application.module() {
 
         get("/") {
             call.respondText(
-                text = TelegramCallbackBridgeRoutes.bridgeHtml(),
+                text = "<html><body><h1>InComedy Server</h1></body></html>",
                 contentType = ContentType.Text.Html,
             )
         }

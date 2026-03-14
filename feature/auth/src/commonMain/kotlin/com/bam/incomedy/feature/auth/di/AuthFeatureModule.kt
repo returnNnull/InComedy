@@ -15,6 +15,7 @@ val authFeatureModule = module {
 
     single {
         AuthViewModel(
+            credentialAuthService = get(),
             socialAuthService = get(),
             sessionValidationService = get(),
             sessionTerminationService = get(),

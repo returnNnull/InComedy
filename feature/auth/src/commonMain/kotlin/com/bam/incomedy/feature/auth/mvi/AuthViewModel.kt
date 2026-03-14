@@ -3,6 +3,7 @@ package com.bam.incomedy.feature.auth.mvi
 import com.bam.incomedy.feature.auth.domain.AuthProviderType
 import com.bam.incomedy.feature.auth.domain.AuthSession
 import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
+import com.bam.incomedy.feature.auth.domain.CredentialAuthService
 import com.bam.incomedy.feature.auth.domain.RandomAuthStateGenerator
 import com.bam.incomedy.feature.auth.domain.SessionTerminationService
 import com.bam.incomedy.feature.auth.domain.SessionValidationException
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
+    private val credentialAuthService: CredentialAuthService,
     private val socialAuthService: SocialAuthService,
     private val sessionValidationService: SessionValidationService,
     private val sessionTerminationService: SessionTerminationService,
@@ -41,8 +43,11 @@ class AuthViewModel(
 
     fun onIntent(intent: AuthIntent) {
         when (intent) {
+            is AuthIntent.OnSignInSubmit -> signIn(login = intent.login, password = intent.password)
+            is AuthIntent.OnRegisterSubmit -> register(login = intent.login, password = intent.password)
             is AuthIntent.OnProviderClick -> startAuth(intent.provider)
             is AuthIntent.OnAuthCallback -> completeAuth(intent.provider, intent.code, intent.state)
+            is AuthIntent.OnAuthFailure -> handleAuthFailure(intent.provider, intent.message)
             is AuthIntent.OnRestoreSessionTokens -> restoreSessionByToken(intent.accessToken, intent.refreshToken)
             is AuthIntent.OnRestoreSessionToken -> restoreSessionByToken(intent.accessToken, null)
             is AuthIntent.OnRestoreSession -> restoreSession(intent.session)
@@ -68,7 +73,17 @@ class AuthViewModel(
                 onSuccess = { launchRequest ->
                     AuthFlowLogger.event(stage = "start_auth.launch_url_ready", provider = provider)
                     pendingStates[provider] = launchRequest.state
-                    _effects.emit(AuthEffect.OpenExternalAuth(provider, launchRequest.url))
+                    val url = launchRequest.url.takeIf { it.isNotBlank() }
+                        ?: run {
+                            _state.update { current ->
+                                current.copy(
+                                    isLoading = false,
+                                    errorMessage = "Auth launch URL is missing for $provider",
+                                )
+                            }
+                            return@fold
+                        }
+                    _effects.emit(AuthEffect.OpenExternalAuth(provider, url))
                     _state.update { current -> current.copy(isLoading = false) }
                 },
                 onFailure = { error ->
@@ -85,6 +100,24 @@ class AuthViewModel(
                     }
                 },
             )
+        }
+    }
+
+    private fun signIn(login: String, password: String) {
+        completeCredentialAuth(
+            stage = "login",
+            provider = AuthProviderType.PASSWORD,
+        ) {
+            credentialAuthService.signIn(login = login, password = password)
+        }
+    }
+
+    private fun register(login: String, password: String) {
+        completeCredentialAuth(
+            stage = "register",
+            provider = AuthProviderType.PASSWORD,
+        ) {
+            credentialAuthService.register(login = login, password = password)
         }
     }
 
@@ -149,6 +182,66 @@ class AuthViewModel(
 
     private fun clearError() {
         _state.update { it.copy(errorMessage = null) }
+    }
+
+    private fun completeCredentialAuth(
+        stage: String,
+        provider: AuthProviderType,
+        action: suspend () -> Result<AuthSession>,
+    ) {
+        scope.launch {
+            AuthFlowLogger.event(stage = "credentials.$stage.requested", provider = provider)
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    selectedProvider = provider,
+                    errorMessage = null,
+                )
+            }
+            action().fold(
+                onSuccess = { session ->
+                    AuthFlowLogger.event(
+                        stage = "credentials.$stage.success",
+                        provider = provider,
+                        details = "userId=${session.userId}",
+                    )
+                    _state.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            session = session,
+                            errorMessage = null,
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    AuthFlowLogger.event(
+                        stage = "credentials.$stage.failed",
+                        provider = provider,
+                        details = "reason=${sanitizeForLog(error.message)}",
+                    )
+                    _state.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            errorMessage = error.message?.take(200) ?: "Unable to complete auth",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun handleAuthFailure(provider: AuthProviderType, message: String) {
+        AuthFlowLogger.event(
+            stage = "native_auth.failed",
+            provider = provider,
+            details = "reason=${sanitizeForLog(message)}",
+        )
+        _state.update {
+            it.copy(
+                isLoading = false,
+                errorMessage = message.take(200).ifBlank { "Unable to complete auth" },
+            )
+        }
     }
 
     private fun restoreSession(session: AuthSession) {

@@ -182,6 +182,7 @@ object TelegramAuthRoutes {
                     call.respond(
                         HttpStatusCode.OK,
                         TelegramAuthResponse(
+                            provider = auth.provider,
                             accessToken = auth.accessToken,
                             refreshToken = auth.refreshToken,
                             expiresInSeconds = auth.expiresInSeconds,
@@ -190,6 +191,9 @@ object TelegramAuthRoutes {
                                 displayName = auth.user.displayName,
                                 username = auth.user.username,
                                 photoUrl = auth.user.photoUrl,
+                                roles = auth.roles,
+                                activeRole = auth.activeRole,
+                                linkedProviders = auth.linkedProviders,
                             ),
                         ),
                     )
@@ -260,6 +264,7 @@ object TelegramAuthRoutes {
  */
 @Serializable
 data class TelegramAuthResponse(
+    val provider: String,
     @SerialName("access_token")
     val accessToken: String,
     @SerialName("refresh_token")
@@ -285,4 +290,9 @@ data class TelegramAuthUserResponse(
     val username: String? = null,
     @SerialName("photo_url")
     val photoUrl: String? = null,
+    val roles: List<String> = emptyList(),
+    @SerialName("active_role")
+    val activeRole: String? = null,
+    @SerialName("linked_providers")
+    val linkedProviders: List<String> = emptyList(),
 )

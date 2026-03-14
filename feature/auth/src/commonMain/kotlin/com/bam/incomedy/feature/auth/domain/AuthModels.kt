@@ -5,12 +5,14 @@ package com.bam.incomedy.feature.auth.domain
  *
  * @property provider Провайдер, через которого запускается вход.
  * @property state Сгенерированный state для защиты auth-потока.
- * @property url Ссылка для открытия внешнего auth-потока.
+ * @property url Ссылка для открытия внешнего auth-потока, если провайдер использует browser-based launch.
+ * @property serverClientId Backend-выданный server client id для native mobile auth, если он требуется провайдеру.
  */
 data class AuthLaunchRequest(
     val provider: AuthProviderType,
     val state: String,
-    val url: String,
+    val url: String = "",
+    val serverClientId: String? = null,
 )
 
 /**

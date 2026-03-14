@@ -58,9 +58,32 @@ class AuthFeatureBridge(
         viewModel.onIntent(AuthIntent.OnProviderClick(provider))
     }
 
+    fun signIn(login: String, password: String) {
+        viewModel.onIntent(
+            AuthIntent.OnSignInSubmit(
+                login = login,
+                password = password,
+            ),
+        )
+    }
+
+    fun register(login: String, password: String) {
+        viewModel.onIntent(
+            AuthIntent.OnRegisterSubmit(
+                login = login,
+                password = password,
+            ),
+        )
+    }
+
     fun completeAuth(providerKey: String, code: String, state: String) {
         val provider = providerKey.toProviderType() ?: return
         viewModel.onIntent(AuthIntent.OnAuthCallback(provider = provider, code = code, state = state))
+    }
+
+    fun failAuth(providerKey: String, message: String) {
+        val provider = providerKey.toProviderType() ?: return
+        viewModel.onIntent(AuthIntent.OnAuthFailure(provider = provider, message = message))
     }
 
     fun completeAuthFromCallbackUrl(callbackUrl: String) {
@@ -141,6 +164,8 @@ private fun AuthState.toSnapshot(): AuthUiStateSnapshot {
 
 private fun AuthProviderType.toKey(): String {
     return when (this) {
+        AuthProviderType.PASSWORD -> "password"
+        AuthProviderType.PHONE -> "phone"
         AuthProviderType.VK -> "vk"
         AuthProviderType.TELEGRAM -> "telegram"
         AuthProviderType.GOOGLE -> "google"
@@ -149,6 +174,8 @@ private fun AuthProviderType.toKey(): String {
 
 private fun String.toProviderType(): AuthProviderType? {
     return when (trim().lowercase()) {
+        "password", "credentials", "login" -> AuthProviderType.PASSWORD
+        "phone" -> AuthProviderType.PHONE
         "vk" -> AuthProviderType.VK
         "telegram", "tg" -> AuthProviderType.TELEGRAM
         "google" -> AuthProviderType.GOOGLE

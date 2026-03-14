@@ -18,10 +18,11 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "refresh_tokens"))
                 assertTrue(tableExists(connection, "telegram_auth_assertions"))
                 assertTrue(tableExists(connection, "auth_identities"))
+                assertTrue(tableExists(connection, "credential_accounts"))
                 assertTrue(tableExists(connection, "user_role_assignments"))
                 assertTrue(tableExists(connection, "organizer_workspaces"))
                 assertTrue(tableExists(connection, "workspace_members"))
-                assertEquals(3, appliedMigrationCount(connection))
+                assertEquals(4, appliedMigrationCount(connection))
             }
         }
     }

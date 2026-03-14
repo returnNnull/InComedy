@@ -1,7 +1,46 @@
+import org.gradle.api.GradleException
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+}
+
+val releaseSigningPropertiesFile = rootProject.file("signing/android/release-signing.properties")
+val releaseKeystoreFile = rootProject.file("signing/android/incomedy-release.jks")
+val releaseSigningProperties = Properties().apply {
+    if (releaseSigningPropertiesFile.isFile) {
+        releaseSigningPropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun signingProperty(name: String): String? {
+    return providers.gradleProperty(name).orNull
+        ?: providers.environmentVariable(name).orNull
+        ?: releaseSigningProperties.getProperty(name)
+}
+
+val releaseKeyAlias = signingProperty("INCOMEDY_RELEASE_KEY_ALIAS")
+    ?.takeIf { it.isNotBlank() }
+    ?: "incomedy-release"
+val releaseStorePassword = signingProperty("INCOMEDY_RELEASE_STORE_PASSWORD")
+    ?.takeIf { it.isNotBlank() }
+val releaseKeyPassword = signingProperty("INCOMEDY_RELEASE_KEY_PASSWORD")
+    ?.takeIf { it.isNotBlank() }
+val hasReleaseSigning = releaseKeystoreFile.isFile &&
+    releaseStorePassword != null &&
+    releaseKeyPassword != null
+val requestedTasks = gradle.startParameter.taskNames
+if (
+    releaseKeystoreFile.isFile &&
+    !hasReleaseSigning &&
+    requestedTasks.any { it.contains("release", ignoreCase = true) }
+) {
+    throw GradleException(
+        "Release keystore found at ${releaseKeystoreFile.path}, but signing credentials are missing. " +
+            "Fill signing/android/release-signing.properties or provide INCOMEDY_RELEASE_* Gradle/env properties."
+    )
 }
 
 android {
@@ -20,9 +59,22 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

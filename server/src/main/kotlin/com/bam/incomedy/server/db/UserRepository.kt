@@ -6,6 +6,8 @@ import java.time.Instant
 enum class AuthProvider(
     val wireName: String,
 ) {
+    PASSWORD("password"),
+    PHONE("phone"),
     TELEGRAM("telegram"),
     VK("vk"),
     GOOGLE("google"),
@@ -63,7 +65,22 @@ data class StoredWorkspace(
     val permissionRole: WorkspacePermissionRole,
 )
 
+data class StoredCredentialAccount(
+    val user: StoredUser,
+    val login: String,
+    val normalizedLogin: String,
+    val passwordHash: String,
+)
+
 interface UserRepository {
+    fun createPasswordIdentity(login: String, normalizedLogin: String, passwordHash: String): StoredUser
+    fun findPasswordIdentity(normalizedLogin: String): StoredCredentialAccount?
+    fun upsertVkIdentity(
+        providerUserId: String,
+        displayName: String,
+        username: String?,
+        photoUrl: String?,
+    ): StoredUser
     fun upsertTelegramIdentity(user: TelegramUser): StoredUser
     fun findById(userId: String): StoredUser?
     fun registerTelegramAuthAssertion(assertionHash: String, telegramUserId: Long, expiresAt: Instant): Boolean
@@ -75,3 +92,7 @@ interface UserRepository {
     fun createWorkspace(ownerUserId: String, name: String, slug: String): StoredWorkspace
     fun listWorkspaces(userId: String): List<StoredWorkspace>
 }
+
+class DuplicateCredentialLoginException(
+    val normalizedLogin: String,
+) : IllegalStateException("Credential login is already registered")

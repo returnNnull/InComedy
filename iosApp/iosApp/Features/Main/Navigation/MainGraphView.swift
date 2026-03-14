@@ -375,6 +375,10 @@ private func roleTitle(_ role: String) -> String {
 /// Переводит код способа входа в подпись для интерфейса.
 private func providerTitle(_ provider: String) -> String {
     switch provider {
+    case "password":
+        return "Логин и пароль"
+    case "phone":
+        return "Телефон"
     case "telegram":
         return "Telegram"
     case "vk":

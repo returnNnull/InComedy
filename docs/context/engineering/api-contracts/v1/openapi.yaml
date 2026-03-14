@@ -111,172 +111,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /auth/telegram/callback:
-    get:
-      tags: [Auth]
-      summary: Telegram web callback bridge page
-      description: |
-        Returns HTML page that sanitizes the browser callback URL, attempts to
-        reopen the mobile app through `incomedy://auth/telegram?...`, and leaves
-        an explicit fallback button plus bridge telemetry for Android/browser handoff continuation.
-      operationId: getTelegramCallbackBridge
-      responses:
-        "200":
-          description: HTML bridge page
-          content:
-            text/html:
-              schema:
-                type: string
-  /auth/telegram/launch:
-    get:
-      tags: [Auth]
-      summary: Telegram first-party launch bridge page
-      description: |
-        Returns HTML page on the approved InComedy origin that resumes the current
-        Telegram OIDC attempt with documented `openid profile phone` scope and
-        navigates the browser to `oauth.telegram.org/auth`.
-        The page strips the signed `state` from browser history, exposes a manual
-        fallback button, and emits safe launch telemetry.
-      operationId: getTelegramLaunchBridge
-      parameters:
-        - in: query
-          name: state
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: HTML launch bridge page
-          content:
-            text/html:
-              schema:
-                type: string
-        "400":
-          description: Invalid or expired Telegram auth state
-          content:
-            text/html:
-              schema:
-                type: string
-  /auth/telegram/launch/telemetry:
-    get:
-      tags: [Auth]
-      summary: Telegram launch bridge client telemetry
-      description: |
-        Internal launch-bridge telemetry endpoint used by the first-party page to emit
-        safe low-cardinality client-side stages such as redirect readiness and button click.
-      operationId: getTelegramLaunchBridgeTelemetry
-      parameters:
-        - in: query
-          name: stage
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: is_android
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_auth_url
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: redirect_mode
-          required: false
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Telemetry accepted
-  /auth/telegram/callback/telemetry:
-    get:
-      tags: [Auth]
-      summary: Telegram callback bridge client telemetry
-      description: |
-        Internal bridge-side telemetry endpoint used by the callback page to emit
-        safe low-cardinality client-side stages such as bridge load and button click.
-      operationId: getTelegramCallbackBridgeTelemetry
-      parameters:
-        - in: query
-          name: stage
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: is_android
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_query
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_fragment
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: has_payload
-          required: false
-          schema:
-            type: boolean
-        - in: query
-          name: launch_mode
-          required: false
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Telemetry accepted
-  /api/v1/auth/telegram/start:
-    get:
-      tags: [Auth]
-      summary: Start official Telegram login flow
-      description: |
-        Returns an InComedy first-party launch URL together with a server-issued
-        signed `state` value for the current mobile login attempt. The launch page
-        then resumes the official Telegram OIDC browser flow with documented
-        `openid profile phone` scope on an approved origin.
-      operationId: getTelegramAuthStart
-      parameters:
-        - in: header
-          name: X-Request-ID
-          required: false
-          description: Optional client-provided UUID request id for tracing.
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Telegram auth start data generated successfully
-          headers:
-            X-Request-ID:
-              description: Server trace identifier
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TelegramAuthStartResponse"
-        "429":
-          description: Rate limit exceeded
-          headers:
-            X-Request-ID:
-              description: Server trace identifier
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /api/v1/auth/telegram/verify:
+  /api/v1/auth/register:
     post:
       tags: [Auth]
-      summary: Verify Telegram authorization code and issue app session
-      operationId: postTelegramVerify
+      summary: Register a first-party credential account and issue a session
+      operationId: postAuthRegister
       parameters:
         - in: header
           name: X-Request-ID
@@ -290,10 +129,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TelegramVerifyRequest"
+              $ref: "#/components/schemas/CredentialAuthRequest"
       responses:
         "200":
-          description: Telegram verification succeeded
+          description: Account registered and session issued successfully
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -302,9 +141,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TelegramAuthResponse"
+                $ref: "#/components/schemas/AuthSessionResponse"
         "400":
-          description: Invalid payload or bad request
+          description: Invalid login/password payload
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -314,8 +153,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Verification failed (invalid code, invalid id_token, or replayed assertion)
+        "409":
+          description: Login is already registered
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -347,8 +186,205 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Unexpected server failure
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in with login and password and issue a session
+      operationId: postAuthLogin
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialAuthRequest"
+      responses:
+        "200":
+          description: Session issued successfully
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionResponse"
+        "400":
+          description: Invalid login/password payload
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid login or password
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/vk/start:
+    get:
+      tags: [Auth]
+      summary: Issue a VK ID browser launch URL
+      operationId: getAuthVkStart
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: VK ID launch URL returned successfully
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VkIdStartResponse"
+        "429":
+          description: Too many requests
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: VK auth is not configured in the current runtime
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/vk/verify:
+    post:
+      tags: [Auth]
+      summary: Verify VK ID callback data and issue an internal session
+      operationId: postAuthVkVerify
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VkIdVerifyPayload"
+      responses:
+        "200":
+          description: VK auth completed successfully
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionResponse"
+        "400":
+          description: Invalid payload or invalid signed auth state
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: VK code exchange or VK user info retrieval failed
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          headers:
+            X-Request-ID:
+              description: Server trace identifier
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: VK auth is not configured in the current runtime
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -810,22 +846,49 @@ components:
           example: POST
         route:
           type: string
-          example: /api/v1/auth/telegram/verify
+          example: /api/v1/auth/refresh
         stage:
           type: string
-          example: auth.telegram.verify.failed
+          example: auth.refresh.failed
         status:
           type: integer
           example: 401
         safeErrorCode:
           type: string
           nullable: true
-          example: telegram_auth_code_exchange_failed
+          example: refresh_token_invalid
         metadata:
           type: object
           additionalProperties:
             type: string
-    TelegramAuthStartResponse:
+    SessionMeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - provider
+        - user
+      properties:
+        provider:
+          type: string
+          enum: [password, phone, vk, telegram, google, apple]
+        user:
+          $ref: "#/components/schemas/SessionUser"
+    CredentialAuthRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - login
+        - password
+      properties:
+        login:
+          type: string
+          minLength: 3
+          maxLength: 32
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+    VkIdStartResponse:
       type: object
       additionalProperties: false
       required:
@@ -835,72 +898,43 @@ components:
         auth_url:
           type: string
           format: uri
-          example: https://incomedy.ru/auth/telegram/launch?state=signed_state
         state:
           type: string
-          minLength: 32
-          example: ZXlKaFpHUmxjaUk2SW5OMFlYUmxJaXdpWTI5a1pWOTJaWEpwWm1sbGNpSTZJbUZpWXpFeU15SXNJbVY0Y0NJNk1UY3dNREF3TURBd2ZRLnNpZ25hdHVyZQ
-    TelegramVerifyRequest:
+    VkIdVerifyPayload:
       type: object
       additionalProperties: false
       required:
         - code
         - state
+        - device_id
       properties:
         code:
           type: string
-          minLength: 1
-          example: tg_login_authorization_code
         state:
           type: string
-          minLength: 32
-          example: ZXlKaFpHUmxjaUk2SW5OMFlYUmxJaXdpWTI5a1pWOTJaWEpwWm1sbGNpSTZJbUZpWXpFeU15SXNJbVY0Y0NJNk1UY3dNREF3TURBd2ZRLnNpZ25hdHVyZQ
-    TelegramAuthResponse:
+        device_id:
+          type: string
+    AuthSessionResponse:
       type: object
       additionalProperties: false
       required:
+        - provider
         - access_token
         - refresh_token
         - expires_in
         - user
       properties:
+        provider:
+          type: string
+          enum: [password, phone, vk, telegram, google, apple]
         access_token:
           type: string
         refresh_token:
           type: string
-          minLength: 43
-          maxLength: 43
         expires_in:
           type: integer
           format: int64
           example: 3600
-        user:
-          $ref: "#/components/schemas/TelegramAuthUser"
-    TelegramAuthUser:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - display_name
-      properties:
-        id:
-          type: string
-          format: uuid
-        display_name:
-          type: string
-          example: John Doe
-        username:
-          type: string
-          nullable: true
-        photo_url:
-          type: string
-          nullable: true
-    SessionMeResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - user
-      properties:
         user:
           $ref: "#/components/schemas/SessionUser"
     RefreshRequest:
@@ -915,11 +949,15 @@ components:
       type: object
       additionalProperties: false
       required:
+        - provider
         - access_token
         - refresh_token
         - expires_in
         - user
       properties:
+        provider:
+          type: string
+          enum: [password, phone, vk, telegram, google, apple]
         access_token:
           type: string
         refresh_token:
@@ -964,7 +1002,7 @@ components:
           type: array
           items:
             type: string
-            enum: [telegram, vk, google, apple]
+            enum: [password, phone, vk, telegram, google, apple]
     MeRolesResponse:
       type: object
       additionalProperties: false
@@ -985,7 +1023,7 @@ components:
           type: array
           items:
             type: string
-            enum: [telegram, vk, google, apple]
+            enum: [password, phone, vk, telegram, google, apple]
     SetActiveRoleRequest:
       type: object
       additionalProperties: false
@@ -1050,7 +1088,7 @@ components:
       properties:
         code:
           type: string
-          example: telegram_auth_failed
+          example: auth_failed
         message:
           type: string
-          example: Telegram auth failed
+          example: Authentication failed

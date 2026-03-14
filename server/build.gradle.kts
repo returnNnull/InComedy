@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.flyway.core)
     implementation(libs.java.jwt)
     implementation(libs.jedis)
+    implementation(libs.argon2.jvm)
 
     testImplementation(libs.ktor.server.tests.jvm)
     testImplementation(libs.kotlin.test)

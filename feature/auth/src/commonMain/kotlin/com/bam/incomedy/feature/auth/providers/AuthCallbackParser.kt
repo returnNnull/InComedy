@@ -23,8 +23,11 @@ object AuthCallbackParser {
         val params = callbackParams(url)
         val state = params["state"].orEmpty()
         val code = when (provider) {
+            AuthProviderType.PASSWORD -> return null
+            AuthProviderType.PHONE -> return null
             AuthProviderType.TELEGRAM -> url
-            AuthProviderType.VK, AuthProviderType.GOOGLE -> params["code"].orEmpty()
+            AuthProviderType.VK -> url
+            AuthProviderType.GOOGLE -> params["code"].orEmpty()
         }
         if (code.isBlank()) return null
         return ParsedAuthCallback(provider = provider, code = code, state = state)

@@ -14,7 +14,7 @@
 
 ## Core Domain Areas
 
-- Authentication and role onboarding (VK/Telegram/Google auth)
+- Authentication and role onboarding (login + password primary, VK ID as external provider)
 - Organizer workspace and staff permissions
 - Events and scheduling
 - Venues, hall templates, and seat inventory
@@ -23,21 +23,25 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-13)
+## Current Implementation Status (2026-03-15)
 
 - Implemented:
+  - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
+  - Argon2id-backed credential storage/migration plus server-side credential abuse controls for register/login routes;
+  - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge, Android app-preferred launch with browser fallback, and iOS/browser handoff;
   - auth/session foundation across mobile and server;
-  - provider-agnostic backend `User + AuthIdentity` persistence foundation behind the current Telegram login;
+  - provider-agnostic backend `User + AuthIdentity` persistence foundation that can support multiple auth providers without turning provider ids into primary business ids;
   - backend role storage, active-role context, and minimal organizer workspace create/list routes;
   - shared session-focused ViewModel/bridge state with role context, linked providers, and organizer workspace list/create wiring;
   - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
-  - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
-  - official Telegram OIDC browser auth start (`/api/v1/auth/telegram/start`) that returns a first-party `https://incomedy.ru/auth/telegram/launch` URL, where backend-owned PKCE/state are resumed into Telegram browser auth with documented `openid profile phone` scope before the HTTPS callback bridge returns into `incomedy://auth/telegram`, followed by backend code exchange / `id_token` verification before session issuance;
-  - Telegram session restore/refresh/logout backend contract;
+  - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, workspace create/list bound to shared session state, and associated-domain handling for auth return links;
+  - auth entry surfaces now expose credentials plus VK while preserving provider-extensible session/identity seams for future providers;
+  - session restore/refresh/logout backend contract;
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
   - shared/mobile backend error correlation via surfaced backend request ids in failure messages.
 - Partial:
-  - VK and Google auth provider wiring exists in mobile data layer, but server-backed linked-identity exchange is not complete;
+  - VK ID requires runtime client configuration, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
+  - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
   - organizer workspace currently supports owner create/list only; invites, member management, and permission editing are still missing;
   - current Android/iOS main flow exposes a foundation shell for account/workspace context, but dedicated organizer feature graphs and deeper operational flows are still missing.
 - Planned next bounded contexts:
@@ -77,6 +81,8 @@
 - Keep module boundaries aligned with feature domains and Clean architecture rules.
 - PostgreSQL schema evolution must live in versioned migration files; application code should invoke migration execution, not own mutable schema DDL as business logic.
 - Internal identity must be modeled provider-agnostically (`User` + linked auth identities); provider-specific ids must not become the primary keys for profile, RBAC, or workspace domains.
+- Password-based auth is implemented as a first-party backend flow with secure password hashing and credential-abuse controls; VK ID plugs into the same internal user/session model as a linked external identity.
+- The canonical public VK callback contract is `https://incomedy.ru/auth/vk/callback`; Android starts VK auth by preferring an installed VK app through a package-targeted `ACTION_VIEW` launch and falls back to the browser when the app is unavailable or cannot handle the URL, while iOS can finish through the same URL once associated domains and Apple App Site Association metadata are configured. The current repository still assumes one shared VK `client_id` behind that public callback.
 - Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
 - Prefer REST for CRUD and WebSocket/push for live event updates.
 - For PSP/push/payout side effects, prefer transactional outbox + background workers once those domains are introduced.

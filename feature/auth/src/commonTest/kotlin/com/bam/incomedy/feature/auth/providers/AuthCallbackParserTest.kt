@@ -35,4 +35,28 @@ class AuthCallbackParserTest {
         assertEquals(url, parsed.code)
         assertEquals("test_state", parsed.state)
     }
+
+    @Test
+    fun `parses vk callback preserving device id in raw url`() {
+        val url = "incomedy://auth/vk?code=vk_code&state=test_state&device_id=device123"
+
+        val parsed = AuthCallbackParser.parse(url)
+
+        assertNotNull(parsed)
+        assertEquals(AuthProviderType.VK, parsed.provider)
+        assertEquals(url, parsed.code)
+        assertEquals("test_state", parsed.state)
+    }
+
+    @Test
+    fun `parses vk callback from https universal link`() {
+        val url = "https://incomedy.ru/auth/vk/callback?code=vk_code&state=test_state&device_id=device123"
+
+        val parsed = AuthCallbackParser.parse(url)
+
+        assertNotNull(parsed)
+        assertEquals(AuthProviderType.VK, parsed.provider)
+        assertEquals(url, parsed.code)
+        assertEquals("test_state", parsed.state)
+    }
 }
