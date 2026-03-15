@@ -20,7 +20,7 @@ Status labels:
 - Server packaging/runtime: `Docker` + `Docker Compose`
 - Auth architecture: provider-agnostic internal identity/session foundation with login + password as the active product login standard
 - External auth provider: `VK ID`
-- Android VK auth transport: official `VK ID Android SDK` in auth-code mode with backend verification/exchange and internal session issuance
+- Android VK auth transport: official `VK ID Android SDK` plus official `com.vk.id:onetap-compose` UI module in documented auth-code mode with client-generated `state/PKCE`, backend code exchange, and internal session issuance
 - Password hashing: `Argon2id`
 - Android release signing: Gradle-managed release signing with a local ignored keystore/properties file
 - iOS deep-linking: custom scheme + associated domains for production auth return flows

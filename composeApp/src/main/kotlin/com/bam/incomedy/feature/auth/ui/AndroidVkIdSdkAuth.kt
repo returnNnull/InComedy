@@ -1,180 +1,99 @@
 package com.bam.incomedy.feature.auth.ui
 
-import android.content.Context
-import android.content.ContextWrapper
 import android.net.Uri
-import androidx.activity.ComponentActivity
-import androidx.lifecycle.LifecycleOwner
 import com.bam.incomedy.BuildConfig
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.mvi.AuthEffect
-import com.bam.incomedy.feature.auth.mvi.AuthFlowLogger
-import com.vk.id.AccessToken
-import com.vk.id.VKID
 import com.vk.id.VKIDAuthFail
-import com.vk.id.auth.AuthCodeData
-import com.vk.id.auth.VKIDAuthCallback
-import com.vk.id.auth.VKIDAuthParams
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.Base64
 
 /**
- * Runtime Android config for the optional VK ID SDK path.
+ * Runtime-конфиг documented Android VK SDK path.
  *
- * The config is derived from Gradle/env-backed BuildConfig fields so local builds can keep the SDK
- * disabled without breaking the browser fallback path.
+ * Конфиг берется из `BuildConfig`, чтобы OneTap можно было безопасно отключать в сборках без
+ * локальной VK Android конфигурации, сохраняя browser fallback.
  */
 internal data class AndroidVkIdSdkConfig(
     val clientId: String,
     val redirectHost: String,
     val redirectScheme: String,
+    val requestedScopes: Set<String>,
     val isEnabled: Boolean,
 ) {
-    /** Returns `true` when the current auth effect can be completed through the local VK SDK config. */
-    fun canHandle(effect: AuthEffect.OpenExternalAuth): Boolean {
+    /** Проверяет, можно ли рендерить официальный VK OneTap без скрытого fallback на другой transport. */
+    fun canUseOneTap(): Boolean {
         return isEnabled &&
-            effect.provider == AuthProviderType.VK &&
-            effect.providerClientId == clientId &&
-            !effect.providerCodeChallenge.isNullOrBlank() &&
-            effect.state.isNotBlank()
+            clientId.isNotBlank() &&
+            redirectHost.isNotBlank() &&
+            redirectScheme.isNotBlank()
     }
 
-    /** Returns a bounded reason code when SDK launch should fall back to browser launch instead. */
-    fun fallbackReason(effect: AuthEffect.OpenExternalAuth): String {
+    /** Возвращает low-cardinality причину, по которой OneTap сейчас недоступен. */
+    fun unavailableReason(): String {
         return when {
             !isEnabled -> "sdk_disabled"
-            effect.provider != AuthProviderType.VK -> "unsupported_provider"
-            effect.providerClientId.isNullOrBlank() -> "missing_server_client"
-            effect.providerClientId != clientId -> "client_id_mismatch"
-            effect.providerCodeChallenge.isNullOrBlank() -> "missing_code_challenge"
-            effect.state.isBlank() -> "missing_state"
-            else -> "unsupported"
+            clientId.isBlank() -> "missing_client_id"
+            redirectHost.isBlank() -> "missing_redirect_host"
+            redirectScheme.isBlank() -> "missing_redirect_scheme"
+            else -> "unknown"
         }
     }
 }
 
 /**
- * Android-only VK SDK launcher that turns SDK auth-code callbacks into the shared callback-URL flow.
+ * Локально сгенерированная Android VK auth-попытка для documented SDK/backend exchange flow.
+ *
+ * `state`, `codeVerifier` и `codeChallenge` принадлежат клиенту и живут только в приложении до
+ * завершения конкретной попытки авторизации.
  */
+internal data class AndroidVkIdAuthAttempt(
+    val state: String,
+    val codeVerifier: String,
+    val codeChallenge: String,
+)
+
+/** Android-only helper для documented VK OneTap flow. */
 internal object AndroidVkIdSdkAuth {
-    /** Returns the current Android VK SDK runtime config derived from BuildConfig values. */
+    /** Возвращает текущий runtime-конфиг Android VK SDK из `BuildConfig`. */
     fun runtimeConfig(): AndroidVkIdSdkConfig {
         return AndroidVkIdSdkConfig(
             clientId = BuildConfig.VK_ANDROID_CLIENT_ID,
             redirectHost = BuildConfig.VK_ANDROID_REDIRECT_HOST,
             redirectScheme = BuildConfig.VK_ANDROID_REDIRECT_SCHEME,
+            requestedScopes = BuildConfig.VK_ID_SCOPE.toScopeSet(),
             isEnabled = BuildConfig.VK_ANDROID_SDK_ENABLED,
         )
     }
 
-    /**
-     * Attempts to launch VK auth through the official Android SDK.
-     *
-     * Returns `true` only when SDK auth was started successfully. Returning `false` means the caller
-     * should fall back to the existing browser/public-callback launch path.
-     */
-    fun start(
-        context: Context,
-        effect: AuthEffect.OpenExternalAuth,
-        onAuthCallbackUrl: (String) -> Unit,
-        onAuthFailure: (String) -> Unit,
-    ): Boolean {
-        val runtimeConfig = runtimeConfig()
-        if (!runtimeConfig.canHandle(effect)) {
-            AuthFlowLogger.event(
-                stage = "android.vk_sdk.fallback",
-                provider = effect.provider,
-                details = "reason=${runtimeConfig.fallbackReason(effect)}",
-            )
-            return false
-        }
-
-        val lifecycleOwner = context.findComponentActivity()
-        if (lifecycleOwner == null) {
-            AuthFlowLogger.event(
-                stage = "android.vk_sdk.fallback",
-                provider = effect.provider,
-                details = "reason=missing_activity",
-            )
-            return false
-        }
-
-        return runCatching {
-            VKID.instance.authorize(
-                lifecycleOwner = lifecycleOwner,
-                callback = callbackFor(
-                    effect = effect,
-                    onAuthCallbackUrl = onAuthCallbackUrl,
-                    onAuthFailure = onAuthFailure,
-                ),
-                params = VKIDAuthParams {
-                    state = effect.state
-                    codeChallenge = effect.providerCodeChallenge
-                    scopes = effect.providerScopes
-                    useOAuthProviderIfPossible = true
-                },
-            )
-        }.onSuccess {
-            AuthFlowLogger.event(
-                stage = "android.vk_sdk.authorize.started",
-                provider = effect.provider,
-                details = "scopes=${if (effect.providerScopes.isEmpty()) "default" else effect.providerScopes.size}",
-            )
-        }.onFailure { error ->
-            AuthFlowLogger.event(
-                stage = "android.vk_sdk.fallback",
-                provider = effect.provider,
-                details = "reason=start_failed error=${sanitizeLogReason(error.message)}",
-            )
-        }.isSuccess
-    }
-
-    /** Creates the VK SDK callback that feeds auth-code results back into the shared callback flow. */
-    private fun callbackFor(
-        effect: AuthEffect.OpenExternalAuth,
-        onAuthCallbackUrl: (String) -> Unit,
-        onAuthFailure: (String) -> Unit,
-    ): VKIDAuthCallback {
-        return object : VKIDAuthCallback {
-            override fun onAuth(accessToken: AccessToken) {
-                AuthFlowLogger.event(
-                    stage = "android.vk_sdk.authorize.unexpected_access_token",
-                    provider = effect.provider,
-                    details = "tokenPresent=${accessToken.token.isNotBlank()}",
-                )
-                onAuthFailure("VK SDK did not return an auth code")
-            }
-
-            override fun onAuthCode(data: AuthCodeData, isCompletion: Boolean) {
-                AuthFlowLogger.event(
-                    stage = "android.vk_sdk.authorize.code_received",
-                    provider = effect.provider,
-                    details = "deviceIdPresent=${data.deviceId.isNotBlank()} completion=$isCompletion",
-                )
-                onAuthCallbackUrl(
-                    buildVkSdkCallbackUrl(
-                        code = data.code,
-                        state = effect.state,
-                        deviceId = data.deviceId,
-                    ),
-                )
-            }
-
-            override fun onFail(fail: VKIDAuthFail) {
-                AuthFlowLogger.event(
-                    stage = "android.vk_sdk.authorize.failed",
-                    provider = effect.provider,
-                    details = "reason=${fail.safeReason()}",
-                )
-                onAuthFailure("VK auth failed: ${fail.safeReason()}")
-            }
-        }
+    /** Создает новую documented auth-попытку с локальными `state` и PKCE-параметрами. */
+    fun newAuthAttempt(): AndroidVkIdAuthAttempt {
+        val codeVerifier = randomUrlSafeValue(byteCount = 48)
+        val state = randomUrlSafeValue(byteCount = 24)
+        val codeChallenge = codeVerifier
+            .toByteArray(Charsets.US_ASCII)
+            .sha256()
+            .toUrlSafeBase64()
+        return AndroidVkIdAuthAttempt(
+            state = state,
+            codeVerifier = codeVerifier,
+            codeChallenge = codeChallenge,
+        )
     }
 }
 
-/** Builds a synthetic deep link so the shared VK callback parser can reuse the existing completion path. */
+private val secureRandom = SecureRandom()
+
+/**
+ * Собирает synthetic deep link для shared VK callback parser.
+ *
+ * URL не покидает приложение: он используется только как единый транспорт callback payload в общий
+ * auth-flow и передает локально сгенерированный `codeVerifier` на backend verify.
+ */
 internal fun buildVkSdkCallbackUrl(
     code: String,
     state: String,
     deviceId: String,
+    codeVerifier: String,
 ): String {
     return Uri.Builder()
         .scheme("incomedy")
@@ -184,22 +103,14 @@ internal fun buildVkSdkCallbackUrl(
         .appendQueryParameter("code", code)
         .appendQueryParameter("state", state)
         .appendQueryParameter("device_id", deviceId)
+        .appendQueryParameter("code_verifier", codeVerifier)
         .appendQueryParameter("client_source", "android_sdk")
         .build()
         .toString()
 }
 
-/** Recursively unwraps a `Context` until the hosting `ComponentActivity` is found. */
-private tailrec fun Context.findComponentActivity(): ComponentActivity? {
-    return when (this) {
-        is ComponentActivity -> this
-        is ContextWrapper -> baseContext.findComponentActivity()
-        else -> null
-    }
-}
-
-/** Converts VK SDK failure types into bounded low-cardinality log reasons. */
-private fun VKIDAuthFail.safeReason(): String {
+/** Преобразует VK SDK failure types в bounded low-cardinality log reasons. */
+internal fun VKIDAuthFail.safeReason(): String {
     return when (this) {
         is VKIDAuthFail.Canceled -> "canceled"
         is VKIDAuthFail.FailedApiCall -> "failed_api_call"
@@ -210,13 +121,29 @@ private fun VKIDAuthFail.safeReason(): String {
     }
 }
 
-/** Bounds free-form SDK failure text before it is written to client logs. */
-private fun sanitizeLogReason(reason: String?): String {
-    return reason
-        ?.replace('\n', ' ')
-        ?.replace('\r', ' ')
-        ?.trim()
-        ?.take(120)
-        ?.takeIf { it.isNotBlank() }
-        ?: "unknown"
+/** Разбивает runtime scope config на детерминированный набор токенов для VK OneTap. */
+private fun String.toScopeSet(): Set<String> {
+    return split(',', ' ')
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .toSet()
+}
+
+/** Генерирует короткое URL-safe значение без padding для `state` и PKCE verifier. */
+private fun randomUrlSafeValue(byteCount: Int): String {
+    val rawBytes = ByteArray(byteCount)
+    secureRandom.nextBytes(rawBytes)
+    return rawBytes.toUrlSafeBase64()
+}
+
+/** Считает SHA-256 digest для PKCE code challenge. */
+private fun ByteArray.sha256(): ByteArray {
+    return MessageDigest.getInstance("SHA-256").digest(this)
+}
+
+/** Кодирует байты в base64url без `=` padding, как требует PKCE/VK SDK flow. */
+private fun ByteArray.toUrlSafeBase64(): String {
+    return Base64.getUrlEncoder()
+        .withoutPadding()
+        .encodeToString(this)
 }

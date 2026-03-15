@@ -82,6 +82,8 @@ class AuthScreenContentTest {
                 AuthScreenContent(
                     state = state,
                     onIntent = onIntent,
+                    onAuthCallbackUrl = {},
+                    onAuthFailure = { _, _ -> },
                 )
             }
         }

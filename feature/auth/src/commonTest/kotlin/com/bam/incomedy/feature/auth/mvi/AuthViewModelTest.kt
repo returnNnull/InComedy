@@ -20,7 +20,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -71,7 +70,7 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         val session = viewModel.state.value.session
-        assertNotNull(session)
+        kotlin.test.assertNotNull(session)
         assertEquals(AuthProviderType.GOOGLE, session.provider)
         assertTrue(viewModel.state.value.isAuthorized)
     }
@@ -96,7 +95,7 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         val session = viewModel.state.value.session
-        assertNotNull(session)
+        kotlin.test.assertNotNull(session)
         assertEquals(AuthProviderType.VK, session.provider)
         assertNull(viewModel.state.value.errorMessage)
     }
@@ -157,7 +156,7 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         val session = viewModel.state.value.session
-        assertNotNull(session)
+        kotlin.test.assertNotNull(session)
         assertEquals(AuthProviderType.PASSWORD, session.provider)
         assertEquals("tester", credentialService.lastLogin)
     }
@@ -240,8 +239,11 @@ private class FakeProvider(
     private val failLaunch: Boolean = false,
     private val failComplete: Boolean = false,
 ) : SocialAuthProvider {
+    var launchRequests: Int = 0
+
     override suspend fun createLaunchRequest(state: String): Result<AuthLaunchRequest> {
         if (failLaunch) return Result.failure(IllegalStateException("launch_failed"))
+        launchRequests += 1
         return Result.success(
             AuthLaunchRequest(
                 provider = type,

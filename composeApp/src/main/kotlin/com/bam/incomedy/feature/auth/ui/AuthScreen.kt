@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -33,6 +34,8 @@ import com.bam.incomedy.feature.auth.mvi.AuthFlowLogger
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthState
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import com.vk.id.auth.VKIDAuthUiParams
+import com.vk.id.onetap.compose.onetap.OneTap
 
 @Composable
 fun AuthScreen(
@@ -48,15 +51,6 @@ fun AuthScreen(
                 is AuthEffect.OpenExternalAuth -> openExternalAuth(
                     context = context,
                     effect = effect,
-                    onAuthCallbackUrl = viewModel::onAuthCallbackUrl,
-                    onAuthFailure = { provider, message ->
-                        viewModel.onIntent(
-                            AuthIntent.OnAuthFailure(
-                                provider = provider,
-                                message = message,
-                            ),
-                        )
-                    },
                 )
                 AuthEffect.InvalidateStoredSession -> Unit
             }
@@ -66,28 +60,24 @@ fun AuthScreen(
     AuthScreenContent(
         state = state,
         onIntent = viewModel::onIntent,
+        onAuthCallbackUrl = viewModel::onAuthCallbackUrl,
+        onAuthFailure = { provider, message ->
+            viewModel.onIntent(
+                AuthIntent.OnAuthFailure(
+                    provider = provider,
+                    message = message,
+                ),
+            )
+        },
         modifier = modifier,
     )
 }
 
+/** Открывает внешний auth-flow через SDK или браузер с возможностью принудительно обойти VK native SDK. */
 private fun openExternalAuth(
     context: Context,
     effect: AuthEffect.OpenExternalAuth,
-    onAuthCallbackUrl: (String) -> Unit,
-    onAuthFailure: (AuthProviderType, String) -> Unit,
 ) {
-    if (
-        effect.provider == AuthProviderType.VK &&
-        AndroidVkIdSdkAuth.start(
-            context = context,
-            effect = effect,
-            onAuthCallbackUrl = onAuthCallbackUrl,
-            onAuthFailure = { message -> onAuthFailure(effect.provider, message) },
-        )
-    ) {
-        return
-    }
-
     val uri = Uri.parse(effect.url)
     val launchPlan = AndroidExternalAuthIntents.plan(
         effect = effect,
@@ -186,8 +176,11 @@ private fun Uri?.safeSummary(): String {
 internal fun AuthScreenContent(
     state: AuthState,
     onIntent: (AuthIntent) -> Unit,
+    onAuthCallbackUrl: (String?) -> Unit,
+    onAuthFailure: (AuthProviderType, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     var login by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var isRegisterMode by rememberSaveable { mutableStateOf(false) }
@@ -280,15 +273,116 @@ internal fun AuthScreenContent(
 
         Divider()
 
-        Button(
+        VkAuthEntry(
+            state = state,
+            onIntent = onIntent,
+            onAuthCallbackUrl = onAuthCallbackUrl,
+            onAuthFailure = onAuthFailure,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Рендерит Android VK OneTap по documented SDK lifecycle и держит browser fallback под рукой. */
+@Composable
+private fun VkAuthEntry(
+    state: AuthState,
+    onIntent: (AuthIntent) -> Unit,
+    onAuthCallbackUrl: (String?) -> Unit,
+    onAuthFailure: (AuthProviderType, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val runtimeConfig = AndroidVkIdSdkAuth.runtimeConfig()
+    val initialAttempt = remember { AndroidVkIdSdkAuth.newAuthAttempt() }
+    var authAttemptState by rememberSaveable { mutableStateOf(initialAttempt.state) }
+    var authAttemptCodeVerifier by rememberSaveable { mutableStateOf(initialAttempt.codeVerifier) }
+    var authAttemptCodeChallenge by rememberSaveable { mutableStateOf(initialAttempt.codeChallenge) }
+    val authAttempt = AndroidVkIdAuthAttempt(
+        state = authAttemptState,
+        codeVerifier = authAttemptCodeVerifier,
+        codeChallenge = authAttemptCodeChallenge,
+    )
+    val rotateAttempt = remember {
+        {
+            val nextAttempt = AndroidVkIdSdkAuth.newAuthAttempt()
+            authAttemptState = nextAttempt.state
+            authAttemptCodeVerifier = nextAttempt.codeVerifier
+            authAttemptCodeChallenge = nextAttempt.codeChallenge
+        }
+    }
+
+    LaunchedEffect(runtimeConfig.isEnabled, runtimeConfig.clientId, runtimeConfig.redirectScheme) {
+        if (runtimeConfig.isEnabled && !runtimeConfig.canUseOneTap()) {
+            AuthFlowLogger.event(
+                stage = "android.vk_onetap.fallback",
+                provider = AuthProviderType.VK,
+                details = "reason=${runtimeConfig.unavailableReason()}",
+            )
+        }
+    }
+
+    if (runtimeConfig.canUseOneTap()) {
+        val authParams = VKIDAuthUiParams {
+            this.state = authAttempt.state
+            codeChallenge = authAttempt.codeChallenge
+            scopes = runtimeConfig.requestedScopes
+        }
+        OneTap(
+            modifier = modifier.testTag(AuthScreenTags.VK_BUTTON),
+            onAuth = { _, accessToken ->
+                AuthFlowLogger.event(
+                    stage = "android.vk_onetap.unexpected_access_token",
+                    provider = AuthProviderType.VK,
+                    details = "tokenPresent=${accessToken.token.isNotBlank()}",
+                )
+                onAuthFailure(AuthProviderType.VK, "VK OneTap did not return an auth code")
+                rotateAttempt()
+            },
+            onAuthCode = { data, isCompletion ->
+                AuthFlowLogger.event(
+                    stage = "android.vk_onetap.code_received",
+                    provider = AuthProviderType.VK,
+                    details = "deviceIdPresent=${data.deviceId.isNotBlank()} completion=$isCompletion",
+                )
+                onAuthCallbackUrl(
+                    buildVkSdkCallbackUrl(
+                        code = data.code,
+                        state = authAttempt.state,
+                        deviceId = data.deviceId,
+                        codeVerifier = authAttempt.codeVerifier,
+                    ),
+                )
+                rotateAttempt()
+            },
+            onFail = { _, fail ->
+                val reason = fail.safeReason()
+                AuthFlowLogger.event(
+                    stage = "android.vk_onetap.failed",
+                    provider = AuthProviderType.VK,
+                    details = "reason=$reason",
+                )
+                onAuthFailure(AuthProviderType.VK, "VK auth failed: $reason")
+                rotateAttempt()
+            },
+            signInAnotherAccountButtonEnabled = true,
+            authParams = authParams,
+        )
+        TextButton(
             onClick = { onIntent(AuthIntent.OnProviderClick(AuthProviderType.VK)) },
             enabled = !state.isLoading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(AuthScreenTags.VK_BUTTON),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Продолжить через VK")
+            Text("Открыть VK в браузере")
         }
+        return
+    }
+
+    Button(
+        onClick = { onIntent(AuthIntent.OnProviderClick(AuthProviderType.VK)) },
+        enabled = !state.isLoading,
+        modifier = modifier.testTag(AuthScreenTags.VK_BUTTON),
+    ) {
+        Text("Продолжить через VK")
     }
 }
 

@@ -86,6 +86,7 @@ jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 argon2-jvm = { module = "de.mkammerer:argon2-jvm", version.ref = "argon2" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 vkid = { module = "com.vk.id:vkid", version.ref = "vkid" }
+vkid-onetap-compose = { module = "com.vk.id:onetap-compose", version.ref = "vkid" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

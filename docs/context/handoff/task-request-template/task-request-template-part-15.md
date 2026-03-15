@@ -239,3 +239,49 @@
   - engineering rules explicitly require Russian-language code comments
   - the new-chat handoff template passes that rule into future chats
   - governance records capture the accepted rule change and its traceability
+
+## Formalized Investigation Request (Analyze Live Android VK SDK Success Followed By failed_oauth_state)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/governance/session-log.md`
+  - `D-060`
+- Current constraints:
+  - A real Android device now reaches successful VK-side authorization, but the app still reports `VK auth failed` with `failed_oauth_state`.
+  - The repository already emits Android `AUTH_FLOW` logcat events and sanitized backend diagnostics for VK start/verify stages, so the failure should be investigated by correlating those traces instead of guessing from the code alone.
+  - Production-significant troubleshooting must prefer sanitized diagnostics over raw container logs unless those diagnostics prove insufficient.
+
+## Goal
+
+- What should be delivered:
+  - collect Android device logs for the failed VK attempt
+  - collect sanitized backend diagnostics for the same VK auth window
+  - identify the most likely root cause of the `failed_oauth_state` result and explain whether it is caused by client config, backend state handling, callback routing, or VK cabinet/runtime mismatch
+
+## Scope
+
+- In scope:
+  - connected Android-device logcat capture for the auth attempt
+  - sanitized diagnostics retrieval for `/api/v1/auth/vk/*`
+  - correlation of client and server traces using timestamps, request ids, and safe stage markers
+  - root-cause analysis with concrete remediation options
+- Out of scope:
+  - speculative fixes without evidence
+  - unrelated auth-provider changes
+  - raw secret/token disclosure in docs or responses
+
+## Constraints
+
+- Tech/business constraints:
+  - `docs/context/*` remains the primary source of truth
+  - diagnostics output and session memory must stay sanitized
+  - server-side raw container logs should only be used if sanitized diagnostics cannot explain the failure
+
+## Definition of Done
+
+- Functional result:
+  - client and server evidence for the failed VK flow is collected
+  - the analysis identifies the most probable cause of `failed_oauth_state`
+  - the user receives concrete next steps for remediation or a bounded follow-up fix task

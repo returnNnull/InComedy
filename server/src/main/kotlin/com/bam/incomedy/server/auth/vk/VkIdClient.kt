@@ -31,7 +31,7 @@ interface VkIdGateway {
         code: String,
         state: String,
         deviceId: String,
-        verifiedState: VerifiedVkIdLoginState,
+        codeVerifier: String,
     ): VkIdTokenResponse
 
     /** Loads VK user info for the selected VK client id and access token. */
@@ -74,13 +74,13 @@ class VkIdClient(
         code: String,
         state: String,
         deviceId: String,
-        verifiedState: VerifiedVkIdLoginState,
+        codeVerifier: String,
     ): VkIdTokenResponse {
         val response = formPost(
             url = "https://id.vk.ru/oauth2/auth",
             body = linkedMapOf(
                 "grant_type" to "authorization_code",
-                "code_verifier" to verifiedState.codeVerifier,
+                "code_verifier" to codeVerifier,
                 "redirect_uri" to redirectUri,
                 "code" to code,
                 "client_id" to clientId,

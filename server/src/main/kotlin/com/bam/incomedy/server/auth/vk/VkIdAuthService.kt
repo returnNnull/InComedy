@@ -16,7 +16,12 @@ class VkIdAuthService(
     private val userRepository: UserRepository,
     private val tokenService: JwtSessionTokenService,
 ) {
-    /** Creates a browser launch URL plus optional Android SDK metadata for the current VK auth attempt. */
+    /** Возвращает `true`, если backend настроен для documented Android VK SDK code exchange. */
+    fun isAndroidSdkConfigured(): Boolean {
+        return !config.androidClientId.isNullOrBlank() && !config.androidRedirectUri.isNullOrBlank()
+    }
+
+    /** Создает browser/public-callback launch URL для текущей VK auth-попытки. */
     fun createLaunchRequest(): VkIdAuthLaunch {
         val issuedState = loginStateCodec.issue()
         return VkIdAuthLaunch(
@@ -27,28 +32,30 @@ class VkIdAuthService(
                 codeChallenge = issuedState.codeChallenge,
             ),
             state = issuedState.state,
-            providerClientId = config.androidClientId,
-            providerCodeChallenge = issuedState.codeChallenge.takeIf { config.androidClientId != null },
-            providerScopes = config.scopeTokens().takeIf { config.androidClientId != null } ?: emptyList(),
         )
     }
 
     /**
-     * Verifies the signed VK auth state, exchanges the authorization code, and issues an internal session.
+     * Завершает VK authorization-code flow и выпускает внутреннюю InComedy-сессию.
      *
-     * The backend keeps browser/public-callback and Android SDK completions under the same signed state,
-     * but selects the provider client/redirect pair from the sanitized completion source.
+     * Browser/public callback продолжает жить на signed backend-issued `state`, а Android SDK path
+     * следует официальной схеме VK и передает client-generated `state` + `codeVerifier` только на
+     * этапе verify/code exchange.
      */
     fun verifyAndCreateSession(request: VkIdVerifyRequest): VkIdIssuedSession {
-        val verifiedState = loginStateCodec.verify(request.state).getOrThrow()
         val clientConfig = resolveClientConfig(request.clientSource)
+        val exchangeState = validateStateValue(request.state)
+        val codeVerifier = resolveCodeVerifier(
+            clientSource = clientConfig.clientSource,
+            request = request,
+        )
         val tokenResponse = vkIdClient.exchangeAuthorizationCode(
             clientId = clientConfig.clientId,
             redirectUri = clientConfig.redirectUri,
             code = request.code,
-            state = request.state,
+            state = exchangeState,
             deviceId = request.deviceId,
-            verifiedState = verifiedState,
+            codeVerifier = codeVerifier,
         )
         val userInfo = vkIdClient.loadUserInfo(
             clientId = clientConfig.clientId,
@@ -87,6 +94,20 @@ class VkIdAuthService(
         )
     }
 
+    /** Возвращает PKCE verifier для выбранного VK completion path и валидирует его форму. */
+    private fun resolveCodeVerifier(
+        clientSource: VkIdClientSource,
+        request: VkIdVerifyRequest,
+    ): String {
+        return when (clientSource) {
+            VkIdClientSource.BROWSER_BRIDGE -> {
+                val verifiedState = loginStateCodec.verify(request.state).getOrThrow()
+                verifiedState.codeVerifier
+            }
+            VkIdClientSource.ANDROID_SDK -> validateCodeVerifier(request.codeVerifier)
+        }
+    }
+
     /** Resolves which VK client configuration should complete the current authorization code. */
     private fun resolveClientConfig(requestedSource: VkIdClientSource?): VkIdResolvedClientConfig {
         return when (requestedSource ?: VkIdClientSource.BROWSER_BRIDGE) {
@@ -109,7 +130,36 @@ class VkIdAuthService(
         }
     }
 
+    /** Ограничивает клиентский state для Android SDK flow и отбрасывает заведомо некорректные значения. */
+    private fun validateStateValue(state: String): String {
+        if (state.isBlank()) {
+            throw InvalidVkIdAuthStateException("VK ID auth state is missing")
+        }
+        if (state.length > MAX_CLIENT_STATE_LENGTH) {
+            throw InvalidVkIdAuthStateException("VK ID auth state is too long")
+        }
+        return state
+    }
+
+    /** Валидирует Android SDK PKCE verifier по базовым ограничениям RFC 7636. */
+    private fun validateCodeVerifier(codeVerifier: String?): String {
+        val value = codeVerifier?.takeIf { it.isNotBlank() }
+            ?: throw InvalidVkIdAuthStateException("VK ID Android SDK code verifier is missing")
+        if (value.length !in MIN_CODE_VERIFIER_LENGTH..MAX_CODE_VERIFIER_LENGTH) {
+            throw InvalidVkIdAuthStateException("VK ID Android SDK code verifier has invalid length")
+        }
+        if (!PKCE_CODE_VERIFIER_REGEX.matches(value)) {
+            throw InvalidVkIdAuthStateException("VK ID Android SDK code verifier has invalid format")
+        }
+        return value
+    }
+
     companion object {
+        private const val MAX_CLIENT_STATE_LENGTH = 256
+        private const val MIN_CODE_VERIFIER_LENGTH = 43
+        private const val MAX_CODE_VERIFIER_LENGTH = 128
+        private val PKCE_CODE_VERIFIER_REGEX = Regex("^[A-Za-z0-9._~-]{43,128}$")
+
         fun create(
             config: VkIdConfig,
             userRepository: UserRepository,
@@ -132,15 +182,13 @@ class VkIdAuthService(
 data class VkIdAuthLaunch(
     val authUrl: String,
     val state: String,
-    val providerClientId: String? = null,
-    val providerCodeChallenge: String? = null,
-    val providerScopes: List<String> = emptyList(),
 )
 
 data class VkIdVerifyRequest(
     val code: String,
     val state: String,
     val deviceId: String,
+    val codeVerifier: String? = null,
     val clientSource: VkIdClientSource? = null,
 )
 
@@ -166,10 +214,3 @@ private data class VkIdResolvedClientConfig(
     val redirectUri: String,
     val clientSource: VkIdClientSource,
 )
-
-/** Splits VK scope config into a deterministic list for start-response SDK metadata. */
-private fun VkIdConfig.scopeTokens(): List<String> {
-    return scope.split(',', ' ')
-        .map(String::trim)
-        .filter(String::isNotBlank)
-}

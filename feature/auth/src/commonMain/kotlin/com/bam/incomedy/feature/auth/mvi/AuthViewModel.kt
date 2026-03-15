@@ -105,9 +105,6 @@ class AuthViewModel(
                             provider = provider,
                             url = url,
                             state = launchRequest.state,
-                            providerClientId = launchRequest.providerClientId,
-                            providerCodeChallenge = launchRequest.providerCodeChallenge,
-                            providerScopes = launchRequest.providerScopes,
                         ),
                     )
                     _state.update { current -> current.copy(isLoading = false) }
@@ -152,8 +149,9 @@ class AuthViewModel(
     /**
      * Completes an external auth flow after the mobile platform hands back a callback URL/code.
      *
-     * VK is allowed to continue when the callback state is non-blank but the local process forgot the
-     * pending state, because the backend still verifies the signed VK `state` as the source of truth.
+     * VK может завершаться даже без локально сохраненного pending-state:
+     * browser callback перепроверяется signed state на backend-е, а Android SDK path дополнительно
+     * сверяет `state` в VK token exchange и передает на backend локально сгенерированный `codeVerifier`.
      */
     private fun completeAuth(provider: AuthProviderType, code: String, state: String) {
         scope.launch {
@@ -270,8 +268,9 @@ class AuthViewModel(
     /**
      * Validates provider callback state against the client-side pending state cache.
      *
-     * VK can recover from Android/iOS process recreation because the backend-issued VK state is signed
-     * and revalidated server-side, while other providers still require the in-memory match.
+     * VK разрешает завершение при отсутствии локального pending-state, потому что browser path
+     * перепроверяется signed state на backend-е, а Android SDK path завершает verify через
+     * provider-echoed `state` и локально сгенерированный PKCE.
      */
     private fun isCallbackStateValid(
         provider: AuthProviderType,
@@ -372,7 +371,13 @@ class AuthViewModel(
                     )
                 }
             }
-            _state.update { it.copy(session = null, isLoading = false, errorMessage = null) }
+            _state.update {
+                it.copy(
+                    session = null,
+                    isLoading = false,
+                    errorMessage = null,
+                )
+            }
             _effects.emit(AuthEffect.InvalidateStoredSession)
             AuthFlowLogger.event(stage = "session.logout.success")
         }

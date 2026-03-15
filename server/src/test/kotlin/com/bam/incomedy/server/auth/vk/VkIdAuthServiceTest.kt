@@ -15,17 +15,15 @@ import kotlin.test.assertNotNull
  */
 class VkIdAuthServiceTest {
 
-    /** Browser launch should expose optional Android SDK metadata when a dedicated Android VK client is configured. */
+    /** Browser launch должен оставаться server-issued URL для public callback path. */
     @Test
-    fun `create launch request returns android sdk metadata when configured`() {
+    fun `create launch request returns browser callback launch`() {
         val gateway = FakeVkIdGateway()
         val service = testAuthService(gateway = gateway)
 
         val launch = service.createLaunchRequest()
 
-        assertEquals("vk-android-client-id", launch.providerClientId)
-        assertNotNull(launch.providerCodeChallenge)
-        assertEquals(listOf("vkid.personal_info"), launch.providerScopes)
+        assertNotNull(launch.state)
         assertEquals("vk-browser-client-id", gateway.lastAuthorizeClientId)
         assertEquals("https://incomedy.ru/auth/vk/callback", gateway.lastAuthorizeRedirectUri)
     }
@@ -56,13 +54,13 @@ class VkIdAuthServiceTest {
     fun `verify uses android vk client when android sdk source is declared`() {
         val gateway = FakeVkIdGateway()
         val service = testAuthService(gateway = gateway)
-        val state = service.createLaunchRequest().state
 
         val auth = service.verifyAndCreateSession(
             VkIdVerifyRequest(
                 code = "android_code",
-                state = state,
+                state = "android_sdk_state",
                 deviceId = "device-2",
+                codeVerifier = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0123456789-._~",
                 clientSource = VkIdClientSource.ANDROID_SDK,
             ),
         )
@@ -87,20 +85,40 @@ class VkIdAuthServiceTest {
                 stateTtlSeconds = 600L,
             ),
         )
-        val state = service.createLaunchRequest().state
 
         val failure = assertFailsWith<InvalidVkIdAuthStateException> {
             service.verifyAndCreateSession(
                 VkIdVerifyRequest(
                     code = "android_code",
-                    state = state,
+                    state = "android_sdk_state",
                     deviceId = "device-2",
+                    codeVerifier = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0123456789-._~",
                     clientSource = VkIdClientSource.ANDROID_SDK,
                 ),
             )
         }
 
         assertEquals("VK ID Android SDK auth is not configured", failure.message)
+    }
+
+    /** Android SDK verify должен требовать client-generated PKCE verifier. */
+    @Test
+    fun `verify rejects android sdk source when code verifier is missing`() {
+        val gateway = FakeVkIdGateway()
+        val service = testAuthService(gateway = gateway)
+
+        val failure = assertFailsWith<InvalidVkIdAuthStateException> {
+            service.verifyAndCreateSession(
+                VkIdVerifyRequest(
+                    code = "android_code",
+                    state = "android_sdk_state",
+                    deviceId = "device-2",
+                    clientSource = VkIdClientSource.ANDROID_SDK,
+                ),
+            )
+        }
+
+        assertEquals("VK ID Android SDK code verifier is missing", failure.message)
     }
 
     /** Builds a VK auth service backed by a fake gateway and in-memory user/session infrastructure. */
@@ -162,7 +180,7 @@ private class FakeVkIdGateway : VkIdGateway {
         code: String,
         state: String,
         deviceId: String,
-        verifiedState: VerifiedVkIdLoginState,
+        codeVerifier: String,
     ): VkIdTokenResponse {
         lastExchangeClientId = clientId
         lastExchangeRedirectUri = redirectUri

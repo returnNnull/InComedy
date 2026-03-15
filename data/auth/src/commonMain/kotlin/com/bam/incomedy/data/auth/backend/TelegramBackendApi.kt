@@ -261,6 +261,7 @@ internal fun parseVkCallbackPayload(callbackUrl: String): VkVerifyPayload? {
         code = code,
         state = state,
         deviceId = deviceId,
+        codeVerifier = params["code_verifier"]?.takeIf { it.isNotBlank() },
         clientSource = params["client_source"]?.takeIf { it.isNotBlank() } ?: "browser_bridge",
     )
 }
@@ -425,21 +426,12 @@ private data class VkAuthLaunchResponse(
     @SerialName("auth_url")
     val authUrl: String,
     val state: String,
-    @SerialName("sdk_client_id")
-    val sdkClientId: String? = null,
-    @SerialName("sdk_code_challenge")
-    val sdkCodeChallenge: String? = null,
-    @SerialName("sdk_scopes")
-    val sdkScopes: List<String> = emptyList(),
 ) {
     fun toDomain(): AuthLaunchRequest {
         return AuthLaunchRequest(
             provider = AuthProviderType.VK,
             state = state,
             url = authUrl,
-            providerClientId = sdkClientId,
-            providerCodeChallenge = sdkCodeChallenge,
-            providerScopes = sdkScopes.toSet(),
         )
     }
 }
@@ -450,6 +442,9 @@ internal data class VkVerifyPayload(
     val state: String,
     @SerialName("device_id")
     val deviceId: String,
+    /** PKCE verifier нужен только Android SDK flow и не приходит из browser/public callback path. */
+    @SerialName("code_verifier")
+    val codeVerifier: String? = null,
     @SerialName("client_source")
     val clientSource: String? = null,
 )

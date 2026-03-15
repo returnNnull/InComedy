@@ -41,10 +41,11 @@ class VkCallbackPayloadParserTest {
     @Test
     fun `parses vk callback source marker when present`() {
         val payload = parseVkCallbackPayload(
-            "incomedy://auth/vk/sdk?code=vk_code&state=signed_state&device_id=device123&client_source=android_sdk",
+            "incomedy://auth/vk/sdk?code=vk_code&state=signed_state&device_id=device123&code_verifier=verifier1234567890123456789012345678901234567890&client_source=android_sdk",
         )
 
         assertNotNull(payload)
         assertEquals("android_sdk", payload.clientSource)
+        assertEquals("verifier1234567890123456789012345678901234567890", payload.codeVerifier)
     }
 }

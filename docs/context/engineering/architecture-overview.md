@@ -28,7 +28,7 @@
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
   - Argon2id-backed credential storage/migration plus server-side credential abuse controls for register/login routes;
-  - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge with auto-return attempt plus manual fallback, official VK ID Android SDK auth-code launch with browser fallback when SDK config is unavailable, and iOS/browser handoff;
+  - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge with auto-return attempt plus manual fallback, Android official VK OneTap in documented auth-code mode with client-generated `state/PKCE` plus browser fallback, and iOS/browser handoff;
   - auth/session foundation across mobile and server;
   - provider-agnostic backend `User + AuthIdentity` persistence foundation that can support multiple auth providers without turning provider ids into primary business ids;
   - backend role storage, active-role context, and minimal organizer workspace create/list routes;
@@ -82,7 +82,7 @@
 - PostgreSQL schema evolution must live in versioned migration files; application code should invoke migration execution, not own mutable schema DDL as business logic.
 - Internal identity must be modeled provider-agnostically (`User` + linked auth identities); provider-specific ids must not become the primary keys for profile, RBAC, or workspace domains.
 - Password-based auth is implemented as a first-party backend flow with secure password hashing and credential-abuse controls; VK ID plugs into the same internal user/session model as a linked external identity.
-- The canonical public VK callback contract remains `https://incomedy.ru/auth/vk/callback`; it is still used for browser/public-callback completion and for non-SDK fallback flows. Android now prefers the official VK ID Android SDK in auth-code mode when both the app and backend have dedicated Android VK client config; the backend still verifies the code and issues the same internal session, while browser/public-callback completion remains available for fallback and for other platforms. This means the repository can operate with a public-callback VK client plus an optional dedicated Android VK client in parallel.
+- The canonical public VK callback contract remains `https://incomedy.ru/auth/vk/callback`; it is still used for browser/public-callback completion and for non-SDK fallback flows. Android now prefers official VK OneTap in documented auth-code mode when both the app and backend have dedicated Android VK client config: the Android client generates `state`, `codeVerifier`, and `codeChallenge` locally, passes them to VK SDK/OneTap, then sends `code + deviceId + state + codeVerifier` to backend `/verify`, while browser/public-callback completion continues to use backend-issued signed state. This keeps the app session model unchanged while separating browser and Android SDK VK lifecycles the way VK documents them.
 - Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
 - Prefer REST for CRUD and WebSocket/push for live event updates.
 - For PSP/push/payout side effects, prefer transactional outbox + background workers once those domains are introduced.

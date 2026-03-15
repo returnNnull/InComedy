@@ -63,18 +63,13 @@ object VkIdAuthRoutes {
                 call = call,
                 stage = "auth.vk.start.success",
                 status = HttpStatusCode.OK.value,
-                metadata = mapOf(
-                    "android_sdk" to if (launch.providerClientId != null && launch.providerCodeChallenge != null) "enabled" else "disabled",
-                ),
+                metadata = mapOf("android_sdk" to if (authService.isAndroidSdkConfigured()) "enabled" else "disabled"),
             )
             call.respond(
                 HttpStatusCode.OK,
                 VkIdStartResponse(
                     authUrl = launch.authUrl,
                     state = launch.state,
-                    sdkClientId = launch.providerClientId,
-                    sdkCodeChallenge = launch.providerCodeChallenge,
-                    sdkScopes = launch.providerScopes,
                 ),
             )
         }
@@ -132,6 +127,7 @@ object VkIdAuthRoutes {
                         code = request.code,
                         state = request.state,
                         deviceId = request.deviceId,
+                        codeVerifier = request.codeVerifier,
                         clientSource = request.clientSource,
                     ),
                 )
@@ -193,12 +189,6 @@ data class VkIdStartResponse(
     @SerialName("auth_url")
     val authUrl: String,
     val state: String,
-    @SerialName("sdk_client_id")
-    val sdkClientId: String? = null,
-    @SerialName("sdk_code_challenge")
-    val sdkCodeChallenge: String? = null,
-    @SerialName("sdk_scopes")
-    val sdkScopes: List<String> = emptyList(),
 )
 
 @Serializable
@@ -207,6 +197,8 @@ data class VkIdVerifyPayload(
     val state: String,
     @SerialName("device_id")
     val deviceId: String,
+    @SerialName("code_verifier")
+    val codeVerifier: String? = null,
     @SerialName("client_source")
     val clientSource: VkIdClientSource? = null,
 )

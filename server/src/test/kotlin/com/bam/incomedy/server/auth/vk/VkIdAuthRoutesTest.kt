@@ -53,8 +53,7 @@ class VkIdAuthRoutesTest {
         val body = response.bodyAsText()
         assertTrue(body.contains("https://id.vk.ru/authorize?"))
         assertTrue(body.contains("\"state\":\""))
-        assertTrue(body.contains("\"sdk_client_id\":\"vk-android-client-id\""))
-        assertTrue(body.contains("\"sdk_code_challenge\":\""))
+        assertTrue(body.contains("\"auth_url\":\""))
     }
 
     /** Проверяет, что без runtime-конфига VK ID маршруты возвращают `503`. */

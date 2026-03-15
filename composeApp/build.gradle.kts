@@ -77,6 +77,10 @@ val vkAndroidRedirectScheme = runtimeProperty("INCOMEDY_VK_ANDROID_REDIRECT_SCHE
     ?.takeIf { it.isNotBlank() }
     ?: vkAndroidClientId?.let { "vk$it" }
     ?: "vkdisabled"
+val vkIdScope = runtimeProperty("INCOMEDY_VK_ID_SCOPE")
+    ?.trim()
+    ?.takeIf { it.isNotBlank() }
+    ?: "vkid.personal_info"
 val hasVkAndroidSdkConfig = vkAndroidClientId != null && vkAndroidClientSecret != null
 val requestedTasks = gradle.startParameter.taskNames
 if (
@@ -108,6 +112,7 @@ android {
         buildConfigField("String", "VK_ANDROID_CLIENT_ID", (vkAndroidClientId ?: "").toBuildConfigString())
         buildConfigField("String", "VK_ANDROID_REDIRECT_HOST", vkAndroidRedirectHost.toBuildConfigString())
         buildConfigField("String", "VK_ANDROID_REDIRECT_SCHEME", vkAndroidRedirectScheme.toBuildConfigString())
+        buildConfigField("String", "VK_ID_SCOPE", vkIdScope.toBuildConfigString())
     }
     packaging {
         resources {
@@ -159,6 +164,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.security.crypto)
     implementation(libs.vkid)
+    implementation(libs.vkid.onetap.compose)
     implementation(projects.shared)
     implementation(projects.feature.auth)
 
