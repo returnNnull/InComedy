@@ -12,14 +12,45 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 
+/**
+ * Abstraction over VK ID HTTP endpoints used by the backend auth flow.
+ */
+interface VkIdGateway {
+    /** Builds a provider authorize URL for the selected VK client and redirect target. */
+    fun buildAuthorizeUrl(
+        clientId: String,
+        redirectUri: String,
+        state: String,
+        codeChallenge: String,
+    ): String
+
+    /** Exchanges a VK authorization code into provider tokens. */
+    fun exchangeAuthorizationCode(
+        clientId: String,
+        redirectUri: String,
+        code: String,
+        state: String,
+        deviceId: String,
+        verifiedState: VerifiedVkIdLoginState,
+    ): VkIdTokenResponse
+
+    /** Loads VK user info for the selected VK client id and access token. */
+    fun loadUserInfo(clientId: String, accessToken: String): VkIdUserInfoResponse
+}
+
+/**
+ * Production VK ID gateway backed by direct HTTP calls to VK ID endpoints.
+ */
 class VkIdClient(
     private val config: VkIdConfig,
     private val parser: Json = Json { ignoreUnknownKeys = true },
     private val httpClient: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
         .build(),
-) {
-    fun buildAuthorizeUrl(
+) : VkIdGateway {
+    override fun buildAuthorizeUrl(
+        clientId: String,
+        redirectUri: String,
         state: String,
         codeChallenge: String,
     ): String {
@@ -27,8 +58,8 @@ class VkIdClient(
             base = "https://id.vk.ru/authorize",
             params = linkedMapOf(
                 "response_type" to "code",
-                "client_id" to config.clientId,
-                "redirect_uri" to config.redirectUri,
+                "client_id" to clientId,
+                "redirect_uri" to redirectUri,
                 "state" to state,
                 "code_challenge" to codeChallenge,
                 "code_challenge_method" to "S256",
@@ -37,7 +68,9 @@ class VkIdClient(
         )
     }
 
-    fun exchangeAuthorizationCode(
+    override fun exchangeAuthorizationCode(
+        clientId: String,
+        redirectUri: String,
         code: String,
         state: String,
         deviceId: String,
@@ -48,9 +81,9 @@ class VkIdClient(
             body = linkedMapOf(
                 "grant_type" to "authorization_code",
                 "code_verifier" to verifiedState.codeVerifier,
-                "redirect_uri" to verifiedState.redirectUri,
+                "redirect_uri" to redirectUri,
                 "code" to code,
-                "client_id" to config.clientId,
+                "client_id" to clientId,
                 "device_id" to deviceId,
                 "state" to state,
             ),
@@ -65,11 +98,11 @@ class VkIdClient(
         return parsedResponse
     }
 
-    fun loadUserInfo(accessToken: String): VkIdUserInfoResponse {
+    override fun loadUserInfo(clientId: String, accessToken: String): VkIdUserInfoResponse {
         val response = formPost(
             url = "https://id.vk.ru/oauth2/user_info",
             body = linkedMapOf(
-                "client_id" to config.clientId,
+                "client_id" to clientId,
                 "access_token" to accessToken,
             ),
         )

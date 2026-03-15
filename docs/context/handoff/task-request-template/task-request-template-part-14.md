@@ -91,3 +91,47 @@
   - Android falls back to browser launch when the VK app is unavailable or the app launch fails
   - unit tests cover the launch-selection policy
   - architecture/session/task docs describe the new Android auth behavior
+
+## Formalized Documentation Request (Persist Commenting And Diagnostics Logging Rules)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/engineering-standards.md`
+  - `docs/context/engineering/quality-rules.md`
+  - `docs/context/handoff/chat-handoff-template.md`
+- Current constraints:
+  - The user wants future chats to inherit two explicit implementation rules without re-explaining them each time.
+  - Existing docs already mention comments and diagnostics in general terms, but the requirement is not explicit enough as a standing collaboration rule.
+  - The handoff template for new chats must surface the rule set before implementation begins.
+
+## Goal
+
+- What should be delivered:
+  - make code comments an explicit mandatory rule for new or materially changed code
+  - make diagnostics-backed server logging the explicit primary observability path for backend production-significant flows
+  - ensure new chat handoffs surface both rules up front
+
+## Scope
+
+- In scope:
+  - strengthen engineering rules and quality gates
+  - update the new-chat handoff template
+  - record the rule sync in governance session memory
+- Out of scope:
+  - refactoring all historical code comments in one pass
+  - redesigning the existing diagnostics system in the same task
+
+## Constraints
+
+- Tech/business constraints:
+  - `docs/context/*` remains the primary source of truth
+  - raw server/container logs stay secondary to sanitized diagnostics for live troubleshooting
+  - comments must explain responsibility and flow, not mechanically restate syntax
+
+## Definition of Done
+
+- Functional result:
+  - engineering rules explicitly require comment compliance for new/materially changed code
+  - quality rules explicitly require diagnostics-backed backend logging for live troubleshooting
+  - the handoff template tells new chats to follow both rules before implementation

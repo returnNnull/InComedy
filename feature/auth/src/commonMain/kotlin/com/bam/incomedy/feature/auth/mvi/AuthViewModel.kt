@@ -24,6 +24,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Shared MVI auth coordinator for first-party credentials and external providers.
+ *
+ * The view model owns the transient start/complete state for external auth, emits launch effects for
+ * platform adapters, and converts validated backend responses into the single auth UI state.
+ */
 class AuthViewModel(
     private val credentialAuthService: CredentialAuthService,
     private val socialAuthService: SocialAuthService,
@@ -32,15 +38,25 @@ class AuthViewModel(
     private val stateGenerator: AuthStateGenerator = RandomAuthStateGenerator(),
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    /** Coroutine scope that serializes auth side effects outside platform lifecycle classes. */
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+
+    /** In-memory map of provider -> expected callback state for the current app process. */
     private val pendingStates = mutableMapOf<AuthProviderType, String>()
 
+    /** Mutable backing state for the auth screen and platform wrappers. */
     private val _state = MutableStateFlow(AuthState())
+
+    /** Public immutable auth state stream consumed by platform-specific UI. */
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
+    /** Mutable backing effect stream for one-off actions such as external auth launch. */
     private val _effects = MutableSharedFlow<AuthEffect>(extraBufferCapacity = 1)
+
+    /** Public immutable effect stream consumed by platform adapters. */
     val effects: SharedFlow<AuthEffect> = _effects.asSharedFlow()
 
+    /** Routes UI intents into the appropriate auth flow branch. */
     fun onIntent(intent: AuthIntent) {
         when (intent) {
             is AuthIntent.OnSignInSubmit -> signIn(login = intent.login, password = intent.password)
@@ -56,6 +72,7 @@ class AuthViewModel(
         }
     }
 
+    /** Starts an external-provider auth flow and emits the platform launch effect. */
     private fun startAuth(provider: AuthProviderType) {
         scope.launch {
             AuthFlowLogger.event(stage = "start_auth.requested", provider = provider)
@@ -83,7 +100,16 @@ class AuthViewModel(
                             }
                             return@fold
                         }
-                    _effects.emit(AuthEffect.OpenExternalAuth(provider, url))
+                    _effects.emit(
+                        AuthEffect.OpenExternalAuth(
+                            provider = provider,
+                            url = url,
+                            state = launchRequest.state,
+                            providerClientId = launchRequest.providerClientId,
+                            providerCodeChallenge = launchRequest.providerCodeChallenge,
+                            providerScopes = launchRequest.providerScopes,
+                        ),
+                    )
                     _state.update { current -> current.copy(isLoading = false) }
                 },
                 onFailure = { error ->
@@ -103,6 +129,7 @@ class AuthViewModel(
         }
     }
 
+    /** Runs first-party credential sign-in and maps the result into shared auth state. */
     private fun signIn(login: String, password: String) {
         completeCredentialAuth(
             stage = "login",
@@ -112,6 +139,7 @@ class AuthViewModel(
         }
     }
 
+    /** Runs first-party credential registration and maps the result into shared auth state. */
     private fun register(login: String, password: String) {
         completeCredentialAuth(
             stage = "register",
@@ -121,6 +149,12 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Completes an external auth flow after the mobile platform hands back a callback URL/code.
+     *
+     * VK is allowed to continue when the callback state is non-blank but the local process forgot the
+     * pending state, because the backend still verifies the signed VK `state` as the source of truth.
+     */
     private fun completeAuth(provider: AuthProviderType, code: String, state: String) {
         scope.launch {
             AuthFlowLogger.event(
@@ -129,10 +163,11 @@ class AuthViewModel(
                 details = "statePresent=${state.isNotBlank()}",
             )
             val expectedState = pendingStates[provider]
-            val validState = when (provider) {
-                AuthProviderType.TELEGRAM -> state.isBlank() || (expectedState != null && expectedState == state)
-                else -> expectedState != null && expectedState == state
-            }
+            val validState = isCallbackStateValid(
+                provider = provider,
+                expectedState = expectedState,
+                callbackState = state,
+            )
             if (!validState) {
                 AuthFlowLogger.event(stage = "complete_auth.invalid_state", provider = provider)
                 _state.update {
@@ -180,10 +215,12 @@ class AuthViewModel(
         }
     }
 
+    /** Clears the currently displayed auth error without mutating session state. */
     private fun clearError() {
         _state.update { it.copy(errorMessage = null) }
     }
 
+    /** Shared credential-auth runner for login and registration flows. */
     private fun completeCredentialAuth(
         stage: String,
         provider: AuthProviderType,
@@ -230,6 +267,25 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Validates provider callback state against the client-side pending state cache.
+     *
+     * VK can recover from Android/iOS process recreation because the backend-issued VK state is signed
+     * and revalidated server-side, while other providers still require the in-memory match.
+     */
+    private fun isCallbackStateValid(
+        provider: AuthProviderType,
+        expectedState: String?,
+        callbackState: String,
+    ): Boolean {
+        return when (provider) {
+            AuthProviderType.TELEGRAM -> callbackState.isBlank() || (expectedState != null && expectedState == callbackState)
+            AuthProviderType.VK -> callbackState.isNotBlank() && (expectedState == null || expectedState == callbackState)
+            else -> expectedState != null && expectedState == callbackState
+        }
+    }
+
+    /** Applies an explicit auth failure surfaced by a platform-native provider branch. */
     private fun handleAuthFailure(provider: AuthProviderType, message: String) {
         AuthFlowLogger.event(
             stage = "native_auth.failed",
@@ -244,6 +300,7 @@ class AuthViewModel(
         }
     }
 
+    /** Restores a fully materialized session that was already validated by another layer. */
     private fun restoreSession(session: AuthSession) {
         AuthFlowLogger.event(
             stage = "session.restore.success",
@@ -260,10 +317,12 @@ class AuthViewModel(
         }
     }
 
+    /** Convenience overload for legacy callers that only have an access token. */
     private fun restoreSessionByToken(accessToken: String) {
         restoreSessionByToken(accessToken = accessToken, refreshToken = null)
     }
 
+    /** Revalidates persisted tokens with the backend and restores the shared auth state on success. */
     private fun restoreSessionByToken(accessToken: String, refreshToken: String?) {
         if (accessToken.isBlank()) {
             scope.launch { _effects.emit(AuthEffect.InvalidateStoredSession) }
@@ -301,6 +360,7 @@ class AuthViewModel(
         }
     }
 
+    /** Terminates the current backend session and clears the local shared auth state. */
     private fun signOut() {
         scope.launch {
             val token = state.value.session?.accessToken
@@ -318,10 +378,12 @@ class AuthViewModel(
         }
     }
 
+    /** Cancels internal coroutines when the platform wrapper disposes the shared auth coordinator. */
     fun clear() {
         scope.cancel()
     }
 
+    /** Collapses noisy backend/network exceptions into bounded safe diagnostics strings. */
     private fun sanitizeForLog(raw: String?): String {
         if (raw.isNullOrBlank()) return "unknown"
         val lower = raw.lowercase()

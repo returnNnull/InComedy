@@ -37,10 +37,12 @@ class VkIdCallbackBridgeRoutesTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         val body = response.bodyAsText()
-        assertTrue(body.contains("Tap Open app to finish signing in."))
+        assertTrue(body.contains("Returning to InComedy app..."))
+        assertTrue(body.contains("Open app"))
         assertTrue(body.contains("incomedy://auth/vk?"))
         assertTrue(body.contains("/auth/vk/callback/telemetry"))
         assertTrue(body.contains("history.replaceState"))
+        assertTrue(body.contains("autolaunch_attempted"))
 
         val events = diagnosticsStore.query(
             DiagnosticsQuery(

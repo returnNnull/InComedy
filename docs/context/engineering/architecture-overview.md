@@ -28,7 +28,7 @@
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
   - Argon2id-backed credential storage/migration plus server-side credential abuse controls for register/login routes;
-  - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge, Android app-preferred launch with browser fallback, and iOS/browser handoff;
+  - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge with auto-return attempt plus manual fallback, official VK ID Android SDK auth-code launch with browser fallback when SDK config is unavailable, and iOS/browser handoff;
   - auth/session foundation across mobile and server;
   - provider-agnostic backend `User + AuthIdentity` persistence foundation that can support multiple auth providers without turning provider ids into primary business ids;
   - backend role storage, active-role context, and minimal organizer workspace create/list routes;
@@ -40,7 +40,7 @@
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
   - shared/mobile backend error correlation via surfaced backend request ids in failure messages.
 - Partial:
-  - VK ID requires runtime client configuration, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
+  - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
   - organizer workspace currently supports owner create/list only; invites, member management, and permission editing are still missing;
   - current Android/iOS main flow exposes a foundation shell for account/workspace context, but dedicated organizer feature graphs and deeper operational flows are still missing.
@@ -82,7 +82,7 @@
 - PostgreSQL schema evolution must live in versioned migration files; application code should invoke migration execution, not own mutable schema DDL as business logic.
 - Internal identity must be modeled provider-agnostically (`User` + linked auth identities); provider-specific ids must not become the primary keys for profile, RBAC, or workspace domains.
 - Password-based auth is implemented as a first-party backend flow with secure password hashing and credential-abuse controls; VK ID plugs into the same internal user/session model as a linked external identity.
-- The canonical public VK callback contract is `https://incomedy.ru/auth/vk/callback`; Android starts VK auth by preferring an installed VK app through a package-targeted `ACTION_VIEW` launch and falls back to the browser when the app is unavailable or cannot handle the URL, while iOS can finish through the same URL once associated domains and Apple App Site Association metadata are configured. The current repository still assumes one shared VK `client_id` behind that public callback.
+- The canonical public VK callback contract remains `https://incomedy.ru/auth/vk/callback`; it is still used for browser/public-callback completion and for non-SDK fallback flows. Android now prefers the official VK ID Android SDK in auth-code mode when both the app and backend have dedicated Android VK client config; the backend still verifies the code and issues the same internal session, while browser/public-callback completion remains available for fallback and for other platforms. This means the repository can operate with a public-callback VK client plus an optional dedicated Android VK client in parallel.
 - Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
 - Prefer REST for CRUD and WebSocket/push for live event updates.
 - For PSP/push/payout side effects, prefer transactional outbox + background workers once those domains are introduced.

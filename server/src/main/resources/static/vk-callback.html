@@ -64,6 +64,7 @@
       var hintText = document.getElementById("hintText");
       var statusText = document.getElementById("statusText");
 
+      // Remove sensitive callback params from browser history once the deep link target is prepared.
       if (window.history && typeof window.history.replaceState === "function") {
         window.history.replaceState(null, "", "/auth/vk/callback");
       }
@@ -80,38 +81,40 @@
         beacon.src = "/auth/vk/callback/telemetry?" + payload.toString();
       }
 
-      statusText.textContent = isAndroid
-        ? "Tap Open app to finish signing in."
-        : "Returning to InComedy app...";
+      statusText.textContent = "Returning to InComedy app...";
       openAppButton.setAttribute("href", deepLinkTarget);
       openAppButton.style.display = "inline-block";
-      hintText.textContent = isAndroid
-        ? "If the app did not open automatically, tap the button to continue in InComedy."
-        : "If redirect did not happen automatically, tap the button.";
+      hintText.textContent = "If redirect did not happen automatically, tap the button to continue in InComedy.";
       hintText.style.display = "block";
-      emitTelemetry("bridge_loaded", isAndroid ? "manual_button" : "auto_deeplink");
+      emitTelemetry("bridge_loaded", "auto_deeplink");
 
       openAppButton.addEventListener("click", function () {
-        emitTelemetry("open_app_clicked", isAndroid ? "manual_button" : "manual_deeplink");
+        emitTelemetry("open_app_clicked", "manual_button");
       });
 
       document.addEventListener("visibilitychange", function () {
         if (document.visibilityState === "hidden") {
-          emitTelemetry("page_hidden", isAndroid ? "manual_button" : "auto_deeplink");
+          emitTelemetry("page_hidden", "auto_deeplink");
         }
       });
       window.addEventListener("pagehide", function () {
-        emitTelemetry("page_hidden", isAndroid ? "manual_button" : "auto_deeplink");
+        emitTelemetry("page_hidden", "auto_deeplink");
       });
 
+      // Try to reopen the app automatically on all mobile browsers, but keep the manual button visible.
       window.setTimeout(function () {
-        if (isAndroid) {
-          emitTelemetry("manual_open_presented", "manual_button");
-          return;
-        }
         emitTelemetry("autolaunch_attempted", "auto_deeplink");
         window.location.replace(deepLinkTarget);
       }, 120);
+
+      window.setTimeout(function () {
+        if (document.visibilityState !== "visible") {
+          return;
+        }
+        if (isAndroid) {
+          emitTelemetry("manual_open_presented", "manual_button");
+        }
+      }, 1200);
     })();
   </script>
 </body>

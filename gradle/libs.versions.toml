@@ -31,6 +31,7 @@ javaJwt = "4.5.0"
 jedis = "5.2.0"
 argon2 = "2.12"
 robolectric = "4.14.1"
+vkid = "2.6.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -84,6 +85,7 @@ java-jwt = { module = "com.auth0:java-jwt", version.ref = "javaJwt" }
 jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 argon2-jvm = { module = "de.mkammerer:argon2-jvm", version.ref = "argon2" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+vkid = { module = "com.vk.id:vkid", version.ref = "vkid" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

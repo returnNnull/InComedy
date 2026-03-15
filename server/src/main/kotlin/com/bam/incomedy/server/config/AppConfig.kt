@@ -109,6 +109,8 @@ data class RedisConfig(
 data class VkIdConfig(
     val clientId: String,
     val redirectUri: String,
+    val androidClientId: String? = null,
+    val androidRedirectUri: String? = null,
     val scope: String,
     val stateSecret: String,
     val stateTtlSeconds: Long,
@@ -138,11 +140,18 @@ private fun Map<String, String>.vkIdConfig(fallbackStateSecret: String): VkIdCon
     if (clientId.isNullOrBlank() && redirectUri.isNullOrBlank()) {
         return null
     }
+    val androidClientId = this["VK_ID_ANDROID_CLIENT_ID"]?.trim().takeUnless { it.isNullOrBlank() }
+    val androidRedirectUri = this["VK_ID_ANDROID_REDIRECT_URI"]?.trim().takeUnless { it.isNullOrBlank() }
     require(!clientId.isNullOrBlank()) { "Environment variable 'VK_ID_CLIENT_ID' is required when VK ID auth is enabled" }
     require(!redirectUri.isNullOrBlank()) { "Environment variable 'VK_ID_REDIRECT_URI' is required when VK ID auth is enabled" }
+    require((androidClientId == null) == (androidRedirectUri == null)) {
+        "Environment variables 'VK_ID_ANDROID_CLIENT_ID' and 'VK_ID_ANDROID_REDIRECT_URI' must be configured together"
+    }
     return VkIdConfig(
         clientId = clientId,
         redirectUri = redirectUri,
+        androidClientId = androidClientId,
+        androidRedirectUri = androidRedirectUri,
         scope = this["VK_ID_SCOPE"]?.trim().takeUnless { it.isNullOrBlank() } ?: "vkid.personal_info",
         stateSecret = this["VK_ID_STATE_SECRET"]?.trim().takeUnless { it.isNullOrBlank() } ?: fallbackStateSecret,
         stateTtlSeconds = this["VK_ID_STATE_TTL_SECONDS"]?.toLongOrNull() ?: 600L,

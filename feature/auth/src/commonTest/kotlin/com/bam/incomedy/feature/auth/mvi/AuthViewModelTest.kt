@@ -25,8 +25,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
+/** Unit tests for the shared auth reducer and external-provider callback handling. */
 class AuthViewModelTest {
 
+    /** Starting provider auth should emit a launch effect with the backend-issued URL. */
     @Test
     fun `when provider clicked then emits launch effect`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -47,6 +49,7 @@ class AuthViewModelTest {
         assertEquals(AuthProviderType.VK, viewModel.state.value.selectedProvider)
     }
 
+    /** A matching provider state should complete auth and populate the shared session. */
     @Test
     fun `when callback has valid state then session is set`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -73,6 +76,32 @@ class AuthViewModelTest {
         assertTrue(viewModel.state.value.isAuthorized)
     }
 
+    /** VK callback should still complete when process memory lost the pending state but backend state is present. */
+    @Test
+    fun `vk callback can complete without in memory pending state`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = FakeProvider(AuthProviderType.VK)
+        val viewModel = createViewModel(
+            provider = provider,
+            dispatcher = dispatcher,
+        )
+
+        viewModel.onIntent(
+            AuthIntent.OnAuthCallback(
+                provider = AuthProviderType.VK,
+                code = "ok",
+                state = "server_signed_state",
+            ),
+        )
+        advanceUntilIdle()
+
+        val session = viewModel.state.value.session
+        assertNotNull(session)
+        assertEquals(AuthProviderType.VK, session.provider)
+        assertNull(viewModel.state.value.errorMessage)
+    }
+
+    /** Non-VK providers should still reject callbacks with a mismatched or missing local state. */
     @Test
     fun `when callback has invalid state then returns error`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -97,6 +126,7 @@ class AuthViewModelTest {
         assertNull(viewModel.state.value.session)
     }
 
+    /** Launch failures should surface a bounded error message in the auth state. */
     @Test
     fun `when launch fails then error is exposed`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -112,6 +142,7 @@ class AuthViewModelTest {
         assertEquals("launch_failed", viewModel.state.value.errorMessage)
     }
 
+    /** Successful credential sign-in should populate a password-backed backend session. */
     @Test
     fun `when sign in succeeds then password session is set`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -147,10 +178,12 @@ class AuthViewModelTest {
     }
 }
 
+/** Fixed state generator used to make external-auth tests deterministic. */
 private object FixedStateGenerator : AuthStateGenerator {
     override fun next(): String = "fixed_state"
 }
 
+/** Fake validation service that accepts any persisted session token for unit tests. */
 private class FakeSessionValidationService : SessionValidationService {
     override suspend fun validate(accessToken: String, refreshToken: String?): Result<ValidatedSession> {
         return Result.success(
@@ -168,12 +201,14 @@ private class FakeSessionValidationService : SessionValidationService {
     }
 }
 
+/** Fake session-termination service that always succeeds during unit tests. */
 private class FakeSessionTerminationService : SessionTerminationService {
     override suspend fun terminate(accessToken: String): Result<Unit> {
         return Result.success(Unit)
     }
 }
 
+/** Fake credential service that returns a stable password-backed session. */
 private class FakeCredentialAuthService : CredentialAuthService {
     var lastLogin: String? = null
 
@@ -199,6 +234,7 @@ private class FakeCredentialAuthService : CredentialAuthService {
     }
 }
 
+/** Fake social provider that exposes deterministic launch and completion results for reducer tests. */
 private class FakeProvider(
     override val type: AuthProviderType,
     private val failLaunch: Boolean = false,

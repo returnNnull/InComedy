@@ -21,7 +21,6 @@ class VkIdLoginStateCodecTest {
         val verifiedState = codec.verify(issuedState.state).getOrThrow()
 
         assertEquals(issuedState.codeVerifier, verifiedState.codeVerifier)
-        assertEquals("https://incomedy.ru/auth/vk/callback", verifiedState.redirectUri)
         assertEquals(now.plusSeconds(600L), verifiedState.expiresAt)
         assertTrue(issuedState.codeChallenge.isNotBlank())
         assertTrue(issuedState.state.contains('.'))
@@ -58,7 +57,6 @@ class VkIdLoginStateCodecTest {
     /** Строит codec с фиксированным redirect URI и секретом для предсказуемых тестов. */
     private fun testCodec(nowProvider: () -> Instant): VkIdLoginStateCodec {
         return VkIdLoginStateCodec(
-            redirectUri = "https://incomedy.ru/auth/vk/callback",
             secret = "state-secret",
             ttlSeconds = 600L,
             nowProvider = nowProvider,

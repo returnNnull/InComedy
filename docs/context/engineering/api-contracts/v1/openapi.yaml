@@ -264,7 +264,7 @@ paths:
   /api/v1/auth/vk/start:
     get:
       tags: [Auth]
-      summary: Issue a VK ID browser launch URL
+      summary: Issue VK ID browser launch metadata plus optional Android SDK auth-code metadata
       operationId: getAuthVkStart
       parameters:
         - in: header
@@ -276,7 +276,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: VK ID launch URL returned successfully
+          description: VK ID launch metadata returned successfully
           headers:
             X-Request-ID:
               description: Server trace identifier
@@ -311,7 +311,7 @@ paths:
   /api/v1/auth/vk/verify:
     post:
       tags: [Auth]
-      summary: Verify VK ID callback data and issue an internal session
+      summary: Verify VK ID browser or Android SDK callback data and issue an internal session
       operationId: postAuthVkVerify
       parameters:
         - in: header
@@ -900,6 +900,16 @@ components:
           format: uri
         state:
           type: string
+        sdk_client_id:
+          type: string
+          nullable: true
+        sdk_code_challenge:
+          type: string
+          nullable: true
+        sdk_scopes:
+          type: array
+          items:
+            type: string
     VkIdVerifyPayload:
       type: object
       additionalProperties: false
@@ -914,6 +924,10 @@ components:
           type: string
         device_id:
           type: string
+        client_source:
+          type: string
+          nullable: true
+          enum: [browser_bridge, android_sdk]
     AuthSessionResponse:
       type: object
       additionalProperties: false

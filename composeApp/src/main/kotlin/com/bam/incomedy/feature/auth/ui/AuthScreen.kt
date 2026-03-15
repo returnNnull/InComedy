@@ -45,7 +45,19 @@ fun AuthScreen(
     LaunchedEffect(viewModel, context) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is AuthEffect.OpenExternalAuth -> openExternalAuth(context = context, effect = effect)
+                is AuthEffect.OpenExternalAuth -> openExternalAuth(
+                    context = context,
+                    effect = effect,
+                    onAuthCallbackUrl = viewModel::onAuthCallbackUrl,
+                    onAuthFailure = { provider, message ->
+                        viewModel.onIntent(
+                            AuthIntent.OnAuthFailure(
+                                provider = provider,
+                                message = message,
+                            ),
+                        )
+                    },
+                )
                 AuthEffect.InvalidateStoredSession -> Unit
             }
         }
@@ -61,7 +73,21 @@ fun AuthScreen(
 private fun openExternalAuth(
     context: Context,
     effect: AuthEffect.OpenExternalAuth,
+    onAuthCallbackUrl: (String) -> Unit,
+    onAuthFailure: (AuthProviderType, String) -> Unit,
 ) {
+    if (
+        effect.provider == AuthProviderType.VK &&
+        AndroidVkIdSdkAuth.start(
+            context = context,
+            effect = effect,
+            onAuthCallbackUrl = onAuthCallbackUrl,
+            onAuthFailure = { message -> onAuthFailure(effect.provider, message) },
+        )
+    ) {
+        return
+    }
+
     val uri = Uri.parse(effect.url)
     val launchPlan = AndroidExternalAuthIntents.plan(
         effect = effect,

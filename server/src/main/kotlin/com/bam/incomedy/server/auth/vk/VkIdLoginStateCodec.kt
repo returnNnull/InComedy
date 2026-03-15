@@ -11,7 +11,6 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 class VkIdLoginStateCodec(
-    private val redirectUri: String,
     secret: String,
     private val ttlSeconds: Long,
     private val nowProvider: () -> Instant = Instant::now,
@@ -24,7 +23,6 @@ class VkIdLoginStateCodec(
         val expiresAt = nowProvider().plusSeconds(ttlSeconds)
         val codeVerifier = generatePkceVerifier()
         val payload = VkIdLoginStatePayload(
-            redirectUri = redirectUri,
             codeVerifier = codeVerifier,
             expiresAtEpochSeconds = expiresAt.epochSecond,
         )
@@ -34,7 +32,6 @@ class VkIdLoginStateCodec(
             state = "$encodedPayload.$signature",
             codeVerifier = codeVerifier,
             codeChallenge = codeChallenge(codeVerifier),
-            redirectUri = redirectUri,
         )
     }
 
@@ -58,9 +55,6 @@ class VkIdLoginStateCodec(
         }.getOrElse {
             return Result.failure(InvalidVkIdAuthStateException("VK ID auth state payload is invalid"))
         }
-        if (payload.redirectUri != redirectUri) {
-            return Result.failure(InvalidVkIdAuthStateException("VK ID auth state redirect URI mismatch"))
-        }
         val expiresAt = Instant.ofEpochSecond(payload.expiresAtEpochSeconds)
         if (!expiresAt.isAfter(nowProvider())) {
             return Result.failure(InvalidVkIdAuthStateException("VK ID auth state is expired"))
@@ -68,7 +62,6 @@ class VkIdLoginStateCodec(
         return Result.success(
             VerifiedVkIdLoginState(
                 codeVerifier = payload.codeVerifier,
-                redirectUri = payload.redirectUri,
                 expiresAt = expiresAt,
             ),
         )
@@ -103,18 +96,15 @@ data class IssuedVkIdLoginState(
     val state: String,
     val codeVerifier: String,
     val codeChallenge: String,
-    val redirectUri: String,
 )
 
 data class VerifiedVkIdLoginState(
     val codeVerifier: String,
-    val redirectUri: String,
     val expiresAt: Instant,
 )
 
 @Serializable
 private data class VkIdLoginStatePayload(
-    val redirectUri: String,
     val codeVerifier: String,
     val expiresAtEpochSeconds: Long,
 ) {

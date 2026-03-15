@@ -39,3 +39,19 @@
 - Decision: Replace the active auth standard with first-party login + password registration/sign-in and treat VK ID as the supported external auth provider, while keeping the internal user/session architecture provider-agnostic.
 - Rationale: The product direction changed again: phone/email OTP add delivery dependencies and per-auth operational cost, while standard credentials give a simpler first-party baseline for the current MVP. VK ID remains strategically relevant for RU-market onboarding, but should sit alongside internal credentials rather than behind another pivot to telecom-based auth.
 - Consequences: Product/engineering docs and backlog must replace phone-first language with login/password + VK ID; the next implementation slices are credential auth first, then VK ID integration; password hashing, credential-abuse protection, and future recovery/reset flows become mandatory design concerns; earlier phone-first analysis remains historical only.
+
+## D-060
+
+- Date: 2026-03-15
+- Status: accepted
+- Decision: Use the official VK ID Android SDK in auth-code mode as the preferred Android VK auth transport, while keeping backend-issued internal sessions as the only application session model and preserving the public HTTPS callback/browser flow as fallback for non-SDK Android setups and other platforms.
+- Rationale: Real-device Android behavior showed that the generic browser/public-callback path still creates an unreliable browser -> VK app -> browser -> app bounce. Official VK documentation for Android is centered on the VK ID SDK plus Android-app registration metadata, so the SDK is the correct Android-specific integration surface. At the same time, the repository already depends on a provider-agnostic internal session model for RBAC, linked identities, refresh rotation, logout, and diagnostics, so SDK adoption should improve transport reliability without turning provider tokens into the primary session contract.
+- Consequences: Android build/runtime config must add VK SDK dependency, manifest placeholders, and Application initialization; backend VK start/verify contracts must expose optional SDK launch metadata and distinguish SDK verification from browser verification; server diagnostics must record safe source markers for VK verification; VK cabinet setup now requires a dedicated Android VK app/client configuration alongside the existing public-callback flow when browser/iOS fallback remains supported.
+
+## D-061
+
+- Date: 2026-03-15
+- Status: accepted
+- Decision: Repository code comments required by the standing documentation rule must be written in Russian, with English allowed only for exact technical terms that do not have a stable local equivalent.
+- Rationale: The repository context, user communication, and handoff process are now explicitly Russian-first, so mixed-language comments create avoidable friction for future chats and code review. Making Russian the default comment language keeps new code documentation consistent across Android, iOS, shared, and server modules.
+- Consequences: `engineering-standards.md`, `quality-rules.md`, and the new-chat handoff template must explicitly require Russian-language code comments; future implementation work should treat non-Russian repository comments in touched scope as documentation debt to normalize when those areas are materially edited.

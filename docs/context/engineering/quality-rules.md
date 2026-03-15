@@ -54,7 +54,8 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Follow project naming conventions and module/package boundaries.
 - Avoid oversized classes/files that mix unrelated responsibilities.
 - Do not embed primary database schema DDL in mutable application startup/service logic once a migration system is in place.
-- Code changes must include required repository code comments at class/object/interface, method/function, and field/property level according to `engineering-standards.md`.
+- Code changes must include required repository code comments at class/object/interface, method/function, and field/property level according to `engineering-standards.md`; those comments must be written in Russian.
+- Tasks that introduce or materially reshape backend flow code are not done until the resulting code comments explain the flow, boundaries, and observability hooks well enough for future chats to continue the work safely.
 
 ## Observability
 
@@ -64,6 +65,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Auth logs must include provider and stage, but must not include access/refresh tokens, bot tokens, or other secrets.
 - Live-environment backend troubleshooting must have an operator-only sanitized retrieval path for recent diagnostic events; debugging must not require exposing raw server logs to clients.
 - Diagnostics retention and payload shape must stay bounded and low-cardinality to avoid turning troubleshooting data into an uncontrolled log sink.
+- New backend logging for live troubleshooting must be wired into the sanitized diagnostics system; plain console/container logging alone does not satisfy observability DoD.
 
 ## Governance Traceability
 

@@ -8,6 +8,10 @@ Copy and send this message to start a new chat with full context sync:
 Ключевое правило: `docs/context/*` — primary source of truth.
 Если новая информация конфликтует с документами, сначала обнови документы, потом код.
 
+Постоянные правила реализации:
+- Новый и существенно измененный код нужно комментировать на уровне class/object/interface, method/function и значимых field/property; комментарии должны быть на русском языке, объяснять ответственность и ход потока, а не пересказывать синтаксис.
+- Для backend production-significant flows используй structured logging через sanitized diagnostics system; `println`, raw container logs и другой ad-hoc unstructured logging не считаются основным путем диагностики.
+
 Сначала синхронизируй контекст по порядку:
 1) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/product/product-brief.md
 2) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/tooling-stack.md
@@ -41,6 +45,7 @@ Copy and send this message to start a new chat with full context sync:
 
 Операционный доступ к логам/диагностике сервера:
 - Сначала предпочитай sanitized server diagnostics, а не raw container logs.
+- Если добавляешь или меняешь server-side logging, встраивай его в существующую diagnostics system с `requestId`, `stage` и bounded sanitized metadata.
 - Для diagnostics используй helper `/Users/abetirov/AndroidStudioProjects/InComedy/scripts/fetch_server_diagnostics.sh`.
 - Base URL: `https://incomedy.ru`
 - Diagnostics token брать из `/Users/abetirov/AndroidStudioProjects/InComedy/deploy/server/.env` (`DIAGNOSTICS_ACCESS_TOKEN`), но никогда не печатать его в ответах или в docs.

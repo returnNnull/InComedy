@@ -44,6 +44,9 @@ This document defines mandatory engineering rules for InComedy.
 
 - Code comments are mandatory for repository code at class/object/interface level, method/function level, and field/property level.
 - Comments must explain purpose and responsibility, not restate syntax mechanically.
+- Repository code comments must be written in Russian; short English product/SDK/API terms may appear only when needed as exact technical names inside otherwise Russian explanations.
+- New code and materially changed code are incomplete until the affected classes/objects/interfaces, methods/functions, and meaningful fields/properties are brought into compliance with this comment rule.
+- Backend handlers, services, diagnostics helpers, and integration adapters must be commented clearly enough that a new chat can understand the production flow and observability points without reverse-engineering the implementation first.
 - When editing an existing file, bring touched classes and their methods/properties into compliance with this documentation rule in the same change.
 
 ## Observability
@@ -55,6 +58,8 @@ This document defines mandatory engineering rules for InComedy.
   - verification/exchange failure.
 - Every backend auth request log must include request trace identifier (`X-Request-ID`/call-id).
 - Operator-facing backend diagnostics must be retrievable through a sanitized, token-protected mechanism; raw server logs must not be the only debugging path for live environments.
+- Backend changes that add or alter production-significant flows must use the bounded sanitized diagnostics system for structured stage logging; ad-hoc `println`, raw container logs, or unstructured logger output are secondary only and do not satisfy the primary observability requirement by themselves.
+- Diagnostics events should carry stable low-cardinality metadata (`stage`, `provider`, `requestId`, safe outcome fields) so server behavior can be correlated with client logs and request ids without exposing secrets.
 - Mobile/shared clients that call backend APIs must surface backend request correlation identifiers strongly enough to match device logs with server diagnostics.
 - Logs must never include secrets or raw auth tokens.
 

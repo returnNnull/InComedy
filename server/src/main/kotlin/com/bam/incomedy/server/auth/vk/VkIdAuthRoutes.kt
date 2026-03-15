@@ -63,12 +63,18 @@ object VkIdAuthRoutes {
                 call = call,
                 stage = "auth.vk.start.success",
                 status = HttpStatusCode.OK.value,
+                metadata = mapOf(
+                    "android_sdk" to if (launch.providerClientId != null && launch.providerCodeChallenge != null) "enabled" else "disabled",
+                ),
             )
             call.respond(
                 HttpStatusCode.OK,
                 VkIdStartResponse(
                     authUrl = launch.authUrl,
                     state = launch.state,
+                    sdkClientId = launch.providerClientId,
+                    sdkCodeChallenge = launch.providerCodeChallenge,
+                    sdkScopes = launch.providerScopes,
                 ),
             )
         }
@@ -126,17 +132,26 @@ object VkIdAuthRoutes {
                         code = request.code,
                         state = request.state,
                         deviceId = request.deviceId,
+                        clientSource = request.clientSource,
                     ),
                 )
             }.fold(
                 onSuccess = { auth ->
-                    logger.info("auth.vk.verify.success requestId={} userId={}", requestId, auth.user.id)
+                    logger.info(
+                        "auth.vk.verify.success requestId={} userId={} source={}",
+                        requestId,
+                        auth.session.user.id,
+                        auth.clientSource.wireName(),
+                    )
                     diagnosticsStore?.recordCall(
                         call = call,
                         stage = "auth.vk.verify.success",
                         status = HttpStatusCode.OK.value,
+                        metadata = mapOf(
+                            "client_source" to auth.clientSource.wireName(),
+                        ),
                     )
-                    call.respond(HttpStatusCode.OK, auth.toResponse())
+                    call.respond(HttpStatusCode.OK, auth.session.toResponse())
                 },
                 onFailure = { error ->
                     val status = when (error) {
@@ -162,6 +177,9 @@ object VkIdAuthRoutes {
                         stage = "auth.vk.verify.failed",
                         status = status.value,
                         safeErrorCode = code,
+                        metadata = mapOf(
+                            "client_source" to (request.clientSource ?: VkIdClientSource.BROWSER_BRIDGE).wireName(),
+                        ),
                     )
                     call.respond(status, ErrorResponse(code, "VK auth failed"))
                 },
@@ -175,6 +193,12 @@ data class VkIdStartResponse(
     @SerialName("auth_url")
     val authUrl: String,
     val state: String,
+    @SerialName("sdk_client_id")
+    val sdkClientId: String? = null,
+    @SerialName("sdk_code_challenge")
+    val sdkCodeChallenge: String? = null,
+    @SerialName("sdk_scopes")
+    val sdkScopes: List<String> = emptyList(),
 )
 
 @Serializable
@@ -183,4 +207,14 @@ data class VkIdVerifyPayload(
     val state: String,
     @SerialName("device_id")
     val deviceId: String,
+    @SerialName("client_source")
+    val clientSource: VkIdClientSource? = null,
 )
+
+/** Serializes the sanitized VK completion source into diagnostics-friendly wire values. */
+private fun VkIdClientSource.wireName(): String {
+    return when (this) {
+        VkIdClientSource.BROWSER_BRIDGE -> "browser_bridge"
+        VkIdClientSource.ANDROID_SDK -> "android_sdk"
+    }
+}

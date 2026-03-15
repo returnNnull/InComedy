@@ -74,7 +74,7 @@ class TelegramBackendApi(
 
     suspend fun verifyVk(callbackUrl: String): Result<AuthSession> {
         return runCatching {
-            val payload = parseVkCallback(callbackUrl)
+            val payload = parseVkCallbackPayload(callbackUrl)
                 ?: error("Invalid VK auth callback payload")
             val response = httpClient
                 .post("$baseUrl/api/v1/auth/vk/verify") {
@@ -239,29 +239,65 @@ class TelegramBackendApi(
     private fun io.ktor.client.request.HttpRequestBuilder.bearer(accessToken: String) {
         header(HttpHeaders.Authorization, "Bearer $accessToken")
     }
+}
 
-    private fun parseVkCallback(callbackUrl: String): VkVerifyPayload? {
-        val query = callbackUrl.substringAfter('?', missingDelimiterValue = "")
-        val fragment = callbackUrl.substringAfter('#', missingDelimiterValue = "")
-        val params = listOf(query, fragment)
-            .flatMap { section ->
-                section.split('&')
-                    .filter { it.contains('=') }
-                    .map { part ->
-                        val index = part.indexOf('=')
-                        part.substring(0, index) to part.substring(index + 1)
-                    }
-            }
-            .toMap()
-        val code = params["code"]?.takeIf { it.isNotBlank() } ?: return null
-        val state = params["state"]?.takeIf { it.isNotBlank() } ?: return null
-        val deviceId = params["device_id"]?.takeIf { it.isNotBlank() } ?: return null
-        return VkVerifyPayload(
-            code = code,
-            state = state,
-            deviceId = deviceId,
-        )
+/**
+ * Parses the raw mobile VK callback URL into the backend verify payload.
+ *
+ * The parser accepts parameters from both query and fragment sections and percent-decodes values so
+ * the backend receives the same logical callback data that the HTTPS bridge rendered into the URL.
+ */
+internal fun parseVkCallbackPayload(callbackUrl: String): VkVerifyPayload? {
+    val query = callbackUrl.substringAfter('?', missingDelimiterValue = "").substringBefore('#')
+    val fragment = callbackUrl.substringAfter('#', missingDelimiterValue = "")
+    val params = buildMap {
+        putAll(parseQueryLike(query))
+        putAll(parseQueryLike(fragment))
     }
+    val code = params["code"]?.takeIf { it.isNotBlank() } ?: return null
+    val state = params["state"]?.takeIf { it.isNotBlank() } ?: return null
+    val deviceId = params["device_id"]?.takeIf { it.isNotBlank() } ?: return null
+    return VkVerifyPayload(
+        code = code,
+        state = state,
+        deviceId = deviceId,
+        clientSource = params["client_source"]?.takeIf { it.isNotBlank() } ?: "browser_bridge",
+    )
+}
+
+/** Parses one query-like section into decoded key/value pairs. */
+private fun parseQueryLike(value: String): Map<String, String> {
+    if (value.isBlank()) return emptyMap()
+    return value.split('&')
+        .mapNotNull { pair ->
+            val index = pair.indexOf('=')
+            if (index <= 0) return@mapNotNull null
+            val key = pair.substring(0, index)
+            val encodedValue = pair.substring(index + 1)
+            key to decodePercent(encodedValue)
+        }
+        .toMap()
+}
+
+/** Decodes percent-escaped callback values without relying on platform-specific helpers. */
+private fun decodePercent(value: String): String {
+    val sb = StringBuilder(value.length)
+    var index = 0
+    while (index < value.length) {
+        val ch = value[index]
+        if (ch == '%' && index + 2 < value.length) {
+            val hex = value.substring(index + 1, index + 3)
+            val decoded = hex.toIntOrNull(16)
+            if (decoded != null) {
+                sb.append(decoded.toChar())
+                index += 3
+                continue
+            }
+        }
+        if (ch == '+') sb.append(' ') else sb.append(ch)
+        index++
+    }
+    return sb.toString()
 }
 
 /**
@@ -389,22 +425,33 @@ private data class VkAuthLaunchResponse(
     @SerialName("auth_url")
     val authUrl: String,
     val state: String,
+    @SerialName("sdk_client_id")
+    val sdkClientId: String? = null,
+    @SerialName("sdk_code_challenge")
+    val sdkCodeChallenge: String? = null,
+    @SerialName("sdk_scopes")
+    val sdkScopes: List<String> = emptyList(),
 ) {
     fun toDomain(): AuthLaunchRequest {
         return AuthLaunchRequest(
             provider = AuthProviderType.VK,
             state = state,
             url = authUrl,
+            providerClientId = sdkClientId,
+            providerCodeChallenge = sdkCodeChallenge,
+            providerScopes = sdkScopes.toSet(),
         )
     }
 }
 
 @Serializable
-private data class VkVerifyPayload(
+internal data class VkVerifyPayload(
     val code: String,
     val state: String,
     @SerialName("device_id")
     val deviceId: String,
+    @SerialName("client_source")
+    val clientSource: String? = null,
 )
 
 /**

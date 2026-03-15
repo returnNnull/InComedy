@@ -8,7 +8,7 @@ Repository snapshot: `2026-03-14`.
 
 - Implemented foundation:
   - first-party credential auth flow with shared `MVI` logic across Android/iOS and backend-issued sessions;
-  - VK ID auth flow wired through shared mobile callback handling and backend verification contracts, with Android preferring the installed VK app and falling back to browser launch;
+  - VK ID auth flow wired through shared mobile callback handling and backend verification contracts, with Android preferring the official VK ID Android SDK when configured and falling back to browser/public-callback launch otherwise;
   - provider-agnostic backend user/auth-identity persistence foundation;
   - backend role storage, active-role switching, and minimal organizer workspace create/list routes;
   - versioned backend database migrations for clean deploys and in-place schema upgrades;
@@ -53,6 +53,22 @@ Repository snapshot: `2026-03-14`.
 For iOS, open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp` target.
 
 Android release signing is wired through Gradle using the local keystore at `signing/android/incomedy-release.jks` plus ignored credentials from `signing/android/release-signing.properties` or `INCOMEDY_RELEASE_*` Gradle/environment properties.
+
+Android VK SDK auth is enabled only when the following properties are provided through the git-ignored root `local.properties`, `~/.gradle/gradle.properties`, or environment variables:
+
+- `INCOMEDY_VK_ANDROID_CLIENT_ID`
+- `INCOMEDY_VK_ANDROID_CLIENT_SECRET`
+- Optional `INCOMEDY_VK_ANDROID_REDIRECT_HOST` (`vk.ru` by default)
+- Optional `INCOMEDY_VK_ANDROID_REDIRECT_SCHEME` (`vk<client_id>` by default)
+
+The preferred project-local setup for this public repository is the root `local.properties` file:
+
+```properties
+INCOMEDY_VK_ANDROID_CLIENT_ID=
+INCOMEDY_VK_ANDROID_CLIENT_SECRET=
+```
+
+Leaving those values empty keeps the browser/public-callback fallback active.
 
 ## Documentation
 

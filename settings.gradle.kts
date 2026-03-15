@@ -29,6 +29,15 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven {
+            url = uri("https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/")
+        }
+        maven {
+            url = uri("https://artifactory-external.vkpartner.ru/artifactory/maven/")
+        }
+        maven {
+            url = uri("https://artifactory-external.vkpartner.ru/artifactory/vk-id-captcha/android/")
+        }
     }
 }
 

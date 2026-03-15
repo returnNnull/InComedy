@@ -51,7 +51,8 @@ Do not deploy with `latest`.
 - `VK ID` is the supported external provider on top of the same internal user/session model.
 - The backend still keeps provider-agnostic user/session foundations so new providers can be added without changing business ids.
 - The canonical public VK callback URI is `https://incomedy.ru/auth/vk/callback`.
-- The current repository assumes a single VK `client_id` shared by both mobile clients through that public HTTPS callback, so the supported cabinet setup is the web-style app configuration rather than separate per-platform VK app ids.
+- Android can additionally use the official VK ID Android SDK in auth-code mode when a dedicated Android VK client id/redirect pair is configured.
+- Browser/public-callback VK verification and Android SDK verification still converge into the same backend-issued internal session contract.
 
 ## Environment
 
@@ -66,6 +67,8 @@ Optional:
 
 - `VK_ID_CLIENT_ID`
 - `VK_ID_REDIRECT_URI`
+- `VK_ID_ANDROID_CLIENT_ID`
+- `VK_ID_ANDROID_REDIRECT_URI`
 - `VK_ID_SCOPE`
 - `VK_ID_STATE_SECRET`
 - `VK_ID_STATE_TTL_SECONDS`
@@ -81,6 +84,8 @@ Optional:
 - `DIAGNOSTICS_RETENTION_LIMIT`
 
 VK auth routes return `503` until both `VK_ID_CLIENT_ID` and `VK_ID_REDIRECT_URI` are configured. The expected production callback value is `https://incomedy.ru/auth/vk/callback`.
+
+When `VK_ID_ANDROID_CLIENT_ID` and `VK_ID_ANDROID_REDIRECT_URI` are also configured, `GET /api/v1/auth/vk/start` returns extra Android SDK launch metadata and `POST /api/v1/auth/vk/verify` accepts `client_source=android_sdk` so the backend can exchange the code against the dedicated Android VK client configuration.
 
 When `IOS_ASSOCIATED_DOMAIN_APP_IDS` is configured with comma-separated Apple app ids (`TEAMID.bundleId`), the backend also serves Apple App Site Association metadata for the VK callback URL.
 
@@ -118,6 +123,8 @@ INCOMEDY_DIAGNOSTICS_BASE_URL=https://incomedy.ru \
 INCOMEDY_DIAGNOSTICS_TOKEN=replace-me \
 scripts/fetch_server_diagnostics.sh --request-id 123e4567-e89b-12d3-a456-426614174000
 ```
+
+VK auth diagnostics now record a safe `client_source` marker such as `browser_bridge` or `android_sdk` so operator traces can distinguish public-callback and Android SDK completions without exposing provider secrets.
 
 ## Public API
 

@@ -53,6 +53,8 @@ class VkIdAuthRoutesTest {
         val body = response.bodyAsText()
         assertTrue(body.contains("https://id.vk.ru/authorize?"))
         assertTrue(body.contains("\"state\":\""))
+        assertTrue(body.contains("\"sdk_client_id\":\"vk-android-client-id\""))
+        assertTrue(body.contains("\"sdk_code_challenge\":\""))
     }
 
     /** Проверяет, что без runtime-конфига VK ID маршруты возвращают `503`. */
@@ -147,6 +149,8 @@ class VkIdAuthRoutesTest {
         val config = VkIdConfig(
             clientId = "vk-test-client-id",
             redirectUri = "https://incomedy.ru/auth/vk/callback",
+            androidClientId = "vk-android-client-id",
+            androidRedirectUri = "vk123456://vk.ru/blank.html",
             scope = "vkid.personal_info",
             stateSecret = "vk-state-secret",
             stateTtlSeconds = 600L,
@@ -154,7 +158,6 @@ class VkIdAuthRoutesTest {
         return VkIdAuthService(
             config = config,
             loginStateCodec = VkIdLoginStateCodec(
-                redirectUri = config.redirectUri,
                 secret = config.stateSecret,
                 ttlSeconds = config.stateTtlSeconds,
                 nowProvider = { Instant.parse("2026-03-14T20:00:00Z") },
