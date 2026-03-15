@@ -143,8 +143,78 @@ class VkIdAuthRoutesTest {
         assertTrue(response.bodyAsText().contains("vk_auth_state_invalid"))
     }
 
+    /** Проверяет, что неожиданный JSON от VK помечается отдельным diagnostics-friendly error code. */
+    @Test
+    fun `vk verify invalid provider response returns 502`() = testApplication {
+        environment {
+            config = MapApplicationConfig()
+        }
+        val authService = testAuthService(
+            gateway = object : VkIdGateway {
+                override fun buildAuthorizeUrl(
+                    clientId: String,
+                    redirectUri: String,
+                    state: String,
+                    codeChallenge: String,
+                ): String {
+                    return "https://id.vk.ru/authorize?client_id=$clientId&state=$state"
+                }
+
+                override fun exchangeAuthorizationCode(
+                    clientId: String,
+                    redirectUri: String,
+                    code: String,
+                    state: String,
+                    deviceId: String,
+                    codeVerifier: String,
+                ): VkIdTokenResponse {
+                    throw VkIdProviderResponseFormatException(
+                        stage = VkIdProviderResponseStage.TOKEN_EXCHANGE,
+                        message = "VK ID token response format is invalid",
+                        cause = IllegalStateException("bad_json"),
+                    )
+                }
+
+                override fun loadUserInfo(clientId: String, accessToken: String): VkIdUserInfoResponse {
+                    error("Should not be called")
+                }
+            },
+        )
+        val validState = authService.createLaunchRequest().state
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            routing {
+                VkIdAuthRoutes.register(
+                    route = this,
+                    authService = authService,
+                    rateLimiter = InMemoryAuthRateLimiter(),
+                )
+            }
+        }
+
+        val response = client.post("/api/v1/auth/vk/verify") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                  "code": "vk_code",
+                  "state": "$validState",
+                  "device_id": "device123"
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadGateway, response.status)
+        assertTrue(response.bodyAsText().contains("vk_auth_provider_response_invalid"))
+    }
+
     /** Строит VK auth service с тестовым state codec и in-memory user repository. */
-    private fun testAuthService(): VkIdAuthService {
+    private fun testAuthService(
+        gateway: VkIdGateway? = null,
+    ): VkIdAuthService {
         val config = VkIdConfig(
             clientId = "vk-test-client-id",
             redirectUri = "https://incomedy.ru/auth/vk/callback",
@@ -161,7 +231,7 @@ class VkIdAuthRoutesTest {
                 ttlSeconds = config.stateTtlSeconds,
                 nowProvider = { Instant.parse("2026-03-14T20:00:00Z") },
             ),
-            vkIdClient = VkIdClient(config),
+            vkIdClient = gateway ?: VkIdClient(config),
             userRepository = InMemoryTelegramUserRepository(),
             tokenService = JwtSessionTokenService(
                 JwtConfig(

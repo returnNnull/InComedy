@@ -154,12 +154,14 @@ object VkIdAuthRoutes {
                         is InvalidVkIdAuthStateException -> HttpStatusCode.BadRequest
                         is VkIdCodeExchangeException,
                         is VkIdUserInfoException -> HttpStatusCode.Unauthorized
+                        is VkIdProviderResponseFormatException -> HttpStatusCode.BadGateway
                         else -> HttpStatusCode.BadRequest
                     }
                     val code = when (error) {
                         is InvalidVkIdAuthStateException -> "vk_auth_state_invalid"
                         is VkIdCodeExchangeException -> "vk_auth_code_exchange_failed"
                         is VkIdUserInfoException -> "vk_auth_user_info_failed"
+                        is VkIdProviderResponseFormatException -> "vk_auth_provider_response_invalid"
                         else -> "vk_auth_failed"
                     }
                     logger.warn(
@@ -173,9 +175,12 @@ object VkIdAuthRoutes {
                         stage = "auth.vk.verify.failed",
                         status = status.value,
                         safeErrorCode = code,
-                        metadata = mapOf(
-                            "client_source" to (request.clientSource ?: VkIdClientSource.BROWSER_BRIDGE).wireName(),
-                        ),
+                        metadata = buildMap {
+                            put("client_source", (request.clientSource ?: VkIdClientSource.BROWSER_BRIDGE).wireName())
+                            if (error is VkIdProviderResponseFormatException) {
+                                put("provider_stage", error.stage.wireName())
+                            }
+                        },
                     )
                     call.respond(status, ErrorResponse(code, "VK auth failed"))
                 },
@@ -208,5 +213,13 @@ private fun VkIdClientSource.wireName(): String {
     return when (this) {
         VkIdClientSource.BROWSER_BRIDGE -> "browser_bridge"
         VkIdClientSource.ANDROID_SDK -> "android_sdk"
+    }
+}
+
+/** Сериализует provider response stage в low-cardinality diagnostics value. */
+private fun VkIdProviderResponseStage.wireName(): String {
+    return when (this) {
+        VkIdProviderResponseStage.TOKEN_EXCHANGE -> "token_exchange"
+        VkIdProviderResponseStage.USER_INFO -> "user_info"
     }
 }

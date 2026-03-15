@@ -9,6 +9,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Instant
 
+/**
+ * Оркестратор VK ID auth на backend-е.
+ *
+ * Сервис выбирает корректную пару `client_id + redirect_uri` для browser и Android SDK completion
+ * path, валидирует state/PKCE, получает профиль из VK и выпускает внутреннюю InComedy-сессию.
+ */
 class VkIdAuthService(
     private val config: VkIdConfig,
     private val loginStateCodec: VkIdLoginStateCodec,
@@ -184,6 +190,7 @@ data class VkIdAuthLaunch(
     val state: String,
 )
 
+/** Входные данные завершения VK auth после mobile/browser callback. */
 data class VkIdVerifyRequest(
     val code: String,
     val state: String,

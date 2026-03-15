@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -73,7 +73,7 @@ fun AuthScreen(
     )
 }
 
-/** Открывает внешний auth-flow через SDK или браузер с возможностью принудительно обойти VK native SDK. */
+/** Открывает внешний browser/public-callback auth-flow через системные intent-ы Android. */
 private fun openExternalAuth(
     context: Context,
     effect: AuthEffect.OpenExternalAuth,
@@ -271,7 +271,7 @@ internal fun AuthScreenContent(
             Text(if (isRegisterMode) "Создать аккаунт" else "Войти")
         }
 
-        Divider()
+        HorizontalDivider()
 
         VkAuthEntry(
             state = state,
@@ -293,23 +293,8 @@ private fun VkAuthEntry(
     modifier: Modifier = Modifier,
 ) {
     val runtimeConfig = AndroidVkIdSdkAuth.runtimeConfig()
-    val initialAttempt = remember { AndroidVkIdSdkAuth.newAuthAttempt() }
-    var authAttemptState by rememberSaveable { mutableStateOf(initialAttempt.state) }
-    var authAttemptCodeVerifier by rememberSaveable { mutableStateOf(initialAttempt.codeVerifier) }
-    var authAttemptCodeChallenge by rememberSaveable { mutableStateOf(initialAttempt.codeChallenge) }
-    val authAttempt = AndroidVkIdAuthAttempt(
-        state = authAttemptState,
-        codeVerifier = authAttemptCodeVerifier,
-        codeChallenge = authAttemptCodeChallenge,
-    )
-    val rotateAttempt = remember {
-        {
-            val nextAttempt = AndroidVkIdSdkAuth.newAuthAttempt()
-            authAttemptState = nextAttempt.state
-            authAttemptCodeVerifier = nextAttempt.codeVerifier
-            authAttemptCodeChallenge = nextAttempt.codeChallenge
-        }
-    }
+    val vkAttemptState = rememberVkAuthAttemptState()
+    val authAttempt = vkAttemptState.current
 
     LaunchedEffect(runtimeConfig.isEnabled, runtimeConfig.clientId, runtimeConfig.redirectScheme) {
         if (runtimeConfig.isEnabled && !runtimeConfig.canUseOneTap()) {
@@ -317,6 +302,15 @@ private fun VkAuthEntry(
                 stage = "android.vk_onetap.fallback",
                 provider = AuthProviderType.VK,
                 details = "reason=${runtimeConfig.unavailableReason()}",
+            )
+        }
+    }
+    LaunchedEffect(runtimeConfig.canUseOneTap()) {
+        if (runtimeConfig.canUseOneTap()) {
+            AuthFlowLogger.event(
+                stage = "android.vk_onetap.ready",
+                provider = AuthProviderType.VK,
+                details = "scopes=${runtimeConfig.requestedScopes.size}",
             )
         }
     }
@@ -336,7 +330,7 @@ private fun VkAuthEntry(
                     details = "tokenPresent=${accessToken.token.isNotBlank()}",
                 )
                 onAuthFailure(AuthProviderType.VK, "VK OneTap did not return an auth code")
-                rotateAttempt()
+                vkAttemptState.rotate()
             },
             onAuthCode = { data, isCompletion ->
                 AuthFlowLogger.event(
@@ -352,7 +346,7 @@ private fun VkAuthEntry(
                         codeVerifier = authAttempt.codeVerifier,
                     ),
                 )
-                rotateAttempt()
+                vkAttemptState.rotate()
             },
             onFail = { _, fail ->
                 val reason = fail.safeReason()
@@ -362,13 +356,19 @@ private fun VkAuthEntry(
                     details = "reason=$reason",
                 )
                 onAuthFailure(AuthProviderType.VK, "VK auth failed: $reason")
-                rotateAttempt()
+                vkAttemptState.rotate()
             },
             signInAnotherAccountButtonEnabled = true,
             authParams = authParams,
         )
         TextButton(
-            onClick = { onIntent(AuthIntent.OnProviderClick(AuthProviderType.VK)) },
+            onClick = {
+                AuthFlowLogger.event(
+                    stage = "android.vk_onetap.browser_fallback_requested",
+                    provider = AuthProviderType.VK,
+                )
+                onIntent(AuthIntent.OnProviderClick(AuthProviderType.VK))
+            },
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -385,6 +385,42 @@ private fun VkAuthEntry(
         Text("Продолжить через VK")
     }
 }
+
+/**
+ * Хранит текущую локальную VK auth-попытку и умеет атомарно перевыпускать ее после успеха/ошибки.
+ *
+ * Такой state живет на Android стороне, потому что documented VK OneTap flow требует client-owned
+ * `state` и PKCE, а backend получает их только на этапе verify.
+ */
+@Composable
+private fun rememberVkAuthAttemptState(): VkAuthAttemptState {
+    val initialAttempt = remember { AndroidVkIdSdkAuth.newAuthAttempt() }
+    var attemptState by rememberSaveable { mutableStateOf(initialAttempt.state) }
+    var codeVerifier by rememberSaveable { mutableStateOf(initialAttempt.codeVerifier) }
+    var codeChallenge by rememberSaveable { mutableStateOf(initialAttempt.codeChallenge) }
+    val rotate: () -> Unit = {
+        val nextAttempt = AndroidVkIdSdkAuth.newAuthAttempt()
+        attemptState = nextAttempt.state
+        codeVerifier = nextAttempt.codeVerifier
+        codeChallenge = nextAttempt.codeChallenge
+    }
+    return remember(attemptState, codeVerifier, codeChallenge) {
+        VkAuthAttemptState(
+            current = AndroidVkIdAuthAttempt(
+                state = attemptState,
+                codeVerifier = codeVerifier,
+                codeChallenge = codeChallenge,
+            ),
+            rotate = rotate,
+        )
+    }
+}
+
+/** Компактный holder для текущей VK auth-попытки и операции перевыпуска. */
+private data class VkAuthAttemptState(
+    val current: AndroidVkIdAuthAttempt,
+    val rotate: () -> Unit,
+)
 
 private fun providerTitle(provider: AuthProviderType?): String {
     return when (provider) {

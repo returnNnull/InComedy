@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 
 /**
- * Abstraction over VK ID HTTP endpoints used by the backend auth flow.
+ * Контракт low-level вызовов VK ID HTTP API, на которых строится backend auth flow.
  */
 interface VkIdGateway {
     /** Builds a provider authorize URL for the selected VK client and redirect target. */
@@ -49,7 +49,7 @@ interface VkIdGateway {
 }
 
 /**
- * Production VK ID gateway backed by direct HTTP calls to VK ID endpoints.
+ * Production gateway, который напрямую ходит в VK ID и нормализует provider-ответы для auth слоя.
  */
 class VkIdClient(
     private val config: VkIdConfig,
@@ -101,7 +101,15 @@ class VkIdClient(
         if (response.statusCode() !in 200..299) {
             throw VkIdCodeExchangeException("VK ID token exchange failed with status ${response.statusCode()}")
         }
-        val parsedResponse = parser.decodeFromString(VkIdTokenResponse.serializer(), response.body())
+        val parsedResponse = runCatching {
+            parser.decodeFromString(VkIdTokenResponse.serializer(), response.body())
+        }.getOrElse { error ->
+            throw VkIdProviderResponseFormatException(
+                stage = VkIdProviderResponseStage.TOKEN_EXCHANGE,
+                message = "VK ID token response format is invalid",
+                cause = error,
+            )
+        }
         if (parsedResponse.state != state) {
             throw VkIdCodeExchangeException("VK ID state mismatch in token exchange response")
         }
@@ -119,7 +127,15 @@ class VkIdClient(
         if (response.statusCode() !in 200..299) {
             throw VkIdUserInfoException("VK ID user info request failed with status ${response.statusCode()}")
         }
-        return parser.decodeFromString(VkIdUserInfoResponse.serializer(), response.body())
+        return runCatching {
+            parser.decodeFromString(VkIdUserInfoResponse.serializer(), response.body())
+        }.getOrElse { error ->
+            throw VkIdProviderResponseFormatException(
+                stage = VkIdProviderResponseStage.USER_INFO,
+                message = "VK ID user info response format is invalid",
+                cause = error,
+            )
+        }
     }
 
     private fun formPost(
@@ -191,6 +207,24 @@ class VkIdCodeExchangeException(
 class VkIdUserInfoException(
     override val message: String,
 ) : IllegalStateException(message)
+
+/**
+ * Provider вернул JSON-форму, которую backend больше не может корректно разобрать.
+ *
+ * Такой сбой важен для диагностики отдельно от обычных OAuth/user-info отказов, чтобы в
+ * diagnostics было видно, что проблема в формате внешнего ответа, а не в auth state или user action.
+ */
+class VkIdProviderResponseFormatException(
+    val stage: VkIdProviderResponseStage,
+    override val message: String,
+    cause: Throwable,
+) : IllegalStateException(message, cause)
+
+/** Ограниченный список provider-этапов, на которых backend может встретить неожиданный JSON. */
+enum class VkIdProviderResponseStage {
+    TOKEN_EXCHANGE,
+    USER_INFO,
+}
 
 /**
  * Декодирует VK поля, которые в разных ответах могут приходить как строка или число.
