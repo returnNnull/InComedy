@@ -1,9 +1,19 @@
 package com.bam.incomedy.server.auth.vk
 
 import com.bam.incomedy.server.config.VkIdConfig
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
@@ -147,6 +157,7 @@ data class VkIdTokenResponse(
     @SerialName("expires_in")
     val expiresIn: Long,
     @SerialName("user_id")
+    @Serializable(with = VkFlexibleNullableStringSerializer::class)
     val userId: String? = null,
     @SerialName("id_token")
     val idToken: String? = null,
@@ -162,6 +173,7 @@ data class VkIdUserInfoResponse(
 @Serializable
 data class VkIdUserInfo(
     @SerialName("user_id")
+    @Serializable(with = VkFlexibleStringSerializer::class)
     val userId: String,
     @SerialName("first_name")
     val firstName: String? = null,
@@ -179,3 +191,48 @@ class VkIdCodeExchangeException(
 class VkIdUserInfoException(
     override val message: String,
 ) : IllegalStateException(message)
+
+/**
+ * Декодирует VK поля, которые в разных ответах могут приходить как строка или число.
+ *
+ * В реальных ответах VK `user_id` уже вернулся числом, хотя приложение хранит внешние identity ids
+ * как строки. Сериализатор приводит оба формата к единому строковому виду.
+ */
+object VkFlexibleNullableStringSerializer : KSerializer<String?> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("VkFlexibleString", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): String? {
+        val jsonDecoder = decoder as? JsonDecoder
+            ?: return decoder.decodeString()
+        val element = jsonDecoder.decodeJsonElement()
+        if (element is JsonNull) return null
+        val primitive = element as? JsonPrimitive
+            ?: error("VK flexible string must be a primitive value")
+        return primitive.content
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    override fun serialize(encoder: Encoder, value: String?) {
+        if (value == null) {
+            encoder.encodeNull()
+            return
+        }
+        encoder.encodeString(value)
+    }
+}
+
+/** Требует непустое примитивное значение и приводит numeric/string VK `user_id` к строке. */
+object VkFlexibleStringSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("VkFlexibleNonNullString", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): String {
+        return VkFlexibleNullableStringSerializer.deserialize(decoder)
+            ?: error("VK flexible string is missing")
+    }
+
+    override fun serialize(encoder: Encoder, value: String) {
+        encoder.encodeString(value)
+    }
+}
