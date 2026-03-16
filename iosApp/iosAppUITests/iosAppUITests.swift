@@ -49,6 +49,19 @@ final class iosAppUITests: XCTestCase {
         hostRoleButton.tap()
     }
 
+    /// Проверяет organizer venue tab, выбор площадки и доступность действий builder-а.
+    func testVenueTabShowsVenueManagementSurface() {
+        app.tabBars.buttons["Площадки"].tap()
+
+        XCTAssertTrue(app.staticTexts["venue.root"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["venue.count"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["venue.workspace.ws-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["venue.selector.venue-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["venue.form.create"]))
+        XCTAssertTrue(app.textFields["venue.template.name"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["venue.template.save"].exists)
+    }
+
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.
     func testAccountTabSwitchesRoleAndSignsOut() {
         app.tabBars.buttons["Аккаунт"].tap()

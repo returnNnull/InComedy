@@ -22,7 +22,9 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "user_role_assignments"))
                 assertTrue(tableExists(connection, "organizer_workspaces"))
                 assertTrue(tableExists(connection, "workspace_members"))
-                assertEquals(4, appliedMigrationCount(connection))
+                assertTrue(tableExists(connection, "organizer_venues"))
+                assertTrue(tableExists(connection, "hall_templates"))
+                assertEquals(5, appliedMigrationCount(connection))
             }
         }
     }

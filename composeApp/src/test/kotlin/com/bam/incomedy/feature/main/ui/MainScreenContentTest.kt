@@ -166,6 +166,17 @@ class MainScreenContentTest {
         assertEquals("host", updatedRole)
     }
 
+    /** Проверяет, что main shell умеет переключаться на organizer venue вкладку. */
+    @Test
+    fun venueTabIsReachableFromBottomBar() {
+        setMainScreenContent()
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_VENUES).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(com.bam.incomedy.feature.venue.ui.VenueScreenTags.ROOT).assertIsDisplayed()
+    }
+
     /** Проверяет, что вкладка аккаунта показывает профиль и прокидывает действия роли и выхода. */
     @Test
     fun accountTabShowsProfileAndInvokesActions() {

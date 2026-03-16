@@ -28,8 +28,10 @@ Use this index for new implementation and review tasks.
 17. `task-request-template/task-request-template-part-17.md` (Android VK OneTap live diagnostics and documented Android rework requests from 2026-03-15)
 18. `task-request-template/task-request-template-part-18.md` (context resynchronization and organizer workspace invitations/permission-role requests from 2026-03-16)
 19. `task-request-template/task-request-template-part-19.md` (auth/session modular refactoring request from 2026-03-16)
+20. `task-request-template/task-request-template-part-20.md` (new-chat context synchronization, venue-context discovery, and initial venue-slice planning from 2026-03-16)
+21. `task-request-template/task-request-template-part-21.md` (venue/hall delivery slicing and venues/templates foundation implementation request from 2026-03-16)
 
 ## Append Rule
 
-- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-19.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-20.md`, update this index, and continue appending there.
+- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-21.md`.
+- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-22.md`, update this index, and continue appending there.

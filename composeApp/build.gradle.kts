@@ -168,7 +168,9 @@ dependencies {
     implementation(projects.shared)
     implementation(projects.domain.auth)
     implementation(projects.domain.session)
+    implementation(projects.domain.venue)
     implementation(projects.feature.auth)
+    implementation(projects.feature.venue)
 
     debugImplementation(libs.compose.uiTooling)
     testImplementation(libs.junit)

@@ -18,6 +18,7 @@ import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.main.navigation.mainGraph
 import com.bam.incomedy.feature.main.ui.MainScreen
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 import com.bam.incomedy.viewmodel.AndroidViewModelFactories
 
 /**
@@ -37,6 +38,9 @@ fun AppNavHost(
     val sessionViewModel: SessionAndroidViewModel = viewModel(
         factory = AndroidViewModelFactories.session(application),
     )
+    val venueViewModel: VenueAndroidViewModel = viewModel(
+        factory = AndroidViewModelFactories.venue(application),
+    )
     val state by authViewModel.state.collectAsStateWithLifecycle()
 
     AppNavHostContent(
@@ -51,6 +55,7 @@ fun AppNavHost(
         mainContent = { contentModifier ->
             MainScreen(
                 sessionViewModel = sessionViewModel,
+                venueViewModel = venueViewModel,
                 modifier = contentModifier,
             )
         },

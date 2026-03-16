@@ -8,19 +8,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.bam.incomedy.feature.main.ui.MainScreen
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 import com.bam.incomedy.navigation.AppGraph
 
 /**
  * Добавляет основной граф Android-приложения с реальным post-auth экраном.
  *
  * @param sessionViewModel Android-адаптер расширенного session context.
+ * @param venueViewModel Android-адаптер organizer venue management feature.
  */
 fun NavGraphBuilder.mainGraph(
     sessionViewModel: SessionAndroidViewModel,
+    venueViewModel: VenueAndroidViewModel,
 ) {
     mainGraph { modifier ->
         MainScreen(
             sessionViewModel = sessionViewModel,
+            venueViewModel = venueViewModel,
             modifier = modifier,
         )
     }

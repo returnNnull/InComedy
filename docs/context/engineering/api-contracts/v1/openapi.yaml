@@ -3,8 +3,8 @@ info:
   title: InComedy Server API
   version: "1.0.0"
   description: |
-    Current backend API contract for auth, identity foundation, organizer workspace foundation,
-    and service health endpoints.
+    Current backend API contract for auth, identity foundation, organizer workspace and venue
+    foundations, and service health endpoints.
 servers:
   - url: https://incomedy.ru
     description: Production
@@ -16,6 +16,7 @@ tags:
   - name: Auth
   - name: Identity
   - name: Organizer
+  - name: Venues
 paths:
   /health:
     get:
@@ -983,6 +984,336 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/venues:
+    get:
+      tags: [Venues]
+      summary: List organizer venues available to the authenticated user
+      operationId: getVenues
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Venue list returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VenueListResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Venues]
+      summary: Create an organizer venue inside a managed workspace
+      operationId: postVenues
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVenueRequest"
+      responses:
+        "201":
+          description: Venue created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VenueResponse"
+        "400":
+          description: Invalid venue payload or timezone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage venues in the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/venues/{venueId}/hall-templates:
+    post:
+      tags: [Venues]
+      summary: Create a reusable hall template inside an organizer venue
+      operationId: postVenueHallTemplates
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: venueId
+          required: true
+          description: Organizer venue UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HallTemplateMutationRequest"
+      responses:
+        "201":
+          description: Hall template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HallTemplateResponse"
+        "400":
+          description: Invalid venue id or hall template payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage hall templates for the requested venue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Venue not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/hall-templates/{templateId}:
+    patch:
+      tags: [Venues]
+      summary: Update a reusable hall template
+      operationId: patchHallTemplate
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: templateId
+          required: true
+          description: Hall template UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HallTemplateMutationRequest"
+      responses:
+        "200":
+          description: Hall template updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HallTemplateResponse"
+        "400":
+          description: Invalid template id or hall template payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage the requested hall template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Hall template or owning venue not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/hall-templates/{templateId}/clone:
+    post:
+      tags: [Venues]
+      summary: Clone an existing hall template into a new draft template
+      operationId: postHallTemplateClone
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: templateId
+          required: true
+          description: Source hall template UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloneHallTemplateRequest"
+      responses:
+        "201":
+          description: Hall template cloned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HallTemplateResponse"
+        "400":
+          description: Invalid template id or clone payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot clone the requested hall template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Hall template or owning venue not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
@@ -1501,6 +1832,310 @@ components:
         status:
           type: string
           enum: [accept, decline]
+    VenueListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - venues
+      properties:
+        venues:
+          type: array
+          items:
+            $ref: "#/components/schemas/VenueResponse"
+    CreateVenueRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - workspace_id
+        - name
+        - city
+        - address
+        - timezone
+        - capacity
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 3
+          maxLength: 80
+        city:
+          type: string
+          minLength: 2
+          maxLength: 80
+        address:
+          type: string
+          minLength: 5
+          maxLength: 200
+        timezone:
+          type: string
+          minLength: 3
+          maxLength: 64
+          example: Europe/Moscow
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+        contacts:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/VenueContactResponse"
+    VenueResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspace_id
+        - name
+        - city
+        - address
+        - timezone
+        - capacity
+        - contacts
+        - hall_templates
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        timezone:
+          type: string
+        capacity:
+          type: integer
+        description:
+          type: string
+          nullable: true
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/VenueContactResponse"
+        hall_templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallTemplateResponse"
+    VenueContactResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          minLength: 2
+          maxLength: 40
+        value:
+          type: string
+          minLength: 3
+          maxLength: 120
+    HallTemplateMutationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - status
+        - layout
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 80
+        status:
+          type: string
+          enum: [draft, published]
+        layout:
+          $ref: "#/components/schemas/HallLayoutResponse"
+    HallTemplateResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - venue_id
+        - name
+        - version
+        - status
+        - layout
+      properties:
+        id:
+          type: string
+          format: uuid
+        venue_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [draft, published]
+        layout:
+          $ref: "#/components/schemas/HallLayoutResponse"
+    CloneHallTemplateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          nullable: true
+          minLength: 3
+          maxLength: 80
+    HallLayoutResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        stage:
+          $ref: "#/components/schemas/HallStageResponse"
+        price_zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallPriceZoneResponse"
+        zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallZoneResponse"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallRowResponse"
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallTableResponse"
+        service_areas:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallServiceAreaResponse"
+        blocked_seat_refs:
+          type: array
+          items:
+            type: string
+    HallStageResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+      properties:
+        label:
+          type: string
+        notes:
+          type: string
+          nullable: true
+    HallPriceZoneResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        default_price_minor:
+          type: integer
+          nullable: true
+          minimum: 0
+    HallZoneResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - capacity
+        - kind
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        capacity:
+          type: integer
+          minimum: 1
+        price_zone_id:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          example: standing
+    HallRowResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - seats
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        seats:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/HallSeatResponse"
+        price_zone_id:
+          type: string
+          nullable: true
+    HallSeatResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - ref
+        - label
+      properties:
+        ref:
+          type: string
+        label:
+          type: string
+    HallTableResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - seat_count
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        seat_count:
+          type: integer
+          minimum: 1
+        price_zone_id:
+          type: string
+          nullable: true
+    HallServiceAreaResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - kind
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
     ErrorResponse:
       type: object
       additionalProperties: false

@@ -22,9 +22,12 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":data:auth"))
             implementation(project(":data:session"))
+            implementation(project(":data:venue"))
             implementation(project(":domain:auth"))
             implementation(project(":domain:session"))
+            implementation(project(":domain:venue"))
             implementation(project(":feature:auth"))
+            implementation(project(":feature:venue"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
         }

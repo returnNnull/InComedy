@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 
 /**
  * Набор явных фабрик Android `ViewModel`, который исключает зависимость от дефолтной
@@ -31,6 +32,17 @@ object AndroidViewModelFactories {
     fun session(application: Application): ViewModelProvider.Factory {
         return singleViewModelFactory(SessionAndroidViewModel::class.java) {
             SessionAndroidViewModel(application)
+        }
+    }
+
+    /**
+     * Возвращает фабрику для Android-адаптера organizer venue feature.
+     *
+     * @param application Android application context, необходимый `VenueAndroidViewModel`.
+     */
+    fun venue(application: Application): ViewModelProvider.Factory {
+        return singleViewModelFactory(VenueAndroidViewModel::class.java) {
+            VenueAndroidViewModel(application)
         }
     }
 

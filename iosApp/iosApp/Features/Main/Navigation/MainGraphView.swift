@@ -8,6 +8,9 @@ struct MainGraphView: View {
     /// Модель экрана, поставляющая данные профиля, ролей и рабочих пространств.
     @StateObject private var model: MainSessionModel
 
+    /// Модель organizer venue management feature.
+    @StateObject private var venueModel: VenueScreenModel
+
     /// Имя нового рабочего пространства из формы на вкладке "Главная".
     @State private var workspaceName: String = ""
 
@@ -26,6 +29,15 @@ struct MainGraphView: View {
         self.onSignOut = onSignOut
         _model = StateObject(
             wrappedValue: fixture.map(MainSessionModel.init(fixture:)) ?? MainSessionModel()
+        )
+        _venueModel = StateObject(
+            wrappedValue: fixture.map {
+                VenueScreenModel(
+                    fixture: VenueScreenFixture.preview(
+                        workspaceId: $0.workspaces.first?.id ?? "ws-1"
+                    )
+                )
+            } ?? VenueScreenModel()
         )
     }
 
@@ -47,6 +59,17 @@ struct MainGraphView: View {
                 Label("Главная", systemImage: "house")
             }
             .accessibilityIdentifier("main.tab.home")
+
+            NavigationStack {
+                VenueManagementView(
+                    model: venueModel,
+                    workspaces: model.workspaces
+                )
+            }
+            .tabItem {
+                Label("Площадки", systemImage: "square.grid.2x2")
+            }
+            .accessibilityIdentifier("main.tab.venues")
 
             NavigationStack {
                 ScrollView {

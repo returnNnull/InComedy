@@ -54,6 +54,10 @@ import com.bam.incomedy.domain.session.OrganizerWorkspace
 import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
 import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.venue.ui.VenueManagementTab
+import com.bam.incomedy.feature.venue.ui.VenueScreenTags
+import com.bam.incomedy.feature.venue.ui.VenueTabBindings
+import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 import com.bam.incomedy.shared.session.SessionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,17 +67,53 @@ import java.net.URL
  * Экран авторизованной части приложения с нижним меню и вкладкой аккаунта.
  *
  * @property sessionViewModel Общая модель сессии, которая отдает профиль, роли и рабочие пространства.
+ * @property venueViewModel Android-адаптер organizer venue management feature.
  * @property modifier Внешний модификатор экрана.
  */
 @Composable
 fun MainScreen(
     sessionViewModel: SessionAndroidViewModel,
+    venueViewModel: VenueAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
     val state by sessionViewModel.state.collectAsStateWithLifecycle()
+    val venueState by venueViewModel.state.collectAsStateWithLifecycle()
 
     MainScreenContent(
         state = state,
+        venueBindings = VenueTabBindings(
+            state = venueState,
+            onRefreshVenues = venueViewModel::refreshVenues,
+            onCreateVenue = { form ->
+                venueViewModel.createVenue(
+                    workspaceId = form.workspaceId,
+                    name = form.name,
+                    city = form.city,
+                    address = form.address,
+                    timezone = form.timezone,
+                    capacityText = form.capacityText,
+                    description = form.description,
+                    contactsText = form.contactsText,
+                )
+            },
+            onSaveHallTemplate = { form ->
+                venueViewModel.saveHallTemplate(
+                    venueId = form.venueId,
+                    templateId = form.templateId,
+                    name = form.name,
+                    statusKey = form.statusKey,
+                    stageLabel = form.stageLabel,
+                    priceZonesText = form.priceZonesText,
+                    zonesText = form.zonesText,
+                    rowsText = form.rowsText,
+                    tablesText = form.tablesText,
+                    serviceAreasText = form.serviceAreasText,
+                    blockedSeatRefsText = form.blockedSeatRefsText,
+                )
+            },
+            onCloneHallTemplate = venueViewModel::cloneHallTemplate,
+            onClearError = venueViewModel::clearError,
+        ),
         onSetActiveRole = sessionViewModel::setActiveRole,
         onCreateWorkspace = sessionViewModel::createWorkspace,
         onCreateWorkspaceInvitation = sessionViewModel::createWorkspaceInvitation,
@@ -96,6 +136,7 @@ fun MainScreen(
  * @property onAcceptWorkspaceInvitation Обработчик принятия pending invitation.
  * @property onDeclineWorkspaceInvitation Обработчик отклонения pending invitation.
  * @property onUpdateWorkspaceMembershipRole Обработчик смены permission role membership.
+ * @property venueBindings Данные и команды organizer venue management вкладки.
  * @property onClearError Обработчик скрытия ошибки.
  * @property onSignOut Обработчик выхода из профиля.
  * @property modifier Внешний модификатор контейнера.
@@ -103,6 +144,7 @@ fun MainScreen(
 @Composable
 internal fun MainScreenContent(
     state: SessionState,
+    venueBindings: VenueTabBindings = VenueTabBindings(),
     onSetActiveRole: (String) -> Unit,
     onCreateWorkspace: (String, String?) -> Unit,
     onCreateWorkspaceInvitation: (String, String, String) -> Unit,
@@ -168,6 +210,11 @@ internal fun MainScreenContent(
                     state = state,
                     onSetActiveRole = onSetActiveRole,
                     onSignOut = onSignOut,
+                )
+                MainTab.VENUES -> VenueManagementTab(
+                    workspaces = state.workspaces,
+                    venueBindings = venueBindings,
+                    modifier = Modifier.testTag(VenueScreenTags.ROOT),
                 )
             }
         }
@@ -861,6 +908,11 @@ private enum class MainTab(
         iconGlyph = "⌂",
         testTag = MainScreenTags.TAB_HOME,
     ),
+    VENUES(
+        title = "Площадки",
+        iconGlyph = "▦",
+        testTag = MainScreenTags.TAB_VENUES,
+    ),
     ACCOUNT(
         title = "Аккаунт",
         iconGlyph = "☺",
@@ -883,6 +935,9 @@ object MainScreenTags {
 
     /** Тег вкладки аккаунта. */
     const val TAB_ACCOUNT = "main.tab.account"
+
+    /** Тег вкладки площадок. */
+    const val TAB_VENUES = "main.tab.venues"
 
     /** Тег контейнера вкладки главной сводки. */
     const val HOME_CONTENT = "main.content.home"

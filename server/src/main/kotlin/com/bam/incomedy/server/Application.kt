@@ -11,6 +11,7 @@ import com.bam.incomedy.server.auth.vk.VkIdAuthService
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
+import com.bam.incomedy.server.db.PostgresVenueRepository
 import com.bam.incomedy.server.db.PostgresUserRepository
 import com.bam.incomedy.server.ios.AppleAppSiteAssociationRoutes
 import com.bam.incomedy.server.identity.IdentityRoutes
@@ -19,6 +20,7 @@ import com.bam.incomedy.server.observability.DiagnosticsRoutes
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.observability.isValidRequestId
 import com.bam.incomedy.server.organizer.WorkspaceRoutes
+import com.bam.incomedy.server.venues.VenueRoutes
 import com.bam.incomedy.server.security.AuthRateLimiter
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
 import com.bam.incomedy.server.security.RedisAuthRateLimiter
@@ -52,6 +54,7 @@ fun Application.module() {
     DatabaseMigrationRunner.migrate(dataSource)
 
     val repository = PostgresUserRepository(dataSource)
+    val venueRepository = PostgresVenueRepository(dataSource)
     val tokenService = JwtSessionTokenService(config.jwt)
     val passwordHasher = Argon2PasswordHasher()
     val credentialsAuthService = CredentialsAuthService(
@@ -165,6 +168,15 @@ fun Application.module() {
             tokenService = tokenService,
             sessionUserRepository = repository,
             workspaceRepository = repository,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        VenueRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            sessionUserRepository = repository,
+            workspaceRepository = repository,
+            venueRepository = venueRepository,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )

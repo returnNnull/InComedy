@@ -6,7 +6,16 @@ import com.bam.incomedy.domain.auth.AuthorizedUser
 import com.bam.incomedy.domain.session.OrganizerWorkspace
 import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
 import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
+import com.bam.incomedy.domain.venue.HallLayout
+import com.bam.incomedy.domain.venue.HallPriceZone
+import com.bam.incomedy.domain.venue.HallRow
+import com.bam.incomedy.domain.venue.HallSeat
+import com.bam.incomedy.domain.venue.HallTemplate
+import com.bam.incomedy.domain.venue.HallTemplateStatus
+import com.bam.incomedy.domain.venue.OrganizerVenue
+import com.bam.incomedy.domain.venue.VenueContact
 import com.bam.incomedy.feature.auth.mvi.AuthState
+import com.bam.incomedy.feature.venue.VenueState
 import com.bam.incomedy.shared.session.SessionState
 
 /**
@@ -92,6 +101,23 @@ object AndroidUiStateFactory {
             accessToken = accessToken,
             refreshToken = refreshToken,
             user = user,
+        )
+    }
+
+    /**
+     * Возвращает состояние organizer venue feature для Android UI-тестов.
+     */
+    fun venueState(
+        venues: List<OrganizerVenue> = listOf(venue()),
+        isLoading: Boolean = false,
+        isSubmitting: Boolean = false,
+        errorMessage: String? = null,
+    ): VenueState {
+        return VenueState(
+            venues = venues,
+            isLoading = isLoading,
+            isSubmitting = isSubmitting,
+            errorMessage = errorMessage,
         )
     }
 
@@ -192,6 +218,71 @@ object AndroidUiStateFactory {
             workspaceStatus = workspaceStatus,
             permissionRole = permissionRole,
             invitedByDisplayName = invitedByDisplayName,
+        )
+    }
+
+    /**
+     * Возвращает тестовую площадку организатора с одним hall template.
+     */
+    fun venue(
+        id: String = "venue-1",
+        workspaceId: String = "ws-1",
+        name: String = "Moscow Cellar",
+        city: String = "Moscow",
+        address: String = "Tverskaya 1",
+        timezone: String = "Europe/Moscow",
+        capacity: Int = 120,
+        description: String? = "Клубный зал для вечерних шоу",
+        contacts: List<VenueContact> = listOf(VenueContact(label = "Telegram", value = "@cellar")),
+        hallTemplates: List<HallTemplate> = listOf(hallTemplate()),
+    ): OrganizerVenue {
+        return OrganizerVenue(
+            id = id,
+            workspaceId = workspaceId,
+            name = name,
+            city = city,
+            address = address,
+            timezone = timezone,
+            capacity = capacity,
+            description = description,
+            contacts = contacts,
+            hallTemplates = hallTemplates,
+        )
+    }
+
+    /**
+     * Возвращает тестовый hall template для builder UI.
+     */
+    fun hallTemplate(
+        id: String = "template-1",
+        venueId: String = "venue-1",
+        name: String = "Late Layout",
+        version: Int = 2,
+        status: HallTemplateStatus = HallTemplateStatus.PUBLISHED,
+        layout: HallLayout = HallLayout(
+            priceZones = listOf(HallPriceZone(id = "vip", name = "VIP", defaultPriceMinor = 3000)),
+            rows = listOf(
+                HallRow(
+                    id = "row-a",
+                    label = "A",
+                    seats = listOf(
+                        HallSeat(ref = "row-a-1", label = "1"),
+                        HallSeat(ref = "row-a-2", label = "2"),
+                        HallSeat(ref = "row-a-3", label = "3"),
+                    ),
+                    priceZoneId = "vip",
+                ),
+            ),
+            blockedSeatRefs = listOf("row-a-3"),
+        ),
+    ): HallTemplate {
+        return HallTemplate(
+            id = id,
+            venueId = venueId,
+            name = name,
+            version = version,
+            status = status,
+            layout = layout,
         )
     }
 }
