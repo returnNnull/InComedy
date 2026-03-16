@@ -3,6 +3,7 @@ package com.bam.incomedy.shared.di
 import com.bam.incomedy.data.auth.di.authDataModule
 import com.bam.incomedy.data.event.di.eventDataModule
 import com.bam.incomedy.data.session.di.sessionDataModule
+import com.bam.incomedy.data.ticketing.di.ticketingDataModule
 import com.bam.incomedy.data.venue.di.venueDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
@@ -27,6 +28,7 @@ object InComedyKoin {
         sessionDataModule,
         venueDataModule,
         eventDataModule,
+        ticketingDataModule,
         authFeatureModule,
         module {
             single {

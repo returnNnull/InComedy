@@ -4,11 +4,12 @@
 
 - Mobile Client (`Kotlin Multiplatform`)
   - Core support: `:core:common` для shared primitives и `:core:backend` для backend environment/config + HTTP helper-ов
-  - Domain contracts: `:domain:auth`, `:domain:session`, `:domain:venue`, и `:domain:event` для бизнес-моделей, портов и use-case contract-ов
+  - Domain contracts: `:domain:auth`, `:domain:session`, `:domain:venue`, `:domain:event`, и `:domain:ticketing` для бизнес-моделей, портов и use-case contract-ов
   - Auth bounded context: `:feature:auth` + `:data:auth` для auth orchestration, callback parsing, provider launch/verify, refresh, logout
   - Post-auth session context: `:data:session` + shared session orchestration для ролей, active role и organizer workspace/team management
   - Organizer venue context: `:feature:venue` + `:data:venue` для venue catalog, hall template builder form orchestration, и backend venue API adapters
   - Organizer event context: `:feature:event` + `:data:event` для event create/list/get/update/publish, sales open/pause/cancel orchestration, venue/template selection, `EventHallSnapshot`, и event-local override API adapters
+  - Ticketing foundation context: `:data:ticketing` + backend ticketing routes/repository для derived event inventory, protected seat holds, и expiry/release semantics поверх frozen snapshot-а
   - Presentation: shared MVI ViewModels + platform-specific UI (Android Compose, iOS SwiftUI)
   - Domain: use cases and entities
   - Data: repositories, remote/local sources
@@ -51,7 +52,8 @@
   - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
   - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
-  - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, and event-local price/availability overrides, but ticket inventory transitions and `sold_out` automation are still not implemented;
+  - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, and event-local price/availability overrides;
+  - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots plus authenticated inventory list and hold create/release/expiry routes, but public catalog access, checkout, `sold_out` automation, QR issuance, and check-in are still not implemented;
   - current Android/iOS main flow now exposes organizer venue and event surfaces, including event lifecycle controls and override editing, but deeper organizer operational flows beyond workspaces, venues, and event foundations are still missing.
 - Planned next bounded contexts:
   - lineup,

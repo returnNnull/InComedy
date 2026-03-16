@@ -3,8 +3,8 @@ info:
   title: InComedy Server API
   version: "1.0.0"
   description: |
-    Current backend API contract for auth, identity foundation, organizer workspace, venue, and event
-    foundations, and service health endpoints.
+    Current backend API contract for auth, identity foundation, organizer workspace, venue, event,
+    and ticketing foundations, and service health endpoints.
 servers:
   - url: https://incomedy.ru
     description: Production
@@ -18,6 +18,7 @@ tags:
   - name: Organizer
   - name: Venues
   - name: Events
+  - name: Ticketing
 paths:
   /health:
     get:
@@ -1809,6 +1810,207 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events/{eventId}/inventory:
+    get:
+      tags: [Ticketing]
+      summary: List derived ticketing inventory for a published event
+      operationId: getEventInventory
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Published event UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Derived event inventory returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryListResponse"
+        "400":
+          description: Invalid event id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event inventory is not available or the event does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events/{eventId}/holds:
+    post:
+      tags: [Ticketing]
+      summary: Create a short-lived hold on one inventory unit
+      operationId: postEventHold
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Published event UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSeatHoldRequest"
+      responses:
+        "201":
+          description: Seat hold created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeatHoldResponse"
+        "400":
+          description: Invalid event id or hold payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event inventory or requested inventory unit was not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Sales are not open or inventory unit is unavailable for hold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/holds/{holdId}:
+    delete:
+      tags: [Ticketing]
+      summary: Release an existing hold owned by the authenticated user
+      operationId: deleteSeatHold
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: holdId
+          required: true
+          description: Seat hold UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Hold released successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeatHoldResponse"
+        "400":
+          description: Invalid hold id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user does not own the requested hold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Hold not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Hold is already inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
@@ -2668,6 +2870,112 @@ components:
         availability_status:
           type: string
           enum: [available, blocked]
+    InventoryListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - inventory
+      properties:
+        inventory:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryUnitResponse"
+    CreateSeatHoldRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - inventory_ref
+      properties:
+        inventory_ref:
+          type: string
+          minLength: 1
+          maxLength: 128
+    InventoryUnitResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_id
+        - inventory_ref
+        - inventory_type
+        - snapshot_target_type
+        - snapshot_target_ref
+        - label
+        - currency
+        - status
+        - held_by_current_user
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        inventory_ref:
+          type: string
+        inventory_type:
+          type: string
+          enum: [seat, zone_slot, table_seat]
+        snapshot_target_type:
+          type: string
+          enum: [seat, zone, table]
+        snapshot_target_ref:
+          type: string
+        label:
+          type: string
+        price_zone_id:
+          type: string
+          nullable: true
+        price_zone_name:
+          type: string
+          nullable: true
+        price_minor:
+          type: integer
+          nullable: true
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        status:
+          type: string
+          enum: [available, held, unavailable, sold]
+        active_hold_id:
+          type: string
+          format: uuid
+          nullable: true
+        hold_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        held_by_current_user:
+          type: boolean
+    SeatHoldResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_id
+        - inventory_unit_id
+        - inventory_ref
+        - expires_at
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        inventory_unit_id:
+          type: string
+          format: uuid
+        inventory_ref:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, released, expired]
     VenueListResponse:
       type: object
       additionalProperties: false

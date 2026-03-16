@@ -12,6 +12,7 @@ import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
 import com.bam.incomedy.server.db.PostgresEventRepository
+import com.bam.incomedy.server.db.PostgresTicketingRepository
 import com.bam.incomedy.server.db.PostgresVenueRepository
 import com.bam.incomedy.server.db.PostgresUserRepository
 import com.bam.incomedy.server.events.EventRoutes
@@ -22,6 +23,7 @@ import com.bam.incomedy.server.observability.DiagnosticsRoutes
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.observability.isValidRequestId
 import com.bam.incomedy.server.organizer.WorkspaceRoutes
+import com.bam.incomedy.server.ticketing.TicketingRoutes
 import com.bam.incomedy.server.venues.VenueRoutes
 import com.bam.incomedy.server.security.AuthRateLimiter
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
@@ -58,6 +60,7 @@ fun Application.module() {
     val repository = PostgresUserRepository(dataSource)
     val venueRepository = PostgresVenueRepository(dataSource)
     val eventRepository = PostgresEventRepository(dataSource)
+    val ticketingRepository = PostgresTicketingRepository(dataSource)
     val tokenService = JwtSessionTokenService(config.jwt)
     val passwordHasher = Argon2PasswordHasher()
     val credentialsAuthService = CredentialsAuthService(
@@ -190,6 +193,16 @@ fun Application.module() {
             workspaceRepository = repository,
             venueRepository = venueRepository,
             eventRepository = eventRepository,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        TicketingRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            sessionUserRepository = repository,
+            workspaceRepository = repository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )

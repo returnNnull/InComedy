@@ -16,10 +16,11 @@
 ## Integration and Contract Expectations
 
 - Contract tests are required for the current auth API surface and for future payment/webhook integrations.
-- Integration tests should cover concurrency and idempotency risks for ticketing, payments, and check-in once those domains are introduced.
+- Integration tests should cover concurrency and idempotency risks for ticketing, payments, and check-in; the current ticketing foundation already requires coverage for double-reserve conflicts and hold expiry/release recovery.
 - Backend persistence changes must include migration-path verification for both clean schema creation and upgrade of a legacy initialized schema.
 - Venue/hall-template backend changes must cover route behavior, layout contract validation, and migration-path verification for the organizer venue slice.
 - Event/EventHallSnapshot backend changes must cover route behavior, lifecycle transition validation, detail/update override validation, snapshot freeze invariants, and migration-path verification for the organizer event slice.
+- Ticketing inventory/hold backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, expiry/release semantics, and migration-path verification for the ticketing foundation slice.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 - Mobile UI changes in active product flows must have executable platform UI coverage where in-repo infrastructure exists.
 - Auth/session boundary refactors must execute `:domain:auth:allTests`, `:domain:session:allTests`, `:core:backend:allTests`, `:data:auth:allTests`, `:data:session:allTests`, `:shared:allTests`, `:composeApp:testDebugUnitTest`, and `:composeApp:compileDebugKotlin` before completion.
@@ -53,6 +54,7 @@
 - iOS organizer event tab is covered by `iosApp/iosAppUITests/iosAppUITests.swift` through `testEventTabShowsEventManagementSurface`, which smoke-checks tab reachability plus stable workspace/venue/template selectors, create controls, publish/open/pause/cancel actions, and override-editor surface over the shared event fixture.
 - Venue foundation automation now also includes `:feature:venue:allTests`, `:server:test --tests 'com.bam.incomedy.server.venues.VenueRoutesTest' --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest'`, `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`, and the targeted venue XCUITest run for the new iOS tab.
 - Event lifecycle/override automation now also includes `:domain:event:jvmTest`, `:feature:event:allTests`, `:composeApp:testDebugUnitTest`, `:composeApp:compileDebugKotlin`, `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.events.EventRoutesTest'`, `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`, and the targeted event XCUITest run for the organizer event tab.
+- Ticketing foundation automation now also includes `:domain:ticketing:allTests`, `:data:ticketing:compileKotlinMetadata`, `:shared:compileKotlinMetadata`, `:composeApp:compileDebugKotlin`, `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.ticketing.TicketingRoutesTest'`, and `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`.
 
 ## High-Risk Scenario Set
 

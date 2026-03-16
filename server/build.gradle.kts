@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation(project(":domain:event"))
+    implementation(project(":domain:ticketing"))
     implementation(project(":domain:venue"))
     implementation(libs.ktor.server.core.jvm)
     implementation(libs.ktor.server.netty.jvm)
