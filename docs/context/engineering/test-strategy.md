@@ -20,7 +20,7 @@
 - Backend persistence changes must include migration-path verification for both clean schema creation and upgrade of a legacy initialized schema.
 - Venue/hall-template backend changes must cover route behavior, layout contract validation, and migration-path verification for the organizer venue slice.
 - Event/EventHallSnapshot backend changes must cover route behavior, lifecycle transition validation, detail/update override validation, snapshot freeze invariants, and migration-path verification for the organizer event slice.
-- Ticketing inventory/hold backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, expiry/release semantics, and migration-path verification for the ticketing foundation slice.
+- Ticketing inventory/hold backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, expiry/release semantics, stale-sync avoidance on unchanged reads, and migration-path verification for the ticketing foundation slice.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 - Mobile UI changes in active product flows must have executable platform UI coverage where in-repo infrastructure exists.
 - Auth/session boundary refactors must execute `:domain:auth:allTests`, `:domain:session:allTests`, `:core:backend:allTests`, `:data:auth:allTests`, `:data:session:allTests`, `:shared:allTests`, `:composeApp:testDebugUnitTest`, and `:composeApp:compileDebugKotlin` before completion.

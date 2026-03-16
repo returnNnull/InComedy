@@ -22,14 +22,30 @@ class InMemoryTicketingRepository : TicketingRepository {
     /** Mutable inventory units по event и inventory ref. */
     private val inventoryByEventId = linkedMapOf<String, LinkedHashMap<String, MutableInventoryRecord>>()
 
+    /** Последняя organizer revision, с которой уже синхронизирован inventory конкретного события. */
+    private val syncedRevisionByEventId = linkedMapOf<String, OffsetDateTime>()
+
     /** Hold-ы по их id. */
     private val holdsById = linkedMapOf<String, MutableSeatHoldRecord>()
 
-    override fun reconcileInventory(
+    /** Счетчик inventory sync invocation-ов для route/service regression тестов. */
+    var synchronizeInventoryCallCount: Int = 0
+        private set
+
+    override fun isInventorySynchronized(
+        eventId: String,
+        sourceEventUpdatedAt: OffsetDateTime,
+    ): Boolean {
+        return syncedRevisionByEventId[eventId] == sourceEventUpdatedAt
+    }
+
+    override fun synchronizeInventory(
         eventId: String,
         inventory: List<StoredInventoryUnitBlueprint>,
+        sourceEventUpdatedAt: OffsetDateTime,
         now: OffsetDateTime,
     ): List<StoredInventoryUnit> {
+        synchronizeInventoryCallCount += 1
         expireOverdueHolds(
             eventId = eventId,
             now = now,
@@ -70,9 +86,19 @@ class InMemoryTicketingRepository : TicketingRepository {
                 }
             }
         }
-        return eventInventory.values
-            .sortedBy(MutableInventoryRecord::inventoryRef)
-            .map { record -> record.toStored(holdsById) }
+        syncedRevisionByEventId[eventId] = sourceEventUpdatedAt
+        return eventInventory.toStoredInventory()
+    }
+
+    override fun listInventory(
+        eventId: String,
+        now: OffsetDateTime,
+    ): List<StoredInventoryUnit> {
+        expireOverdueHolds(
+            eventId = eventId,
+            now = now,
+        )
+        return inventoryByEventId[eventId].orEmpty().toStoredInventory()
     }
 
     override fun createSeatHold(
@@ -186,6 +212,13 @@ class InMemoryTicketingRepository : TicketingRepository {
         hold.status = "expired"
         inventoryRecord.activeHoldId = null
         inventoryRecord.status = inventoryRecord.baseStatus
+    }
+
+    /** Собирает read-only inventory snapshot из mutable event-local state. */
+    private fun Map<String, MutableInventoryRecord>.toStoredInventory(): List<StoredInventoryUnit> {
+        return values
+            .sortedBy(MutableInventoryRecord::inventoryRef)
+            .map { record -> record.toStored(holdsById) }
     }
 
     /** Mutable inventory unit record. */

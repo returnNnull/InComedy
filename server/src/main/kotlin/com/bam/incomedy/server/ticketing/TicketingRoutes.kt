@@ -299,27 +299,28 @@ object TicketingRoutes {
         error: Throwable,
         diagnosticsStore: DiagnosticsStore?,
     ) {
+        error.toTicketingNotFoundDiagnostics()?.let { diagnostics ->
+            diagnosticsStore?.recordCall(
+                call = this,
+                stage = diagnostics.stage,
+                status = HttpStatusCode.NotFound.value,
+                safeErrorCode = "not_found",
+                metadata = diagnostics.metadata,
+            )
+            respond(HttpStatusCode.NotFound, ErrorResponse("not_found", "Ticketing resource was not found"))
+            return
+        }
         when (error) {
-            is TicketingEventNotFoundException,
-            is TicketingEventUnavailableException,
-            is TicketingInventoryUnitNotFoundException,
-            is TicketingSeatHoldNotFoundException,
-            -> {
-                diagnosticsStore?.recordCall(
-                    call = this,
-                    stage = "ticketing.not_found",
-                    status = HttpStatusCode.NotFound.value,
-                    safeErrorCode = "not_found",
-                )
-                respond(HttpStatusCode.NotFound, ErrorResponse("not_found", "Ticketing resource was not found"))
-            }
-
             is TicketingSeatHoldForbiddenException -> {
                 diagnosticsStore?.recordCall(
                     call = this,
                     stage = "ticketing.forbidden",
                     status = HttpStatusCode.Forbidden.value,
                     safeErrorCode = "forbidden",
+                    metadata = mapOf(
+                        "resource" to "hold",
+                        "reason" to error.reasonCode,
+                    ),
                 )
                 respond(HttpStatusCode.Forbidden, ErrorResponse("forbidden", "Ticketing action is forbidden"))
             }
@@ -348,6 +349,45 @@ object TicketingRoutes {
         }
     }
 
+    /** Возвращает resource-aware diagnostics descriptor для not-found/unavailable ticketing ошибок. */
+    private fun Throwable.toTicketingNotFoundDiagnostics(): TicketingNotFoundDiagnostics? {
+        return when (this) {
+            is TicketingEventNotFoundException -> TicketingNotFoundDiagnostics(
+                stage = "ticketing.event.not_found",
+                metadata = mapOf(
+                    "resource" to "event",
+                    "reason" to "missing",
+                ),
+            )
+
+            is TicketingEventUnavailableException -> TicketingNotFoundDiagnostics(
+                stage = "ticketing.event.unavailable",
+                metadata = mapOf(
+                    "resource" to "event",
+                    "reason" to reasonCode,
+                ),
+            )
+
+            is TicketingInventoryUnitNotFoundException -> TicketingNotFoundDiagnostics(
+                stage = "ticketing.inventory.not_found",
+                metadata = mapOf(
+                    "resource" to "inventory",
+                    "reason" to "missing",
+                ),
+            )
+
+            is TicketingSeatHoldNotFoundException -> TicketingNotFoundDiagnostics(
+                stage = "ticketing.hold.not_found",
+                metadata = mapOf(
+                    "resource" to "hold",
+                    "reason" to "missing",
+                ),
+            )
+
+            else -> null
+        }
+    }
+
     /** Проверяет UUID-подобность route parameter-а. */
     private fun String?.isUuid(): Boolean {
         return runCatching {
@@ -355,3 +395,14 @@ object TicketingRoutes {
         }.isSuccess
     }
 }
+
+/**
+ * Описывает безопасную diagnostics-классификацию ticketing ошибки без раскрытия чувствительных деталей.
+ *
+ * @property stage Стадия обработки для фильтрации diagnostics events.
+ * @property metadata Низкокардинальные атрибуты типа ресурса и причины.
+ */
+private data class TicketingNotFoundDiagnostics(
+    val stage: String,
+    val metadata: Map<String, String>,
+)

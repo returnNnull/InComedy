@@ -34,3 +34,24 @@
 - Changes: Added a new `ticketing` domain/data/backend foundation: derived inventory compilation from `EventHallSnapshot` plus event-local overrides, `V8__ticketing_inventory_foundation.sql`, protected `GET /api/v1/events/{eventId}/inventory`, `POST /api/v1/events/{eventId}/holds`, and `DELETE /api/v1/holds/{holdId}` routes with sanitized diagnostics, in-memory and PostgreSQL ticketing repositories, shared dependency wiring, route/migration/domain coverage, Android/shared compilation verification, and iOS simulator build verification.
 - Decisions: Treat ticketing as partially implemented: inventory listing and hold create/release/expiry are now in runtime scope for authenticated users, while public catalog access, checkout, QR issuance, check-in, refunds, and `sold_out` automation remain out of scope for this slice.
 - Next: Move to the next ticketing step after foundation, most likely public purchase-entry plus order/checkout groundwork or explicit `sold_out` orchestration, depending on the next backlog choice.
+
+## 2026-03-17 02:12
+
+- Context: After the initial HTML docs-site was delivered, the user requested an additional layer of documentation focused specifically on feature execution logic: which methods are called, why they exist, and where control/data move next.
+- Changes: Re-read the real method chains across Android/iOS wrappers, shared ViewModel/bridge layers, data adapters, backend routes, and backend services for auth, session bootstrap, workspaces, venues, events, and ticketing; created a new `docs/project-reference/feature-logic.html` page with end-to-end execution chains and source links; updated shared site navigation to expose the new page; and corrected earlier documentation statements so ticketing is now described as active server-side inventory/hold runtime foundation rather than unregistered server code.
+- Decisions: Keep the feature-logic page focused on runtime call chains and responsibilities, not on repeating full module inventory. Treat ticketing as server-runtime-enabled but still missing a dedicated client/UI feature slice and checkout surface.
+- Next: Maintain `feature-logic.html` together with `features.html` and `backend.html` whenever route registration, shared orchestration, or ticketing client surface changes.
+
+## 2026-03-17 02:12
+
+- Context: After code review of the ticketing foundation, the user asked to implement the found gap rather than only keep it as a review note.
+- Changes: Refined ticketing route diagnostics so missing event, unavailable event, missing inventory unit, and missing hold no longer collapse into a single ambiguous `ticketing.not_found` stage; added safe `resource/reason` metadata for those cases plus hold-forbidden diagnostics metadata; expanded `TicketingRoutesTest` with explicit diagnostics assertions correlated through `X-Request-ID`; verified the remediation with `./gradlew :server:test --tests com.bam.incomedy.server.ticketing.TicketingRoutesTest`; and split the handoff task history into a new part because the previous file had already crossed the context-size threshold.
+- Decisions: Keep the remediation bounded to observability granularity and regression coverage only. Leave the separate review findings around PostgreSQL lock ordering and inventory read-path reconciliation cost for later dedicated follow-up work.
+- Next: Continue with either the remaining ticketing review remediations (DB lock ordering and read/write split) or the next product-scoped ticketing slice, depending on priority.
+
+## 2026-03-17 02:34
+
+- Context: The user then asked to implement all remaining review fixes, not only the diagnostics granularity follow-up.
+- Changes: Added `StoredOrganizerEvent.updatedAt` to the server-side event persistence graph; introduced `V9__ticketing_inventory_sync_state.sql` plus repository sync markers so unchanged inventory reads no longer replay a full derived inventory reconcile; changed `EventTicketingService` to sync inventory only when the organizer event revision changes or inventory is still uninitialized; normalized PostgreSQL ticketing locking to inventory-first semantics by switching release and lock-bearing inventory queries to `FOR UPDATE OF i`; extended `TicketingRoutesTest` with a regression case proving bootstrap-only sync and resync after organizer event update; and verified the remediation with `./gradlew :server:test --tests com.bam.incomedy.server.db.DatabaseMigrationRunnerTest --tests com.bam.incomedy.server.ticketing.TicketingRoutesTest`.
+- Decisions: Treat the two remaining ticketing review findings as closed for the current foundation slice. Keep deeper PostgreSQL concurrency stress testing as a later hardening task rather than expanding this remediation into a separate load-testing stream now.
+- Next: Resume product-scoped ticketing work from the hardened foundation, or add dedicated persistence-concurrency tests if operational risk becomes the top priority.

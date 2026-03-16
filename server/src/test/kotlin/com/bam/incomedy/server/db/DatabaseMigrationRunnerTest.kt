@@ -30,8 +30,9 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "event_pricing_assignments"))
                 assertTrue(tableExists(connection, "event_availability_overrides"))
                 assertTrue(tableExists(connection, "ticket_inventory_units"))
+                assertTrue(tableExists(connection, "ticket_inventory_sync_state"))
                 assertTrue(tableExists(connection, "seat_holds"))
-                assertEquals(8, appliedMigrationCount(connection))
+                assertEquals(9, appliedMigrationCount(connection))
             }
         }
     }

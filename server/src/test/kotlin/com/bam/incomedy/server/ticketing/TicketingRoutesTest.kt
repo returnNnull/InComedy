@@ -7,6 +7,8 @@ import com.bam.incomedy.server.db.StoredEventAvailabilityOverride
 import com.bam.incomedy.server.db.StoredEventPriceZone
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
+import com.bam.incomedy.server.observability.DiagnosticsQuery
+import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
 import com.bam.incomedy.server.support.InMemoryEventRepository
 import com.bam.incomedy.server.support.InMemoryTicketingRepository
@@ -21,6 +23,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.server.plugins.callid.CallId
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
 import io.ktor.server.config.MapApplicationConfig
@@ -32,6 +35,7 @@ import java.time.Duration
 import java.time.OffsetDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -52,7 +56,7 @@ class TicketingRoutesTest {
             userId = AUDIENCE_ID,
             provider = AuthProvider.PASSWORD,
         ).accessToken
-        val eventId = seedPublishedEvent(
+        val eventId = seedEvent(
             userRepository = userRepository,
             eventRepository = eventRepository,
             salesStatus = "open",
@@ -78,6 +82,80 @@ class TicketingRoutesTest {
         assertTrue(body.contains(""""status":"unavailable""""))
     }
 
+    /** Проверяет, что повторный inventory GET не делает новый derived sync без event changes. */
+    @Test
+    fun `inventory read syncs only on bootstrap and after event update`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRevision = mutableStateOf(NOW)
+        val eventRepository = InMemoryEventRepository { eventRevision.value }
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val firstResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, firstResponse.status)
+        assertTrue(firstResponse.bodyAsText().contains(""""price_minor":1900"""))
+        assertEquals(1, ticketingRepository.synchronizeInventoryCallCount)
+
+        val secondResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, secondResponse.status)
+        assertEquals(1, ticketingRepository.synchronizeInventoryCallCount)
+
+        val storedEvent = eventRepository.findEvent(eventId) ?: error("Event must remain readable")
+        eventRevision.value = NOW.plusMinutes(5)
+        eventRepository.updateEvent(
+            eventId = eventId,
+            title = storedEvent.title,
+            description = storedEvent.description,
+            startsAt = storedEvent.startsAt,
+            doorsOpenAt = storedEvent.doorsOpenAt,
+            endsAt = storedEvent.endsAt,
+            currency = storedEvent.currency,
+            visibility = storedEvent.visibility,
+            priceZones = listOf(
+                StoredEventPriceZone(
+                    id = "event-standard",
+                    name = "Standard Event",
+                    priceMinor = 2100,
+                    currency = "RUB",
+                    sourceTemplatePriceZoneId = "template-standard",
+                ),
+            ),
+            pricingAssignments = storedEvent.pricingAssignments,
+            availabilityOverrides = storedEvent.availabilityOverrides,
+        ) ?: error("Event update must succeed")
+
+        val thirdResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, thirdResponse.status)
+        assertTrue(thirdResponse.bodyAsText().contains(""""price_minor":2100"""))
+        assertEquals(2, ticketingRepository.synchronizeInventoryCallCount)
+    }
+
     /** Проверяет, что одна и та же inventory unit не может быть зарезервирована дважды. */
     @Test
     fun `same inventory unit cannot be held twice`() = testApplication {
@@ -92,7 +170,7 @@ class TicketingRoutesTest {
             userId = AUDIENCE_ID,
             provider = AuthProvider.PASSWORD,
         ).accessToken
-        val eventId = seedPublishedEvent(
+        val eventId = seedEvent(
             userRepository = userRepository,
             eventRepository = eventRepository,
             salesStatus = "open",
@@ -138,7 +216,7 @@ class TicketingRoutesTest {
             provider = AuthProvider.PASSWORD,
         ).accessToken
         val currentTime = mutableStateOf(NOW)
-        val eventId = seedPublishedEvent(
+        val eventId = seedEvent(
             userRepository = userRepository,
             eventRepository = eventRepository,
             salesStatus = "open",
@@ -195,7 +273,7 @@ class TicketingRoutesTest {
             userId = SECOND_AUDIENCE_ID,
             provider = AuthProvider.PASSWORD,
         ).accessToken
-        val eventId = seedPublishedEvent(
+        val eventId = seedEvent(
             userRepository = userRepository,
             eventRepository = eventRepository,
             salesStatus = "open",
@@ -228,17 +306,195 @@ class TicketingRoutesTest {
         assertTrue(releaseResponse.bodyAsText().contains("forbidden"))
     }
 
+    /** Проверяет, что diagnostics различают отсутствие event-а и не смешивают его с другими 404. */
+    @Test
+    fun `missing event inventory records event-specific diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putAudienceUser()
+        }
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = InMemoryEventRepository(),
+            ticketingRepository = InMemoryTicketingRepository(),
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val response = client.get("/api/v1/events/$MISSING_EVENT_ID/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.event.not_found",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("event", event.metadata["resource"])
+        assertEquals("missing", event.metadata["reason"])
+    }
+
+    /** Проверяет, что diagnostics различают unavailable event и сохраняют безопасную причину. */
+    @Test
+    fun `unavailable event inventory records event-unavailable diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            status = "draft",
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = InMemoryTicketingRepository(),
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val response = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.event.unavailable",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("event", event.metadata["resource"])
+        assertEquals("inventory_unavailable", event.metadata["reason"])
+    }
+
+    /** Проверяет, что diagnostics различают отсутствие inventory unit при создании hold-а. */
+    @Test
+    fun `missing inventory unit records inventory-specific diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = InMemoryTicketingRepository(),
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val response = client.post("/api/v1/events/$eventId/holds") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"inventory_ref":"seat:missing"}""")
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.inventory.not_found",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("inventory", event.metadata["resource"])
+        assertEquals("missing", event.metadata["reason"])
+    }
+
+    /** Проверяет, что diagnostics различают отсутствие hold-а при release route. */
+    @Test
+    fun `missing hold release records hold-specific diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putAudienceUser()
+        }
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = InMemoryEventRepository(),
+            ticketingRepository = InMemoryTicketingRepository(),
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val response = client.delete("/api/v1/holds/$MISSING_HOLD_ID") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.hold.not_found",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("hold", event.metadata["resource"])
+        assertEquals("missing", event.metadata["reason"])
+    }
+
     /** Конфигурирует Ktor routing только с ticketing routes для route-тестов. */
     private fun ApplicationTestBuilder.configureTicketingRoutes(
         userRepository: InMemoryUserRepository,
         eventRepository: InMemoryEventRepository,
         ticketingRepository: InMemoryTicketingRepository,
         tokenService: JwtSessionTokenService,
+        diagnosticsStore: InMemoryDiagnosticsStore? = null,
         nowProvider: () -> OffsetDateTime,
         holdTtl: Duration = Duration.ofMinutes(10),
     ) {
         environment { config = MapApplicationConfig() }
         application {
+            install(CallId) {
+                generate { TEST_REQUEST_ID }
+                replyToHeader("X-Request-ID")
+            }
             install(ContentNegotiation) { json() }
             routing {
                 TicketingRoutes.register(
@@ -249,6 +505,7 @@ class TicketingRoutesTest {
                     eventRepository = eventRepository,
                     ticketingRepository = ticketingRepository,
                     rateLimiter = InMemoryAuthRateLimiter(),
+                    diagnosticsStore = diagnosticsStore,
                     nowProvider = nowProvider,
                     holdTtl = holdTtl,
                 )
@@ -256,11 +513,13 @@ class TicketingRoutesTest {
         }
     }
 
-    /** Создает опубликованное событие с snapshot seat/zone/table inventory и event-local overrides. */
-    private fun seedPublishedEvent(
+    /** Создает тестовое событие с snapshot seat/zone/table inventory и event-local overrides. */
+    private fun seedEvent(
         userRepository: InMemoryUserRepository,
         eventRepository: InMemoryEventRepository,
+        status: String = "published",
         salesStatus: String,
+        visibility: String = "public",
     ): String {
         val workspace = userRepository.createWorkspace(
             ownerUserId = OWNER_ID,
@@ -276,10 +535,10 @@ class TicketingRoutesTest {
             startsAt = NOW.plusDays(1),
             doorsOpenAt = NOW.plusDays(1).minusMinutes(30),
             endsAt = NOW.plusDays(1).plusHours(2),
-            status = "published",
+            status = status,
             salesStatus = salesStatus,
             currency = "RUB",
-            visibility = "public",
+            visibility = visibility,
             sourceTemplateId = "template-1",
             sourceTemplateName = "Late Layout",
             snapshotJson = """
@@ -411,8 +670,11 @@ class TicketingRoutesTest {
 
     private companion object {
         val NOW: OffsetDateTime = OffsetDateTime.parse("2026-03-20T10:00:00+03:00")
+        const val TEST_REQUEST_ID = "223e4567-e89b-12d3-a456-426614174000"
         const val OWNER_ID = "00000000-0000-0000-0000-000000000501"
         const val AUDIENCE_ID = "00000000-0000-0000-0000-000000000502"
         const val SECOND_AUDIENCE_ID = "00000000-0000-0000-0000-000000000503"
+        const val MISSING_EVENT_ID = "00000000-0000-0000-0000-0000000009e1"
+        const val MISSING_HOLD_ID = "00000000-0000-0000-0000-0000000009e2"
     }
 }

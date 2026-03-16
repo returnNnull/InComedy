@@ -54,11 +54,23 @@ class EventTicketingService(
             eventId = eventId,
         )
         val now = nowProvider()
-        return ticketingRepository.reconcileInventory(
-            eventId = event.id,
-            inventory = deriveInventory(event),
-            now = now,
-        )
+        return if (ticketingRepository.isInventorySynchronized(
+                eventId = event.id,
+                sourceEventUpdatedAt = event.updatedAt,
+            )
+        ) {
+            ticketingRepository.listInventory(
+                eventId = event.id,
+                now = now,
+            )
+        } else {
+            ticketingRepository.synchronizeInventory(
+                eventId = event.id,
+                inventory = deriveInventory(event),
+                sourceEventUpdatedAt = event.updatedAt,
+                now = now,
+            )
+        }
     }
 
     /** Создает новый hold, если событие опубликовано и продажи открыты. */
@@ -75,9 +87,8 @@ class EventTicketingService(
             throw TicketingConflictException("Открытые продажи требуются для создания hold-а")
         }
         val now = nowProvider()
-        ticketingRepository.reconcileInventory(
-            eventId = event.id,
-            inventory = deriveInventory(event),
+        ensureInventorySynchronized(
+            event = event,
             now = now,
         )
         return try {
@@ -98,6 +109,29 @@ class EventTicketingService(
                 "Inventory unit недоступна для hold-а в текущем состоянии: ${error.currentStatus}",
             )
         }
+    }
+
+    /**
+     * Выполняет derived inventory sync только если organizer event реально изменился после прошлого
+     * reconcile-а или inventory еще не инициализирован.
+     */
+    private fun ensureInventorySynchronized(
+        event: StoredOrganizerEvent,
+        now: OffsetDateTime,
+    ) {
+        if (ticketingRepository.isInventorySynchronized(
+                eventId = event.id,
+                sourceEventUpdatedAt = event.updatedAt,
+            )
+        ) {
+            return
+        }
+        ticketingRepository.synchronizeInventory(
+            eventId = event.id,
+            inventory = deriveInventory(event),
+            sourceEventUpdatedAt = event.updatedAt,
+            now = now,
+        )
     }
 
     /** Освобождает hold текущего пользователя. */

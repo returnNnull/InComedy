@@ -91,10 +91,28 @@ data class StoredInventoryUnit(
  * Persistence-контракт первого ticketing foundation slice-а.
  */
 interface TicketingRepository {
-    /** Синхронизирует inventory units события с текущим derived blueprint и возвращает снимок состояния. */
-    fun reconcileInventory(
+    /**
+     * Проверяет, соответствует ли сохраненный inventory snapshot текущей organizer revision события.
+     *
+     * Реализация должна опираться на устойчивый persisted sync marker, чтобы `GET inventory` не
+     * превращался в полный write-heavy reconcile на каждый запрос.
+     */
+    fun isInventorySynchronized(
+        eventId: String,
+        sourceEventUpdatedAt: OffsetDateTime,
+    ): Boolean
+
+    /** Синхронизирует inventory units события с текущим derived blueprint и фиксирует revision sync marker. */
+    fun synchronizeInventory(
         eventId: String,
         inventory: List<StoredInventoryUnitBlueprint>,
+        sourceEventUpdatedAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): List<StoredInventoryUnit>
+
+    /** Возвращает текущий inventory snapshot события, одновременно expiring просроченные hold-ы. */
+    fun listInventory(
+        eventId: String,
         now: OffsetDateTime,
     ): List<StoredInventoryUnit>
 

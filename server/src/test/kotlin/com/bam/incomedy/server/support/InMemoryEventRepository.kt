@@ -15,7 +15,9 @@ import java.util.UUID
  * Репозиторий хранит события, frozen snapshots и event-local override-ы без реальной БД, чтобы
  * тесты могли детерминированно проверять create/get/update/lifecycle transition сценарии.
  */
-class InMemoryEventRepository : EventRepository {
+class InMemoryEventRepository(
+    private val nowProvider: () -> OffsetDateTime = { OffsetDateTime.now() },
+) : EventRepository {
     /** Mutable события по их id. */
     private val eventsById = linkedMapOf<String, MutableEventRecord>()
 
@@ -61,6 +63,7 @@ class InMemoryEventRepository : EventRepository {
             salesStatus = salesStatus,
             currency = currency,
             visibility = visibility,
+            updatedAt = nowProvider(),
             hallSnapshotId = snapshotId,
         )
         val snapshot = MutableSnapshotRecord(
@@ -100,6 +103,7 @@ class InMemoryEventRepository : EventRepository {
         event.endsAt = endsAt
         event.currency = currency
         event.visibility = visibility
+        event.updatedAt = nowProvider()
         event.priceZones = priceZones.toMutableList()
         event.pricingAssignments = pricingAssignments.toMutableList()
         event.availabilityOverrides = availabilityOverrides.toMutableList()
@@ -109,18 +113,21 @@ class InMemoryEventRepository : EventRepository {
     override fun publishEvent(eventId: String): StoredOrganizerEvent? {
         val event = eventsById[eventId] ?: return null
         event.status = "published"
+        event.updatedAt = nowProvider()
         return event.toStored(snapshotsById)
     }
 
     override fun openEventSales(eventId: String): StoredOrganizerEvent? {
         val event = eventsById[eventId] ?: return null
         event.salesStatus = "open"
+        event.updatedAt = nowProvider()
         return event.toStored(snapshotsById)
     }
 
     override fun pauseEventSales(eventId: String): StoredOrganizerEvent? {
         val event = eventsById[eventId] ?: return null
         event.salesStatus = "paused"
+        event.updatedAt = nowProvider()
         return event.toStored(snapshotsById)
     }
 
@@ -128,6 +135,7 @@ class InMemoryEventRepository : EventRepository {
         val event = eventsById[eventId] ?: return null
         event.status = "canceled"
         event.salesStatus = "closed"
+        event.updatedAt = nowProvider()
         return event.toStored(snapshotsById)
     }
 
@@ -146,6 +154,7 @@ class InMemoryEventRepository : EventRepository {
         var salesStatus: String,
         var currency: String,
         var visibility: String,
+        var updatedAt: OffsetDateTime,
         val hallSnapshotId: String,
         var priceZones: MutableList<StoredEventPriceZone> = mutableListOf(),
         var pricingAssignments: MutableList<StoredEventPricingAssignment> = mutableListOf(),
@@ -170,6 +179,7 @@ class InMemoryEventRepository : EventRepository {
                 salesStatus = salesStatus,
                 currency = currency,
                 visibility = visibility,
+                updatedAt = updatedAt,
                 hallSnapshot = snapshot,
                 priceZones = priceZones.toList(),
                 pricingAssignments = pricingAssignments.toList(),

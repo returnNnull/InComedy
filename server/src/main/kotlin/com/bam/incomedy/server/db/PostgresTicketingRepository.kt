@@ -14,10 +14,24 @@ import javax.sql.DataSource
 class PostgresTicketingRepository(
     private val dataSource: DataSource,
 ) : TicketingRepository {
-    /** Синхронизирует derived inventory, одновременно expiring просроченные hold-ы. */
-    override fun reconcileInventory(
+    /** Проверяет, совпадает ли persisted inventory sync marker с текущей organizer revision. */
+    override fun isInventorySynchronized(
+        eventId: String,
+        sourceEventUpdatedAt: OffsetDateTime,
+    ): Boolean {
+        dataSource.connection.use { connection ->
+            return loadInventorySyncState(
+                connection = connection,
+                eventId = eventId,
+            ) == sourceEventUpdatedAt
+        }
+    }
+
+    /** Синхронизирует derived inventory только на write path или при stale inventory revision. */
+    override fun synchronizeInventory(
         eventId: String,
         inventory: List<StoredInventoryUnitBlueprint>,
+        sourceEventUpdatedAt: OffsetDateTime,
         now: OffsetDateTime,
     ): List<StoredInventoryUnit> {
         dataSource.connection.use { connection ->
@@ -34,6 +48,11 @@ class PostgresTicketingRepository(
                         blueprint = blueprint,
                     )
                 }
+                upsertInventorySyncState(
+                    connection = connection,
+                    eventId = eventId,
+                    sourceEventUpdatedAt = sourceEventUpdatedAt,
+                )
                 connection.commit()
             } catch (error: Throwable) {
                 connection.rollback()
@@ -45,6 +64,34 @@ class PostgresTicketingRepository(
                 connection = connection,
                 eventId = eventId,
             )
+        }
+    }
+
+    /** Возвращает inventory snapshot события без полного derived upsert-а на каждый read. */
+    override fun listInventory(
+        eventId: String,
+        now: OffsetDateTime,
+    ): List<StoredInventoryUnit> {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                expireOverdueHolds(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
+                val inventory = loadInventory(
+                    connection = connection,
+                    eventId = eventId,
+                )
+                connection.commit()
+                return inventory
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
         }
     }
 
@@ -144,7 +191,12 @@ class PostgresTicketingRepository(
         }
     }
 
-    /** Освобождает hold и восстанавливает inventory unit к ее базовой доступности. */
+    /**
+     * Освобождает hold и восстанавливает inventory unit к ее базовой доступности.
+     *
+     * Лок берется сначала на inventory row, чтобы create/release/expiry flows всегда шли в одном
+     * порядке и не образовывали deadlock через пересечение `inventory -> hold` и `hold -> inventory`.
+     */
     override fun releaseSeatHold(
         holdId: String,
         userId: String,
@@ -154,7 +206,7 @@ class PostgresTicketingRepository(
             connection.autoCommit = false
             var committed = false
             try {
-                val lockedHold = loadSeatHoldForUpdate(
+                val lockedHold = loadSeatHoldLockedByInventory(
                     connection = connection,
                     holdId = holdId,
                 ) ?: throw TicketingSeatHoldNotFoundPersistenceException(holdId)
@@ -243,7 +295,7 @@ class PostgresTicketingRepository(
             WHERE i.event_id = ?
               AND h.status = 'active'
               AND h.expires_at <= ?
-            FOR UPDATE
+            FOR UPDATE OF i
             """.trimIndent(),
         ).use { statement ->
             statement.setObject(1, UUID.fromString(eventId))
@@ -265,6 +317,63 @@ class PostgresTicketingRepository(
                 inventoryUnitId = inventoryUnitId,
                 holdId = holdId,
             )
+        }
+    }
+
+    /** Считывает persisted sync marker derived inventory конкретного события. */
+    private fun loadInventorySyncState(
+        connection: Connection,
+        eventId: String,
+    ): OffsetDateTime? {
+        return connection.prepareStatement(
+            """
+            SELECT source_event_updated_at
+            FROM ticket_inventory_sync_state
+            WHERE event_id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                result.getObject("source_event_updated_at", OffsetDateTime::class.java)
+            }
+        }
+    }
+
+    /** Обновляет или создает persisted sync marker для derived inventory события. */
+    private fun upsertInventorySyncState(
+        connection: Connection,
+        eventId: String,
+        sourceEventUpdatedAt: OffsetDateTime,
+    ) {
+        val updatedRows = connection.prepareStatement(
+            """
+            UPDATE ticket_inventory_sync_state
+            SET
+                source_event_updated_at = ?,
+                reconciled_at = NOW()
+            WHERE event_id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, sourceEventUpdatedAt)
+            statement.setObject(2, UUID.fromString(eventId))
+            statement.executeUpdate()
+        }
+        if (updatedRows > 0) {
+            return
+        }
+        connection.prepareStatement(
+            """
+            INSERT INTO ticket_inventory_sync_state (
+                event_id,
+                source_event_updated_at,
+                reconciled_at
+            ) VALUES (?, ?, NOW())
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.setObject(2, sourceEventUpdatedAt)
+            statement.executeUpdate()
         }
     }
 
@@ -441,7 +550,7 @@ class PostgresTicketingRepository(
         inventoryRef: String,
         lockForUpdate: Boolean,
     ): StoredInventoryUnit? {
-        val lockClause = if (lockForUpdate) " FOR UPDATE" else ""
+        val lockClause = if (lockForUpdate) " FOR UPDATE OF i" else ""
         return connection.prepareStatement(
             """
             SELECT
@@ -507,8 +616,8 @@ class PostgresTicketingRepository(
         }
     }
 
-    /** Загружает hold вместе с inventory unit под pessimistic lock. */
-    private fun loadSeatHoldForUpdate(
+    /** Загружает hold, сериализуя его через inventory row lock. */
+    private fun loadSeatHoldLockedByInventory(
         connection: Connection,
         holdId: String,
     ): LockedSeatHoldRow? {
@@ -526,7 +635,7 @@ class PostgresTicketingRepository(
             JOIN ticket_inventory_units i
               ON i.id = h.inventory_unit_id
             WHERE h.id = ?
-            FOR UPDATE
+            FOR UPDATE OF i
             """.trimIndent(),
         ).use { statement ->
             statement.setObject(1, UUID.fromString(holdId))

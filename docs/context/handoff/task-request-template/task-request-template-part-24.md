@@ -148,3 +148,44 @@
 - public event catalog and audience purchase entry surface
 - checkout/order capture, QR issuance, and check-in
 - automatic `sold_out` transitions and inventory exhaustion orchestration
+
+## Documentation Extension Request (Feature Execution Logic)
+
+## Why This Step
+
+- The HTML docs site already explains modules, architecture, features, and backend surface, but it still left a gap for a newcomer who needs to trace real execution flow end-to-end.
+- The user explicitly requested a clearer description of feature logic: what is called first, which methods are responsible for which transition, why the call exists, and where data is passed next.
+- Since the working tree now includes active ticketing route registration, the docs also need a factual correction so ticketing is no longer described as server-runtime absent.
+
+## Scope
+
+- Add a dedicated HTML page that documents real call chains for the implemented feature slices:
+  - credentials auth,
+  - VK auth,
+  - session bootstrap and organizer context load,
+  - role/workspace mutations,
+  - venue and hall template mutations,
+  - event creation/update/lifecycle controls,
+  - ticketing inventory and seat-hold foundation.
+- Update existing docs-site navigation so the new page is reachable from every major page.
+- Correct existing ticketing statements across the docs-site to reflect the current code state:
+  - server runtime routes are registered,
+  - client/UI feature surface is still missing.
+
+## Constraints
+
+- Method chains must be derived from the checked-out code, not inferred from prior docs.
+- The explanation must stay understandable for a newcomer while preserving exact class/method names and route paths.
+- The docs must clearly separate:
+  - platform wrappers,
+  - shared ViewModel logic,
+  - data adapters,
+  - server routes,
+  - server business services,
+  - missing client-side ticketing product surface.
+
+## Acceptance Signals
+
+- The docs-site contains a dedicated feature-logic page with step-by-step execution chains and source links.
+- Existing pages link to the new page through shared navigation and/or jump links.
+- Ticketing is described as active server-side inventory/hold foundation, not as entirely absent from runtime.

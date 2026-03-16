@@ -82,6 +82,7 @@ data class StoredEventHallSnapshot(
  * @property salesStatus Lifecycle-статус продаж.
  * @property currency Валюта события.
  * @property visibility Публичность события.
+ * @property updatedAt Момент последнего изменения organizer-конфигурации или lifecycle события.
  * @property hallSnapshot Frozen snapshot схемы зала.
  * @property priceZones Event-local ценовые зоны.
  * @property pricingAssignments Event-local назначения цен на snapshot targets.
@@ -101,6 +102,7 @@ data class StoredOrganizerEvent(
     val salesStatus: String,
     val currency: String,
     val visibility: String,
+    val updatedAt: OffsetDateTime,
     val hallSnapshot: StoredEventHallSnapshot,
     val priceZones: List<StoredEventPriceZone> = emptyList(),
     val pricingAssignments: List<StoredEventPricingAssignment> = emptyList(),

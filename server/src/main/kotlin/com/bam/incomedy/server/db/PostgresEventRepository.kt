@@ -313,16 +313,17 @@ class PostgresEventRepository(
                 e.description,
                 e.starts_at,
                 e.doors_open_at,
-                e.ends_at,
-                e.status,
-                e.sales_status,
-                e.currency,
-                e.visibility,
-                s.id AS hall_snapshot_id,
-                s.source_template_id,
-                s.source_template_name,
-                s.snapshot_json
-            FROM organizer_events e
+                    e.ends_at,
+                    e.status,
+                    e.sales_status,
+                    e.currency,
+                    e.visibility,
+                    e.updated_at,
+                    s.id AS hall_snapshot_id,
+                    s.source_template_id,
+                    s.source_template_name,
+                    s.snapshot_json
+                FROM organizer_events e
             JOIN event_hall_snapshots s
               ON s.event_id = e.id
             WHERE e.id = ?
@@ -588,6 +589,7 @@ class PostgresEventRepository(
             salesStatus = getString("sales_status"),
             currency = getString("currency"),
             visibility = getString("visibility"),
+            updatedAt = getObject("updated_at", OffsetDateTime::class.java),
             hallSnapshot = StoredEventHallSnapshot(
                 id = getObject("hall_snapshot_id").toString(),
                 eventId = eventId,
