@@ -1,8 +1,8 @@
 package com.bam.incomedy.server.auth.session
 
 import com.bam.incomedy.server.ErrorResponse
+import com.bam.incomedy.server.db.SessionUserRepository
 import com.bam.incomedy.server.db.StoredUser
-import com.bam.incomedy.server.db.UserRepository
 import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.observability.DiagnosticsStore
@@ -43,7 +43,7 @@ object SessionRoutes {
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
-        userRepository: UserRepository,
+        userRepository: SessionUserRepository,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {

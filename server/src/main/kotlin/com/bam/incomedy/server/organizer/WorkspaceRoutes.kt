@@ -4,13 +4,14 @@ import com.bam.incomedy.server.ErrorResponse
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.requireSessionPrincipal
 import com.bam.incomedy.server.auth.session.withSessionAuth
+import com.bam.incomedy.server.db.SessionUserRepository
 import com.bam.incomedy.server.db.StoredWorkspace
 import com.bam.incomedy.server.db.StoredWorkspaceInvitation
 import com.bam.incomedy.server.db.StoredWorkspaceMembership
-import com.bam.incomedy.server.db.UserRepository
 import com.bam.incomedy.server.db.WorkspaceInviteeNotFoundException
 import com.bam.incomedy.server.db.WorkspaceMembershipAlreadyExistsException
 import com.bam.incomedy.server.db.WorkspacePermissionRole
+import com.bam.incomedy.server.db.WorkspaceRepository
 import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.observability.DiagnosticsStore
@@ -65,16 +66,17 @@ object WorkspaceRoutes {
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
-        userRepository: UserRepository,
+        sessionUserRepository: SessionUserRepository,
+        workspaceRepository: WorkspaceRepository,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {
-        val workspaceService = OrganizerWorkspaceService(userRepository)
+        val workspaceService = OrganizerWorkspaceService(workspaceRepository)
 
         route.route("/api/v1") {
             withSessionAuth(
                 tokenService = tokenService,
-                userRepository = userRepository,
+                userRepository = sessionUserRepository,
                 rateLimiter = rateLimiter,
             ) {
                 get("/workspaces") {
@@ -177,7 +179,7 @@ object WorkspaceRoutes {
                         call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid workspace slug"))
                         return@post
                     }
-                    val workspace = userRepository.createWorkspace(
+                    val workspace = workspaceRepository.createWorkspace(
                         ownerUserId = principal.user.id,
                         name = name,
                         slug = slug,
@@ -323,7 +325,7 @@ object WorkspaceRoutes {
                             invitation.toResponse(
                                 currentUserId = principal.user.id,
                                 workspaceService = workspaceService,
-                                viewerPermissionRole = userRepository.findWorkspaceAccess(
+                                viewerPermissionRole = workspaceRepository.findWorkspaceAccess(
                                     workspaceId = resolvedWorkspaceId,
                                     userId = principal.user.id,
                                 )?.permissionRole ?: WorkspacePermissionRole.OWNER,
@@ -450,7 +452,7 @@ object WorkspaceRoutes {
                             status = HttpStatusCode.OK.value,
                             metadata = mapOf("permissionRole" to permissionRole.wireName),
                         )
-                        val viewerPermissionRole = userRepository.findWorkspaceAccess(
+                        val viewerPermissionRole = workspaceRepository.findWorkspaceAccess(
                             workspaceId = resolvedWorkspaceId,
                             userId = principal.user.id,
                         )?.permissionRole ?: permissionRole

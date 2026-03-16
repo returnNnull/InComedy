@@ -1,7 +1,7 @@
 package com.bam.incomedy.server.organizer
 
 import com.bam.incomedy.server.db.StoredWorkspaceMembership
-import com.bam.incomedy.server.db.UserRepository
+import com.bam.incomedy.server.db.WorkspaceRepository
 import com.bam.incomedy.server.db.WorkspacePermissionRole
 
 /**
@@ -10,16 +10,16 @@ import com.bam.incomedy.server.db.WorkspacePermissionRole
  * Он инкапсулирует bounded role-policy для invitations и permission updates, чтобы
  * HTTP-роуты не дублировали RBAC-решения по owner/manager/checker/host.
  *
- * @property userRepository Репозиторий пользователей, рабочих пространств и membership записей.
+ * @property workspaceRepository Репозиторий organizer workspace и membership записей.
  */
 class OrganizerWorkspaceService(
-    private val userRepository: UserRepository,
+    private val workspaceRepository: WorkspaceRepository,
 ) {
     /** Возвращает рабочие пространства текущего пользователя. */
-    fun listWorkspaces(userId: String) = userRepository.listWorkspaces(userId)
+    fun listWorkspaces(userId: String) = workspaceRepository.listWorkspaces(userId)
 
     /** Возвращает pending invitations, ожидающие решения текущего пользователя. */
-    fun listInvitations(userId: String) = userRepository.listWorkspaceInvitations(userId)
+    fun listInvitations(userId: String) = workspaceRepository.listWorkspaceInvitations(userId)
 
     /**
      * Создает invitation в workspace после проверки permission matrix.
@@ -33,14 +33,14 @@ class OrganizerWorkspaceService(
         inviteeIdentifier: String,
         permissionRole: WorkspacePermissionRole,
     ): StoredWorkspaceMembership {
-        val access = userRepository.findWorkspaceAccess(
+        val access = workspaceRepository.findWorkspaceAccess(
             workspaceId = workspaceId,
             userId = actorUserId,
         ) ?: throw WorkspaceScopeNotFoundException(workspaceId)
         if (permissionRole !in assignableRoles(access.permissionRole)) {
             throw WorkspacePermissionDeniedException("role_not_assignable")
         }
-        return userRepository.createWorkspaceInvitation(
+        return workspaceRepository.createWorkspaceInvitation(
             workspaceId = workspaceId,
             invitedByUserId = actorUserId,
             inviteeIdentifier = inviteeIdentifier,
@@ -59,11 +59,11 @@ class OrganizerWorkspaceService(
         membershipId: String,
         permissionRole: WorkspacePermissionRole,
     ): StoredWorkspaceMembership {
-        val access = userRepository.findWorkspaceAccess(
+        val access = workspaceRepository.findWorkspaceAccess(
             workspaceId = workspaceId,
             userId = actorUserId,
         ) ?: throw WorkspaceScopeNotFoundException(workspaceId)
-        val membership = userRepository.findWorkspaceMembership(
+        val membership = workspaceRepository.findWorkspaceMembership(
             workspaceId = workspaceId,
             membershipId = membershipId,
         ) ?: throw WorkspaceMembershipNotFoundException(workspaceId, membershipId)
@@ -78,7 +78,7 @@ class OrganizerWorkspaceService(
         if (permissionRole !in assignableRoles) {
             throw WorkspacePermissionDeniedException("membership_role_not_assignable")
         }
-        return userRepository.updateWorkspaceMembershipRole(
+        return workspaceRepository.updateWorkspaceMembershipRole(
             workspaceId = workspaceId,
             membershipId = membershipId,
             permissionRole = permissionRole,
@@ -91,7 +91,7 @@ class OrganizerWorkspaceService(
         membershipId: String,
         accept: Boolean,
     ) {
-        val updated = userRepository.respondToWorkspaceInvitation(
+        val updated = workspaceRepository.respondToWorkspaceInvitation(
             userId = userId,
             membershipId = membershipId,
             accept = accept,

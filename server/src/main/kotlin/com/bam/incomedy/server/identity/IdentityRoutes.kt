@@ -4,7 +4,7 @@ import com.bam.incomedy.server.ErrorResponse
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.auth.session.requireSessionPrincipal
 import com.bam.incomedy.server.auth.session.withSessionAuth
-import com.bam.incomedy.server.db.UserRepository
+import com.bam.incomedy.server.db.SessionUserRepository
 import com.bam.incomedy.server.db.UserRole
 import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
@@ -39,7 +39,7 @@ object IdentityRoutes {
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
-        userRepository: UserRepository,
+        userRepository: SessionUserRepository,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {

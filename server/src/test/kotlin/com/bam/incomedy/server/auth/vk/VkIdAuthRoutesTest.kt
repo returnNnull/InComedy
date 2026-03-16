@@ -4,7 +4,7 @@ import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.config.VkIdConfig
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -232,7 +232,7 @@ class VkIdAuthRoutesTest {
                 nowProvider = { Instant.parse("2026-03-14T20:00:00Z") },
             ),
             vkIdClient = gateway ?: VkIdClient(config),
-            userRepository = InMemoryTelegramUserRepository(),
+            userRepository = InMemoryUserRepository(),
             tokenService = JwtSessionTokenService(
                 JwtConfig(
                     issuer = "test",

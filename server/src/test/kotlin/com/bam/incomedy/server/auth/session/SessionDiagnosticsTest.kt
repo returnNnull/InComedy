@@ -4,7 +4,7 @@ import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.observability.DiagnosticsQuery
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -46,7 +46,7 @@ class SessionDiagnosticsTest {
                 SessionRoutes.register(
                     route = this,
                     tokenService = testTokenService(),
-                    userRepository = InMemoryTelegramUserRepository(),
+                    userRepository = InMemoryUserRepository(),
                     rateLimiter = InMemoryAuthRateLimiter(),
                     diagnosticsStore = diagnosticsStore,
                 )

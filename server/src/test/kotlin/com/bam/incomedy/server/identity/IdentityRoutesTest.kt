@@ -6,7 +6,7 @@ import com.bam.incomedy.server.db.AuthProvider
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -29,7 +29,7 @@ class IdentityRoutesTest {
 
     @Test
     fun `active role can be switched when role is assigned`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000010",

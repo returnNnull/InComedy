@@ -2,7 +2,7 @@ package com.bam.incomedy.server.auth.telegram
 
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.config.JwtConfig
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,7 +17,7 @@ class TelegramAuthServiceTest {
     /** Повторное использование одного и того же успешного auth утверждения должно отклоняться. */
     @Test
     fun `verifyAndCreateSession rejects replayed telegram assertion`() {
-        val repository = InMemoryTelegramUserRepository()
+        val repository = InMemoryUserRepository()
         val service = TelegramAuthService(
             loginStateCodec = TelegramLoginStateCodec(
                 redirectUri = REDIRECT_URI,
@@ -55,7 +55,7 @@ class TelegramAuthServiceTest {
                 nowProvider = { NOW },
             ),
             oidcClient = FakeTelegramServiceOidcGateway(),
-            repository = InMemoryTelegramUserRepository(),
+            repository = InMemoryUserRepository(),
             tokenService = testTokenService(),
             launchUri = LAUNCH_URI,
         )
@@ -77,7 +77,7 @@ class TelegramAuthServiceTest {
                 nowProvider = { NOW },
             ),
             oidcClient = FakeTelegramServiceOidcGateway(),
-            repository = InMemoryTelegramUserRepository(),
+            repository = InMemoryUserRepository(),
             tokenService = testTokenService(),
             launchUri = LAUNCH_URI,
         )
@@ -103,7 +103,7 @@ class TelegramAuthServiceTest {
                 nowProvider = { NOW },
             ),
             oidcClient = FakeTelegramServiceOidcGateway(),
-            repository = InMemoryTelegramUserRepository(),
+            repository = InMemoryUserRepository(),
             tokenService = testTokenService(),
             launchUri = LAUNCH_URI,
         )

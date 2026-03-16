@@ -24,7 +24,7 @@ import java.util.UUID
  * Хранилище поддерживает роли, рабочие пространства и pending invitations без обращения к БД,
  * чтобы route/service тесты могли проверять бизнес-правила детерминированно.
  */
-class InMemoryTelegramUserRepository : UserRepository {
+class InMemoryUserRepository : UserRepository {
     /** Пользователи по внутреннему идентификатору. */
     private val usersById = linkedMapOf<String, MutableStoredUser>()
 

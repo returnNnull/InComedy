@@ -6,7 +6,7 @@ import com.bam.incomedy.server.db.AuthProvider
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.patch
@@ -32,7 +32,7 @@ class WorkspaceRoutesTest {
 
     @Test
     fun `workspace can be created and listed by owner`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000020",
@@ -59,7 +59,8 @@ class WorkspaceRoutesTest {
                 WorkspaceRoutes.register(
                     route = this,
                     tokenService = tokenService,
-                    userRepository = repository,
+                    sessionUserRepository = repository,
+                    workspaceRepository = repository,
                     rateLimiter = InMemoryAuthRateLimiter(),
                 )
             }
@@ -92,7 +93,7 @@ class WorkspaceRoutesTest {
 
     @Test
     fun `workspace invitation is created and visible in invitee inbox`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000020",
@@ -158,7 +159,7 @@ class WorkspaceRoutesTest {
 
     @Test
     fun `invitee can accept workspace invitation and see workspace`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000020",
@@ -232,7 +233,7 @@ class WorkspaceRoutesTest {
 
     @Test
     fun `owner can update workspace membership role`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000020",
@@ -295,7 +296,7 @@ class WorkspaceRoutesTest {
 
     @Test
     fun `manager cannot promote membership to manager`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000020",
@@ -388,7 +389,7 @@ class WorkspaceRoutesTest {
     }
 
     private fun ApplicationTestBuilder.configureWorkspaceRoutes(
-        repository: InMemoryTelegramUserRepository,
+        repository: InMemoryUserRepository,
         tokenService: JwtSessionTokenService,
     ) {
         environment {
@@ -402,7 +403,8 @@ class WorkspaceRoutesTest {
                 WorkspaceRoutes.register(
                     route = this,
                     tokenService = tokenService,
-                    userRepository = repository,
+                    sessionUserRepository = repository,
+                    workspaceRepository = repository,
                     rateLimiter = InMemoryAuthRateLimiter(),
                 )
             }

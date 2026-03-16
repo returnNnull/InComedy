@@ -119,23 +119,27 @@ data class StoredCredentialAccount(
     val passwordHash: String,
 )
 
-interface UserRepository {
-    fun createPasswordIdentity(login: String, normalizedLogin: String, passwordHash: String): StoredUser
-    fun findPasswordIdentity(normalizedLogin: String): StoredCredentialAccount?
-    fun upsertVkIdentity(
-        providerUserId: String,
-        displayName: String,
-        username: String?,
-        photoUrl: String?,
-    ): StoredUser
-    fun upsertTelegramIdentity(user: TelegramUser): StoredUser
+/**
+ * Минимальный port для session lifecycle и role context.
+ *
+ * Этот контракт нужен auth/session слоям, которым не должны быть видны organizer workspace детали.
+ */
+interface SessionUserRepository {
     fun findById(userId: String): StoredUser?
-    fun registerTelegramAuthAssertion(assertionHash: String, telegramUserId: Long, expiresAt: Instant): Boolean
     fun revokeSessions(userId: String, revokedAt: Instant)
     fun storeRefreshToken(userId: String, tokenHash: String, expiresAt: Instant)
     fun consumeRefreshToken(tokenHash: String, now: Instant): StoredUser?
     fun deleteRefreshTokens(userId: String)
     fun setActiveRole(userId: String, role: UserRole): StoredUser?
+}
+
+/**
+ * Минимальный port organizer workspace bounded context-а.
+ *
+ * Контракт выделяет workspace/membership операции из общего persistence слоя, чтобы organizer код
+ * не зависел от credential/provider auth API.
+ */
+interface WorkspaceRepository {
     fun createWorkspace(ownerUserId: String, name: String, slug: String): StoredWorkspace
     fun listWorkspaces(userId: String): List<StoredWorkspace>
     fun listWorkspaceInvitations(userId: String): List<StoredWorkspaceInvitation>
@@ -159,6 +163,26 @@ interface UserRepository {
         membershipId: String,
         accept: Boolean,
     ): Boolean
+}
+
+/**
+ * Полный persistence-контракт backend-а.
+ *
+ * Исторически это один крупный репозиторий, но поверх него допускаются более узкие порты
+ * (`SessionUserRepository`, `WorkspaceRepository`) для bounded context-слоев.
+ */
+interface UserRepository : SessionUserRepository, WorkspaceRepository {
+    fun createPasswordIdentity(login: String, normalizedLogin: String, passwordHash: String): StoredUser
+    fun findPasswordIdentity(normalizedLogin: String): StoredCredentialAccount?
+    fun upsertVkIdentity(
+        providerUserId: String,
+        displayName: String,
+        username: String?,
+        photoUrl: String?,
+    ): StoredUser
+
+    fun upsertTelegramIdentity(user: TelegramUser): StoredUser
+    fun registerTelegramAuthAssertion(assertionHash: String, telegramUserId: Long, expiresAt: Instant): Boolean
 }
 
 class DuplicateCredentialLoginException(

@@ -3,7 +3,7 @@ package com.bam.incomedy.server.auth.credentials
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -35,7 +35,7 @@ class CredentialsAuthRoutesTest {
                 CredentialsAuthRoutes.register(
                     route = this,
                     authService = CredentialsAuthService(
-                        userRepository = InMemoryTelegramUserRepository(),
+                        userRepository = InMemoryUserRepository(),
                         tokenService = testTokenService(),
                         passwordHasher = FakePasswordHasher(),
                     ),
@@ -68,7 +68,7 @@ class CredentialsAuthRoutesTest {
                 CredentialsAuthRoutes.register(
                     route = this,
                     authService = CredentialsAuthService(
-                        userRepository = InMemoryTelegramUserRepository(),
+                        userRepository = InMemoryUserRepository(),
                         tokenService = testTokenService(),
                         passwordHasher = FakePasswordHasher(),
                     ),

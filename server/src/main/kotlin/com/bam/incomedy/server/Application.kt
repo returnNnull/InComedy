@@ -11,7 +11,7 @@ import com.bam.incomedy.server.auth.vk.VkIdAuthService
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
-import com.bam.incomedy.server.db.PostgresTelegramUserRepository
+import com.bam.incomedy.server.db.PostgresUserRepository
 import com.bam.incomedy.server.ios.AppleAppSiteAssociationRoutes
 import com.bam.incomedy.server.identity.IdentityRoutes
 import com.bam.incomedy.server.observability.DiagnosticsConfig
@@ -51,7 +51,7 @@ fun Application.module() {
     val dataSource = DatabaseFactory.create(config.database)
     DatabaseMigrationRunner.migrate(dataSource)
 
-    val repository = PostgresTelegramUserRepository(dataSource)
+    val repository = PostgresUserRepository(dataSource)
     val tokenService = JwtSessionTokenService(config.jwt)
     val passwordHasher = Argon2PasswordHasher()
     val credentialsAuthService = CredentialsAuthService(
@@ -163,7 +163,8 @@ fun Application.module() {
         WorkspaceRoutes.register(
             route = this,
             tokenService = tokenService,
-            userRepository = repository,
+            sessionUserRepository = repository,
+            workspaceRepository = repository,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )

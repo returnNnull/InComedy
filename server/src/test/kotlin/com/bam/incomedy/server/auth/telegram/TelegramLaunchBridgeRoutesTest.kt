@@ -5,7 +5,7 @@ import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.observability.DiagnosticsQuery
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -147,7 +147,7 @@ class TelegramLaunchBridgeRoutesTest {
                 nowProvider = { NOW },
             ),
             oidcClient = FakeTelegramLaunchBridgeOidcGateway(),
-            repository = InMemoryTelegramUserRepository(),
+            repository = InMemoryUserRepository(),
             tokenService = JwtSessionTokenService(
                 JwtConfig(
                     issuer = "test",

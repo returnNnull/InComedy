@@ -7,7 +7,14 @@ import java.time.Instant
 import java.util.UUID
 import javax.sql.DataSource
 
-class PostgresTelegramUserRepository(
+/**
+ * PostgreSQL-реализация общего `UserRepository`.
+ *
+ * Репозиторий обслуживает provider-agnostic user/session/workspace persistence слой.
+ * Исторически в нем остались Telegram-совместимые поля и lookup-и для legacy-миграции,
+ * но сама ответственность класса давно шире одного auth provider-а.
+ */
+class PostgresUserRepository(
     private val dataSource: DataSource,
 ) : UserRepository {
 

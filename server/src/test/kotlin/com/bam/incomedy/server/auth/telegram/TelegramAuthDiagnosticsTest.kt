@@ -3,7 +3,7 @@ package com.bam.incomedy.server.auth.telegram
 import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -79,7 +79,7 @@ class TelegramAuthDiagnosticsTest {
 
     /** Создает тестовый auth service для route-level diagnostics проверки. */
     private fun testAuthService(): TelegramAuthService {
-        val repository = InMemoryTelegramUserRepository()
+        val repository = InMemoryUserRepository()
         val tokenService = com.bam.incomedy.server.auth.session.JwtSessionTokenService(
             JwtConfig(
                 issuer = "test",

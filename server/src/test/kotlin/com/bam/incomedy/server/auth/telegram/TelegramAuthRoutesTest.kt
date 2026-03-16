@@ -3,7 +3,7 @@ package com.bam.incomedy.server.auth.telegram
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -132,7 +132,7 @@ class TelegramAuthRoutesTest {
                 nowProvider = { Instant.parse("2026-03-13T08:00:00Z") },
             ),
             oidcClient = FakeTelegramRoutesOidcGateway(),
-            repository = InMemoryTelegramUserRepository(),
+            repository = InMemoryUserRepository(),
             tokenService = JwtSessionTokenService(
                 JwtConfig(
                     issuer = "test",

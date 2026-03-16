@@ -5,7 +5,7 @@ import com.bam.incomedy.server.db.AuthProvider
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -40,7 +40,7 @@ class SessionRoutesTest {
                 SessionRoutes.register(
                     route = this,
                     tokenService = testTokenService(),
-                    userRepository = InMemoryTelegramUserRepository(),
+                    userRepository = InMemoryUserRepository(),
                     rateLimiter = InMemoryAuthRateLimiter(),
                 )
             }
@@ -67,7 +67,7 @@ class SessionRoutesTest {
                 SessionRoutes.register(
                     route = this,
                     tokenService = testTokenService(),
-                    userRepository = InMemoryTelegramUserRepository(),
+                    userRepository = InMemoryUserRepository(),
                     rateLimiter = InMemoryAuthRateLimiter(nowMillis = { 0L }),
                 )
             }
@@ -93,7 +93,7 @@ class SessionRoutesTest {
 
     @Test
     fun `session me returns provider agnostic user state`() = testApplication {
-        val repository = InMemoryTelegramUserRepository().apply {
+        val repository = InMemoryUserRepository().apply {
             putUser(
                 StoredUser(
                     id = "00000000-0000-0000-0000-000000000001",

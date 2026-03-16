@@ -113,3 +113,93 @@
   - active traceability and session governance documents reference the new module layout
 - Required tests:
   - `./gradlew :domain:auth:allTests :domain:session:allTests :core:backend:allTests :data:auth:allTests :data:session:allTests :shared:allTests :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin`
+
+## Formalized Planning Update (Drop Workspace Smoke From Active Queue)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md`
+  - `docs/context/governance/session-log.md`
+- Current constraints:
+  - The previously carried operational follow-up for a live smoke of the organizer workspace invitation/role-management flow is no longer considered part of the active task queue.
+  - The active product plan should move directly to the next documented `P0` slice instead of blocking on an explicit smoke-validation task.
+
+## Goal
+
+- What should be delivered:
+  - remove the workspace live-smoke follow-up from the active near-term plan
+  - make the next project step explicit in governance memory
+  - keep the product sequence aligned with the existing `P0` backlog ordering
+
+## Scope
+
+- In scope:
+  - update governance memory so the current `Next` no longer points to workspace smoke
+  - make `Venue management and hall template builder v1` the active next product slice
+- Out of scope:
+  - changing the `P0` backlog ordering itself
+  - adding new implementation work in this planning-only update
+
+## Constraints
+
+- Tech/business constraints:
+  - `docs/context/*` remains the source of truth and must reflect the updated plan
+  - the change should stay in governance/planning docs only unless a broader reprioritization is requested
+
+## Definition of Done
+
+- Functional result:
+  - the latest governance `Next` no longer includes workspace live smoke
+  - the next active project slice is documented as `Venue management and hall template builder v1`
+
+## Formalized Refactoring Request (Backend Legacy Naming And Repository Ports)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/engineering/engineering-standards.md`
+  - `docs/context/governance/decision-traceability.md`
+  - `D-035`
+  - `D-039`
+  - `D-049`
+- Current constraints:
+  - The backend persistence layer still exposed old Telegram-specific naming in classes that now serve provider-agnostic user/session/workspace responsibilities.
+  - Organizer and session surfaces were depending on the full `UserRepository`, even when they only needed a narrow subset of persistence operations.
+
+## Goal
+
+- What should be delivered:
+  - remove misleading Telegram-specific naming from generic backend repository implementations
+  - narrow backend compile-time dependencies for session and organizer flows to smaller repository ports
+  - keep all auth/session/workspace behavior unchanged
+  - sync governance/traceability after the backend refactor
+
+## Scope
+
+- In scope:
+  - rename the generic PostgreSQL repository and in-memory test repository away from Telegram-specific names
+  - introduce narrow repository ports for session lifecycle and organizer workspace bounded contexts
+  - rewire backend routes/services/tests to the new names and narrower ports
+  - update governance traceability paths affected by the rename
+- Out of scope:
+  - removing the legacy Telegram auth slice itself
+  - changing database schema/table names
+  - changing auth provider behavior or organizer business rules
+
+## Constraints
+
+- Tech/business constraints:
+  - `docs/context/*` remains the primary source of truth
+  - materially changed backend code must keep Russian comments
+  - the refactor must stay behavior-preserving and validate with backend automated tests
+
+## Definition of Done
+
+- Functional result:
+  - generic backend persistence classes no longer look Telegram-only
+  - organizer/session code depends on bounded repository ports instead of the whole persistence surface
+  - governance and decision traceability reference the updated backend paths
+- Required tests:
+  - `./gradlew :server:test`

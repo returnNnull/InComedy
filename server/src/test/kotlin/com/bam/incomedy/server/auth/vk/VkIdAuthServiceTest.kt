@@ -3,7 +3,7 @@ package com.bam.incomedy.server.auth.vk
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.config.VkIdConfig
-import com.bam.incomedy.server.support.InMemoryTelegramUserRepository
+import com.bam.incomedy.server.support.InMemoryUserRepository
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -142,7 +142,7 @@ class VkIdAuthServiceTest {
                 nowProvider = { Instant.parse("2026-03-15T00:00:00Z") },
             ),
             vkIdClient = gateway,
-            userRepository = InMemoryTelegramUserRepository(),
+            userRepository = InMemoryUserRepository(),
             tokenService = JwtSessionTokenService(
                 JwtConfig(
                     issuer = "test",
