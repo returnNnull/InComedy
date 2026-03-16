@@ -30,8 +30,9 @@ Use this index for new implementation and review tasks.
 19. `task-request-template/task-request-template-part-19.md` (auth/session modular refactoring request from 2026-03-16)
 20. `task-request-template/task-request-template-part-20.md` (new-chat context synchronization, venue-context discovery, and initial venue-slice planning from 2026-03-16)
 21. `task-request-template/task-request-template-part-21.md` (venue/hall delivery slicing and venues/templates foundation implementation request from 2026-03-16)
+22. `task-request-template/task-request-template-part-22.md` (events/EventHallSnapshot foundation request from 2026-03-16)
 
 ## Append Rule
 
-- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-21.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-22.md`, update this index, and continue appending there.
+- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-22.md`.
+- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-23.md`, update this index, and continue appending there.

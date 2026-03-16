@@ -3,7 +3,7 @@ info:
   title: InComedy Server API
   version: "1.0.0"
   description: |
-    Current backend API contract for auth, identity foundation, organizer workspace and venue
+    Current backend API contract for auth, identity foundation, organizer workspace, venue, and event
     foundations, and service health endpoints.
 servers:
   - url: https://incomedy.ru
@@ -17,6 +17,7 @@ tags:
   - name: Identity
   - name: Organizer
   - name: Venues
+  - name: Events
 paths:
   /health:
     get:
@@ -1089,6 +1090,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events:
+    get:
+      tags: [Events]
+      summary: List organizer events available to the authenticated user
+      operationId: getEvents
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Event list returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventListResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Events]
+      summary: Create an organizer event draft with a frozen hall snapshot
+      operationId: postEvents
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEventResponse"
+        "400":
+          description: Invalid event payload, chronology, or venue/template binding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage events in the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Workspace, venue, or hall template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/venues/{venueId}/hall-templates:
     post:
       tags: [Venues]
@@ -1304,6 +1410,69 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "413":
           description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events/{eventId}/publish:
+    post:
+      tags: [Events]
+      summary: Publish an existing organizer event draft
+      operationId: postEventPublish
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Organizer event UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Event published successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEventResponse"
+        "400":
+          description: Invalid event id or event cannot be published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot publish this event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or workspace scope not found
           content:
             application/json:
               schema:
@@ -1832,6 +2001,154 @@ components:
         status:
           type: string
           enum: [accept, decline]
+    EventListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizerEventResponse"
+    CreateEventRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - workspace_id
+        - venue_id
+        - hall_template_id
+        - title
+        - starts_at
+        - currency
+        - visibility
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+        venue_id:
+          type: string
+          format: uuid
+        hall_template_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 3
+          maxLength: 120
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        starts_at:
+          type: string
+          format: date-time
+        doors_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          example: RUB
+        visibility:
+          type: string
+          enum: [public, private]
+    OrganizerEventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspace_id
+        - venue_id
+        - venue_name
+        - hall_snapshot_id
+        - source_template_id
+        - source_template_name
+        - title
+        - starts_at
+        - status
+        - sales_status
+        - currency
+        - visibility
+        - hall_snapshot
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        venue_id:
+          type: string
+          format: uuid
+        venue_name:
+          type: string
+        hall_snapshot_id:
+          type: string
+          format: uuid
+        source_template_id:
+          type: string
+          format: uuid
+        source_template_name:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        starts_at:
+          type: string
+          format: date-time
+        doors_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [draft, published, canceled]
+        sales_status:
+          type: string
+          enum: [closed, open, paused, sold_out]
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        visibility:
+          type: string
+          enum: [public, private]
+        hall_snapshot:
+          $ref: "#/components/schemas/EventHallSnapshotResponse"
+    EventHallSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_id
+        - source_template_id
+        - source_template_name
+        - layout
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        source_template_id:
+          type: string
+          format: uuid
+        source_template_name:
+          type: string
+        layout:
+          $ref: "#/components/schemas/HallLayoutResponse"
     VenueListResponse:
       type: object
       additionalProperties: false

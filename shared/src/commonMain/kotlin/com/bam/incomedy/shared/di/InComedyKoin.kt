@@ -1,10 +1,12 @@
 package com.bam.incomedy.shared.di
 
 import com.bam.incomedy.data.auth.di.authDataModule
+import com.bam.incomedy.data.event.di.eventDataModule
 import com.bam.incomedy.data.session.di.sessionDataModule
 import com.bam.incomedy.data.venue.di.venueDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
+import com.bam.incomedy.feature.event.EventViewModel
 import com.bam.incomedy.feature.venue.VenueViewModel
 import com.bam.incomedy.shared.session.SessionViewModel
 import org.koin.core.KoinApplication
@@ -24,6 +26,7 @@ object InComedyKoin {
         authDataModule,
         sessionDataModule,
         venueDataModule,
+        eventDataModule,
         authFeatureModule,
         module {
             single {
@@ -34,6 +37,13 @@ object InComedyKoin {
             }
             single {
                 VenueViewModel(
+                    venueManagementService = get(),
+                    accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
+                )
+            }
+            single {
+                EventViewModel(
+                    eventManagementService = get(),
                     venueManagementService = get(),
                     accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
                 )
@@ -63,6 +73,12 @@ object InComedyKoin {
 
     /** Возвращает общую модель площадок и шаблонов зала. */
     fun getVenueViewModel(): VenueViewModel {
+        init()
+        return requireNotNull(koinApp).koin.get()
+    }
+
+    /** Возвращает общую модель organizer events. */
+    fun getEventViewModel(): EventViewModel {
         init()
         return requireNotNull(koinApp).koin.get()
     }

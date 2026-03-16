@@ -62,6 +62,20 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.buttons["venue.template.save"].exists)
     }
 
+    /// Проверяет organizer event tab, выбор venue/template и доступность publish action.
+    func testEventTabShowsEventManagementSurface() {
+        app.tabBars.buttons["События"].tap()
+
+        XCTAssertTrue(app.staticTexts["event.root"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["event.count"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["event.workspace.ws-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["event.venue.venue-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["event.template.template-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.textFields["event.form.title"].waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["event.form.create"]))
+        XCTAssertTrue(app.buttons["event.publish.event-1"].waitForExistence(timeout: 2))
+    }
+
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.
     func testAccountTabSwitchesRoleAndSignsOut() {
         app.tabBars.buttons["Аккаунт"].tap()

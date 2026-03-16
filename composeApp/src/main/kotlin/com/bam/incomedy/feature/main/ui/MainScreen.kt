@@ -53,6 +53,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bam.incomedy.domain.session.OrganizerWorkspace
 import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
 import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
+import com.bam.incomedy.feature.event.ui.EventManagementTab
+import com.bam.incomedy.feature.event.ui.EventScreenTags
+import com.bam.incomedy.feature.event.ui.EventTabBindings
+import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.venue.ui.VenueManagementTab
 import com.bam.incomedy.feature.venue.ui.VenueScreenTags
@@ -73,14 +77,36 @@ import java.net.URL
 @Composable
 fun MainScreen(
     sessionViewModel: SessionAndroidViewModel,
+    eventViewModel: EventAndroidViewModel,
     venueViewModel: VenueAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
     val state by sessionViewModel.state.collectAsStateWithLifecycle()
+    val eventState by eventViewModel.state.collectAsStateWithLifecycle()
     val venueState by venueViewModel.state.collectAsStateWithLifecycle()
 
     MainScreenContent(
         state = state,
+        eventBindings = EventTabBindings(
+            state = eventState,
+            onRefreshContext = eventViewModel::refreshContext,
+            onCreateEvent = { form ->
+                eventViewModel.createEvent(
+                    workspaceId = form.workspaceId,
+                    venueId = form.venueId,
+                    hallTemplateId = form.hallTemplateId,
+                    title = form.title,
+                    description = form.description,
+                    startsAtIso = form.startsAtIso,
+                    doorsOpenAtIso = form.doorsOpenAtIso,
+                    endsAtIso = form.endsAtIso,
+                    currency = form.currency,
+                    visibilityKey = form.visibilityKey,
+                )
+            },
+            onPublishEvent = eventViewModel::publishEvent,
+            onClearError = eventViewModel::clearError,
+        ),
         venueBindings = VenueTabBindings(
             state = venueState,
             onRefreshVenues = venueViewModel::refreshVenues,
@@ -144,6 +170,7 @@ fun MainScreen(
 @Composable
 internal fun MainScreenContent(
     state: SessionState,
+    eventBindings: EventTabBindings = EventTabBindings(),
     venueBindings: VenueTabBindings = VenueTabBindings(),
     onSetActiveRole: (String) -> Unit,
     onCreateWorkspace: (String, String?) -> Unit,
@@ -210,6 +237,11 @@ internal fun MainScreenContent(
                     state = state,
                     onSetActiveRole = onSetActiveRole,
                     onSignOut = onSignOut,
+                )
+                MainTab.EVENTS -> EventManagementTab(
+                    workspaces = state.workspaces,
+                    eventBindings = eventBindings,
+                    modifier = Modifier.testTag(EventScreenTags.ROOT),
                 )
                 MainTab.VENUES -> VenueManagementTab(
                     workspaces = state.workspaces,
@@ -913,6 +945,11 @@ private enum class MainTab(
         iconGlyph = "▦",
         testTag = MainScreenTags.TAB_VENUES,
     ),
+    EVENTS(
+        title = "События",
+        iconGlyph = "◫",
+        testTag = MainScreenTags.TAB_EVENTS,
+    ),
     ACCOUNT(
         title = "Аккаунт",
         iconGlyph = "☺",
@@ -938,6 +975,9 @@ object MainScreenTags {
 
     /** Тег вкладки площадок. */
     const val TAB_VENUES = "main.tab.venues"
+
+    /** Тег вкладки событий. */
+    const val TAB_EVENTS = "main.tab.events"
 
     /** Тег контейнера вкладки главной сводки. */
     const val HOME_CONTENT = "main.content.home"

@@ -3,6 +3,11 @@ package com.bam.incomedy.testsupport
 import com.bam.incomedy.domain.auth.AuthProviderType
 import com.bam.incomedy.domain.auth.AuthSession
 import com.bam.incomedy.domain.auth.AuthorizedUser
+import com.bam.incomedy.domain.event.EventHallSnapshot
+import com.bam.incomedy.domain.event.EventSalesStatus
+import com.bam.incomedy.domain.event.EventStatus
+import com.bam.incomedy.domain.event.EventVisibility
+import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.session.OrganizerWorkspace
 import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
 import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
@@ -15,6 +20,7 @@ import com.bam.incomedy.domain.venue.HallTemplateStatus
 import com.bam.incomedy.domain.venue.OrganizerVenue
 import com.bam.incomedy.domain.venue.VenueContact
 import com.bam.incomedy.feature.auth.mvi.AuthState
+import com.bam.incomedy.feature.event.EventState
 import com.bam.incomedy.feature.venue.VenueState
 import com.bam.incomedy.shared.session.SessionState
 
@@ -114,6 +120,25 @@ object AndroidUiStateFactory {
         errorMessage: String? = null,
     ): VenueState {
         return VenueState(
+            venues = venues,
+            isLoading = isLoading,
+            isSubmitting = isSubmitting,
+            errorMessage = errorMessage,
+        )
+    }
+
+    /**
+     * Возвращает состояние organizer event feature для Android UI-тестов.
+     */
+    fun eventState(
+        events: List<OrganizerEvent> = listOf(event()),
+        venues: List<OrganizerVenue> = listOf(venue()),
+        isLoading: Boolean = false,
+        isSubmitting: Boolean = false,
+        errorMessage: String? = null,
+    ): EventState {
+        return EventState(
+            events = events,
             venues = venues,
             isLoading = isLoading,
             isSubmitting = isSubmitting,
@@ -283,6 +308,57 @@ object AndroidUiStateFactory {
             version = version,
             status = status,
             layout = layout,
+        )
+    }
+
+    /**
+     * Возвращает тестовый organizer event с frozen hall snapshot.
+     */
+    fun event(
+        id: String = "event-1",
+        workspaceId: String = "ws-1",
+        venueId: String = "venue-1",
+        venueName: String = "Moscow Cellar",
+        sourceTemplateId: String = "template-1",
+        sourceTemplateName: String = "Late Layout",
+        title: String = "Late Night Standup",
+        description: String? = "Проверка EventHallSnapshot foundation",
+        startsAtIso: String = "2026-04-01T19:00:00+03:00",
+        doorsOpenAtIso: String? = "2026-04-01T18:30:00+03:00",
+        endsAtIso: String? = "2026-04-01T21:00:00+03:00",
+        status: EventStatus = EventStatus.DRAFT,
+        salesStatus: EventSalesStatus = EventSalesStatus.CLOSED,
+        currency: String = "RUB",
+        visibility: EventVisibility = EventVisibility.PUBLIC,
+        hallSnapshot: EventHallSnapshot = EventHallSnapshot(
+            id = "snapshot-1",
+            eventId = id,
+            sourceTemplateId = sourceTemplateId,
+            layout = hallTemplate(
+                id = sourceTemplateId,
+                venueId = venueId,
+                name = sourceTemplateName,
+            ).layout,
+        ),
+    ): OrganizerEvent {
+        return OrganizerEvent(
+            id = id,
+            workspaceId = workspaceId,
+            venueId = venueId,
+            venueName = venueName,
+            hallSnapshotId = hallSnapshot.id,
+            sourceTemplateId = sourceTemplateId,
+            sourceTemplateName = sourceTemplateName,
+            title = title,
+            description = description,
+            startsAtIso = startsAtIso,
+            doorsOpenAtIso = doorsOpenAtIso,
+            endsAtIso = endsAtIso,
+            status = status,
+            salesStatus = salesStatus,
+            currency = currency,
+            visibility = visibility,
+            hallSnapshot = hallSnapshot,
         )
     }
 }

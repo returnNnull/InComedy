@@ -167,9 +167,11 @@ dependencies {
     implementation(libs.vkid.onetap.compose)
     implementation(projects.shared)
     implementation(projects.domain.auth)
+    implementation(projects.domain.event)
     implementation(projects.domain.session)
     implementation(projects.domain.venue)
     implementation(projects.feature.auth)
+    implementation(projects.feature.event)
     implementation(projects.feature.venue)
 
     debugImplementation(libs.compose.uiTooling)

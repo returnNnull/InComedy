@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 
@@ -43,6 +44,17 @@ object AndroidViewModelFactories {
     fun venue(application: Application): ViewModelProvider.Factory {
         return singleViewModelFactory(VenueAndroidViewModel::class.java) {
             VenueAndroidViewModel(application)
+        }
+    }
+
+    /**
+     * Возвращает фабрику для Android-адаптера organizer event feature.
+     *
+     * @param application Android application context, необходимый `EventAndroidViewModel`.
+     */
+    fun event(application: Application): ViewModelProvider.Factory {
+        return singleViewModelFactory(EventAndroidViewModel::class.java) {
+            EventAndroidViewModel(application)
         }
     }
 

@@ -177,6 +177,17 @@ class MainScreenContentTest {
         composeRule.onNodeWithTag(com.bam.incomedy.feature.venue.ui.VenueScreenTags.ROOT).assertIsDisplayed()
     }
 
+    /** Проверяет, что main shell умеет переключаться на organizer event вкладку. */
+    @Test
+    fun eventTabIsReachableFromBottomBar() {
+        setMainScreenContent()
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_EVENTS).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(com.bam.incomedy.feature.event.ui.EventScreenTags.ROOT).assertIsDisplayed()
+    }
+
     /** Проверяет, что вкладка аккаунта показывает профиль и прокидывает действия роли и выхода. */
     @Test
     fun accountTabShowsProfileAndInvokesActions() {

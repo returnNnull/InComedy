@@ -11,6 +11,9 @@ struct MainGraphView: View {
     /// Модель organizer venue management feature.
     @StateObject private var venueModel: VenueScreenModel
 
+    /// Модель organizer event management feature.
+    @StateObject private var eventModel: EventScreenModel
+
     /// Имя нового рабочего пространства из формы на вкладке "Главная".
     @State private var workspaceName: String = ""
 
@@ -39,6 +42,15 @@ struct MainGraphView: View {
                 )
             } ?? VenueScreenModel()
         )
+        _eventModel = StateObject(
+            wrappedValue: fixture.map {
+                EventScreenModel(
+                    fixture: EventScreenFixture.preview(
+                        workspaceId: $0.workspaces.first?.id ?? "ws-1"
+                    )
+                )
+            } ?? EventScreenModel()
+        )
     }
 
     /// Отрисовывает tab shell авторизованной части приложения.
@@ -59,6 +71,17 @@ struct MainGraphView: View {
                 Label("Главная", systemImage: "house")
             }
             .accessibilityIdentifier("main.tab.home")
+
+            NavigationStack {
+                EventManagementView(
+                    model: eventModel,
+                    workspaces: model.workspaces
+                )
+            }
+            .tabItem {
+                Label("События", systemImage: "calendar")
+            }
+            .accessibilityIdentifier("main.tab.events")
 
             NavigationStack {
                 VenueManagementView(

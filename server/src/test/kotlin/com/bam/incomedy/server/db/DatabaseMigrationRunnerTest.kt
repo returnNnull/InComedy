@@ -24,7 +24,9 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "workspace_members"))
                 assertTrue(tableExists(connection, "organizer_venues"))
                 assertTrue(tableExists(connection, "hall_templates"))
-                assertEquals(5, appliedMigrationCount(connection))
+                assertTrue(tableExists(connection, "organizer_events"))
+                assertTrue(tableExists(connection, "event_hall_snapshots"))
+                assertEquals(6, appliedMigrationCount(connection))
             }
         }
     }
