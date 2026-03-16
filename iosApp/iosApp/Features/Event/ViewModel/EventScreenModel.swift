@@ -95,6 +95,48 @@ final class EventScreenModel: ObservableObject {
         )
     }
 
+    /// Обновляет organizer event details и event-local overrides из SwiftUI editor-а.
+    ///
+    /// - Parameters:
+    ///   - eventId: Идентификатор редактируемого события.
+    ///   - title: Название события.
+    ///   - description: Необязательное описание.
+    ///   - startsAtIso: ISO timestamp начала.
+    ///   - doorsOpenAtIso: ISO timestamp открытия дверей.
+    ///   - endsAtIso: ISO timestamp завершения.
+    ///   - currency: Валюта события.
+    ///   - visibilityKey: Wire-ключ публичности.
+    ///   - priceZonesText: Текст event-local price zones.
+    ///   - pricingAssignmentsText: Текст pricing assignments.
+    ///   - availabilityOverridesText: Текст availability overrides.
+    func updateEvent(
+        eventId: String,
+        title: String,
+        description: String,
+        startsAtIso: String,
+        doorsOpenAtIso: String,
+        endsAtIso: String,
+        currency: String,
+        visibilityKey: String,
+        priceZonesText: String,
+        pricingAssignmentsText: String,
+        availabilityOverridesText: String
+    ) {
+        bridge?.updateEvent(
+            eventId: eventId,
+            title: title,
+            description: description,
+            startsAtIso: startsAtIso,
+            doorsOpenAtIso: doorsOpenAtIso.isEmpty ? nil : doorsOpenAtIso,
+            endsAtIso: endsAtIso.isEmpty ? nil : endsAtIso,
+            currency: currency,
+            visibilityKey: visibilityKey,
+            priceZonesText: priceZonesText,
+            pricingAssignmentsText: pricingAssignmentsText,
+            availabilityOverridesText: availabilityOverridesText
+        )
+    }
+
     /// Публикует существующий organizer event draft.
     ///
     /// - Parameter eventId: Идентификатор события.
@@ -218,7 +260,12 @@ struct EventScreenFixture {
                     salesStatusKey: "closed",
                     currency: "RUB",
                     visibilityKey: "public",
-                    layoutSummary: "rows=1 · zones=0 · tables=0"
+                    layoutSummary: "rows=1 · zones=0 · tables=0",
+                    overrideSummaryText: "price zones: 0 · pricing: 0 · availability: 0",
+                    targetHintText: "row: row-a · seat: row-a-1, row-a-2",
+                    priceZonesText: "",
+                    pricingAssignmentsText: "",
+                    availabilityOverridesText: ""
                 )
             ],
             venues: [venue],
@@ -282,6 +329,21 @@ struct EventItem: Identifiable {
     /// Краткая сводка frozen layout.
     let layoutSummary: String
 
+    /// Краткая сводка event-local override state.
+    let overrideSummaryText: String
+
+    /// Подсказка по доступным snapshot targets.
+    let targetHintText: String
+
+    /// Текст event-local price zones.
+    let priceZonesText: String
+
+    /// Текст pricing assignments.
+    let pricingAssignmentsText: String
+
+    /// Текст availability overrides.
+    let availabilityOverridesText: String
+
     /// Маппит Kotlin snapshot в локальную SwiftUI-модель.
     ///
     /// - Parameter snapshot: Snapshot события из общего bridge.
@@ -303,6 +365,11 @@ struct EventItem: Identifiable {
         currency = snapshot.currency
         visibilityKey = snapshot.visibilityKey
         layoutSummary = "rows=\(snapshot.layoutRowCount) · zones=\(snapshot.layoutZoneCount) · tables=\(snapshot.layoutTableCount)"
+        overrideSummaryText = snapshot.overrideSummaryText
+        targetHintText = snapshot.targetHintText
+        priceZonesText = snapshot.priceZonesText
+        pricingAssignmentsText = snapshot.pricingAssignmentsText
+        availabilityOverridesText = snapshot.availabilityOverridesText
     }
 
     /// Явный инициализатор для fixture-сценариев.
@@ -323,7 +390,12 @@ struct EventItem: Identifiable {
         salesStatusKey: String,
         currency: String,
         visibilityKey: String,
-        layoutSummary: String
+        layoutSummary: String,
+        overrideSummaryText: String,
+        targetHintText: String,
+        priceZonesText: String,
+        pricingAssignmentsText: String,
+        availabilityOverridesText: String
     ) {
         self.id = id
         self.workspaceId = workspaceId
@@ -342,6 +414,11 @@ struct EventItem: Identifiable {
         self.currency = currency
         self.visibilityKey = visibilityKey
         self.layoutSummary = layoutSummary
+        self.overrideSummaryText = overrideSummaryText
+        self.targetHintText = targetHintText
+        self.priceZonesText = priceZonesText
+        self.pricingAssignmentsText = pricingAssignmentsText
+        self.availabilityOverridesText = availabilityOverridesText
     }
 }
 

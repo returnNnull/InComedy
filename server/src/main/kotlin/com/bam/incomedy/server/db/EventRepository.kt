@@ -3,6 +3,53 @@ package com.bam.incomedy.server.db
 import java.time.OffsetDateTime
 
 /**
+ * Сохраненная event-local ценовая зона.
+ *
+ * @property id Стабильный идентификатор зоны внутри события.
+ * @property name Отображаемое название зоны.
+ * @property priceMinor Цена в minor units.
+ * @property currency Валюта зоны.
+ * @property salesStartAt Необязательное время начала продаж для зоны.
+ * @property salesEndAt Необязательное время конца продаж для зоны.
+ * @property sourceTemplatePriceZoneId Необязательная ссылка на исходную template price zone.
+ */
+data class StoredEventPriceZone(
+    val id: String,
+    val name: String,
+    val priceMinor: Int,
+    val currency: String,
+    val salesStartAt: OffsetDateTime? = null,
+    val salesEndAt: OffsetDateTime? = null,
+    val sourceTemplatePriceZoneId: String? = null,
+)
+
+/**
+ * Сохраненное назначение event-local цены на snapshot target.
+ *
+ * @property targetType Тип snapshot target-а.
+ * @property targetRef Идентификатор конкретного target-а.
+ * @property eventPriceZoneId Идентификатор event-local ценовой зоны.
+ */
+data class StoredEventPricingAssignment(
+    val targetType: String,
+    val targetRef: String,
+    val eventPriceZoneId: String,
+)
+
+/**
+ * Сохраненный event-local override доступности.
+ *
+ * @property targetType Тип snapshot target-а.
+ * @property targetRef Идентификатор конкретного target-а.
+ * @property availabilityStatus Event-local состояние доступности.
+ */
+data class StoredEventAvailabilityOverride(
+    val targetType: String,
+    val targetRef: String,
+    val availabilityStatus: String,
+)
+
+/**
  * Frozen snapshot схемы зала, уже привязанный к конкретному organizer event.
  *
  * @property id Идентификатор snapshot.
@@ -36,6 +83,9 @@ data class StoredEventHallSnapshot(
  * @property currency Валюта события.
  * @property visibility Публичность события.
  * @property hallSnapshot Frozen snapshot схемы зала.
+ * @property priceZones Event-local ценовые зоны.
+ * @property pricingAssignments Event-local назначения цен на snapshot targets.
+ * @property availabilityOverrides Event-local overrides доступности snapshot targets.
  */
 data class StoredOrganizerEvent(
     val id: String,
@@ -52,6 +102,9 @@ data class StoredOrganizerEvent(
     val currency: String,
     val visibility: String,
     val hallSnapshot: StoredEventHallSnapshot,
+    val priceZones: List<StoredEventPriceZone> = emptyList(),
+    val pricingAssignments: List<StoredEventPricingAssignment> = emptyList(),
+    val availabilityOverrides: List<StoredEventAvailabilityOverride> = emptyList(),
 )
 
 /**
@@ -82,6 +135,21 @@ interface EventRepository {
 
     /** Возвращает событие по его id вместе с frozen snapshot. */
     fun findEvent(eventId: String): StoredOrganizerEvent?
+
+    /** Обновляет event-local organizer configuration поверх frozen snapshot. */
+    fun updateEvent(
+        eventId: String,
+        title: String,
+        description: String?,
+        startsAt: OffsetDateTime,
+        doorsOpenAt: OffsetDateTime?,
+        endsAt: OffsetDateTime?,
+        currency: String,
+        visibility: String,
+        priceZones: List<StoredEventPriceZone>,
+        pricingAssignments: List<StoredEventPricingAssignment>,
+        availabilityOverrides: List<StoredEventAvailabilityOverride>,
+    ): StoredOrganizerEvent?
 
     /** Переводит событие в published-состояние и возвращает обновленную запись. */
     fun publishEvent(eventId: String): StoredOrganizerEvent?

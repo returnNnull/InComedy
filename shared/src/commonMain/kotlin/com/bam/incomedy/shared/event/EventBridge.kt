@@ -4,6 +4,7 @@ import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.venue.HallTemplate
 import com.bam.incomedy.domain.venue.OrganizerVenue
 import com.bam.incomedy.feature.event.EventFormCodec
+import com.bam.incomedy.feature.event.EventOverrideEditorCodec
 import com.bam.incomedy.feature.event.EventState
 import com.bam.incomedy.feature.event.EventViewModel
 import com.bam.incomedy.shared.bridge.BaseFeatureBridge
@@ -13,7 +14,7 @@ import com.bam.incomedy.shared.di.InComedyKoin
  * Bridge над общей event feature model для Swift-слоя.
  *
  * Bridge скрывает typed Kotlin state/effect потоки и дает SwiftUI стабильные snapshot-модели и
- * высокоуровневые команды create/publish без дублирования form normalization logic на iOS.
+ * высокоуровневые команды create/update/publish без дублирования form normalization logic на iOS.
  *
  * @property viewModel Общая event feature model.
  */
@@ -66,6 +67,44 @@ class EventBridge(
         viewModel.createEvent(draft)
     }
 
+    /** Обновляет organizer event details и event-local overrides из SwiftUI-редактора. */
+    fun updateEvent(
+        eventId: String,
+        title: String,
+        description: String?,
+        startsAtIso: String,
+        doorsOpenAtIso: String?,
+        endsAtIso: String?,
+        currency: String,
+        visibilityKey: String,
+        priceZonesText: String,
+        pricingAssignmentsText: String,
+        availabilityOverridesText: String,
+    ) {
+        val event = viewModel.state.value.events.firstOrNull { it.id == eventId }
+        if (event == null) {
+            viewModel.showLocalError("Событие для редактирования не найдено")
+            return
+        }
+        val draft = EventFormCodec.toEventUpdateDraft(
+            event = event,
+            title = title,
+            description = description,
+            startsAtIso = startsAtIso,
+            doorsOpenAtIso = doorsOpenAtIso,
+            endsAtIso = endsAtIso,
+            currency = currency,
+            visibilityKey = visibilityKey,
+            priceZonesText = priceZonesText,
+            pricingAssignmentsText = pricingAssignmentsText,
+            availabilityOverridesText = availabilityOverridesText,
+        ).getOrElse { error ->
+            viewModel.showLocalError(error.message ?: "Не удалось разобрать override-ы события")
+            return
+        }
+        viewModel.updateEvent(eventId = eventId, draft = draft)
+    }
+
     /** Публикует draft-событие из SwiftUI. */
     fun publishEvent(eventId: String) {
         viewModel.publishEvent(eventId)
@@ -90,6 +129,7 @@ private fun EventState.toSnapshot(): EventStateSnapshot {
 
 /** Преобразует доменное событие в iOS-friendly snapshot. */
 private fun OrganizerEvent.toSnapshot(): EventSnapshot {
+    val editorInput = EventOverrideEditorCodec.fromEvent(this)
     return EventSnapshot(
         id = id,
         workspaceId = workspaceId,
@@ -110,6 +150,11 @@ private fun OrganizerEvent.toSnapshot(): EventSnapshot {
         layoutRowCount = hallSnapshot.layout.rows.size,
         layoutZoneCount = hallSnapshot.layout.zones.size,
         layoutTableCount = hallSnapshot.layout.tables.size,
+        overrideSummaryText = EventOverrideEditorCodec.summary(this),
+        targetHintText = EventOverrideEditorCodec.targetHint(this),
+        priceZonesText = editorInput.priceZonesText,
+        pricingAssignmentsText = editorInput.pricingAssignmentsText,
+        availabilityOverridesText = editorInput.availabilityOverridesText,
     )
 }
 

@@ -19,6 +19,12 @@ data class EventStateSnapshot(
 
 /**
  * Export-friendly organizer event.
+ *
+ * @property overrideSummaryText Краткая сводка event-local override state.
+ * @property targetHintText Подсказка по доступным snapshot targets для editor-а.
+ * @property priceZonesText Текст event-local price zones для iOS editor-а.
+ * @property pricingAssignmentsText Текст pricing assignments для iOS editor-а.
+ * @property availabilityOverridesText Текст availability overrides для iOS editor-а.
  */
 data class EventSnapshot(
     val id: String,
@@ -40,6 +46,11 @@ data class EventSnapshot(
     val layoutRowCount: Int,
     val layoutZoneCount: Int,
     val layoutTableCount: Int,
+    val overrideSummaryText: String,
+    val targetHintText: String,
+    val priceZonesText: String,
+    val pricingAssignmentsText: String,
+    val availabilityOverridesText: String,
 )
 
 /**

@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -30,8 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.session.OrganizerWorkspace
-import com.bam.incomedy.domain.venue.HallTemplate
-import com.bam.incomedy.domain.venue.OrganizerVenue
+import com.bam.incomedy.feature.event.EventOverrideEditorCodec
 import com.bam.incomedy.feature.event.EventState
 
 /**
@@ -47,6 +47,8 @@ internal data class EventTabBindings(
     val onRefreshContext: () -> Unit = {},
     /** Команда создания organizer event draft. */
     val onCreateEvent: (EventCreateForm) -> Unit = {},
+    /** Команда обновления organizer event details и override-ов. */
+    val onUpdateEvent: (EventUpdateForm) -> Unit = {},
     /** Команда публикации существующего draft-события. */
     val onPublishEvent: (String) -> Unit = {},
     /** Команда очистки верхнеуровневой event-ошибки. */
@@ -81,10 +83,39 @@ internal data class EventCreateForm(
 )
 
 /**
+ * Platform-friendly форма обновления organizer event details и event-local override-ов.
+ *
+ * @property eventId Идентификатор редактируемого события.
+ * @property title Название события.
+ * @property description Необязательное описание.
+ * @property startsAtIso Время начала в ISO формате.
+ * @property doorsOpenAtIso Время открытия дверей в ISO формате.
+ * @property endsAtIso Время завершения в ISO формате.
+ * @property currency Валюта события.
+ * @property visibilityKey Wire-ключ публичности события.
+ * @property priceZonesText Текст event-local price zones.
+ * @property pricingAssignmentsText Текст назначений ценовых зон на snapshot targets.
+ * @property availabilityOverridesText Текст availability override-ов.
+ */
+internal data class EventUpdateForm(
+    val eventId: String,
+    val title: String,
+    val description: String,
+    val startsAtIso: String,
+    val doorsOpenAtIso: String,
+    val endsAtIso: String,
+    val currency: String,
+    val visibilityKey: String,
+    val priceZonesText: String,
+    val pricingAssignmentsText: String,
+    val availabilityOverridesText: String,
+)
+
+/**
  * Вкладка organizer event management внутри авторизованного Android shell.
  *
- * Вкладка покрывает bounded slice `create/list/publish` и работает поверх reference venues из
- * уже существующего venue bounded context-а.
+ * Вкладка покрывает bounded slices `create/list/publish` и `event-local overrides` поверх frozen
+ * `EventHallSnapshot`, не заходя в ticketing inventory semantics.
  *
  * @property workspaces Рабочие пространства, доступные текущему организатору.
  * @property eventBindings Event-specific state и callbacks.
@@ -102,20 +133,43 @@ internal fun EventManagementTab(
     var selectedVenueId by rememberSaveable { mutableStateOf("") }
     /** Хранит выбранный hall template для формы события. */
     var selectedTemplateId by rememberSaveable { mutableStateOf("") }
-    /** Хранит название события. */
+    /** Хранит название события для create form. */
     var eventTitle by rememberSaveable { mutableStateOf("") }
-    /** Хранит описание события. */
+    /** Хранит описание события для create form. */
     var eventDescription by rememberSaveable { mutableStateOf("") }
-    /** Хранит ISO timestamp начала события. */
+    /** Хранит ISO timestamp начала события для create form. */
     var eventStartsAt by rememberSaveable { mutableStateOf("2026-04-01T19:00:00+03:00") }
-    /** Хранит ISO timestamp открытия дверей. */
+    /** Хранит ISO timestamp открытия дверей для create form. */
     var eventDoorsOpenAt by rememberSaveable { mutableStateOf("2026-04-01T18:30:00+03:00") }
-    /** Хранит ISO timestamp окончания события. */
+    /** Хранит ISO timestamp окончания события для create form. */
     var eventEndsAt by rememberSaveable { mutableStateOf("2026-04-01T21:00:00+03:00") }
-    /** Хранит валюту события. */
+    /** Хранит валюту события для create form. */
     var eventCurrency by rememberSaveable { mutableStateOf("RUB") }
-    /** Хранит visibility события. */
+    /** Хранит visibility события для create form. */
     var eventVisibilityKey by rememberSaveable { mutableStateOf("public") }
+
+    /** Хранит выбранное событие для editor surface. */
+    var selectedEditableEventId by rememberSaveable { mutableStateOf("") }
+    /** Хранит редактируемое название события. */
+    var editorTitle by rememberSaveable { mutableStateOf("") }
+    /** Хранит редактируемое описание события. */
+    var editorDescription by rememberSaveable { mutableStateOf("") }
+    /** Хранит редактируемое время начала события. */
+    var editorStartsAt by rememberSaveable { mutableStateOf("") }
+    /** Хранит редактируемое время открытия дверей. */
+    var editorDoorsOpenAt by rememberSaveable { mutableStateOf("") }
+    /** Хранит редактируемое время окончания события. */
+    var editorEndsAt by rememberSaveable { mutableStateOf("") }
+    /** Хранит редактируемую валюту. */
+    var editorCurrency by rememberSaveable { mutableStateOf("RUB") }
+    /** Хранит редактируемую visibility. */
+    var editorVisibilityKey by rememberSaveable { mutableStateOf("public") }
+    /** Хранит текст event-local price zones. */
+    var editorPriceZonesText by rememberSaveable { mutableStateOf("") }
+    /** Хранит текст pricing assignments. */
+    var editorPricingAssignmentsText by rememberSaveable { mutableStateOf("") }
+    /** Хранит текст availability overrides. */
+    var editorAvailabilityOverridesText by rememberSaveable { mutableStateOf("") }
 
     val eventState = eventBindings.state
     val filteredVenues = eventState.venues.filter { venue -> venue.workspaceId == selectedWorkspaceId }
@@ -124,6 +178,40 @@ internal fun EventManagementTab(
         ?.hallTemplates
         ?.firstOrNull { template -> template.id == selectedTemplateId }
         ?: selectedVenue?.hallTemplates?.firstOrNull()
+    val selectedEditableEvent = eventState.events.firstOrNull { event -> event.id == selectedEditableEventId }
+        ?: eventState.events.firstOrNull()
+
+    val loadEventIntoEditor = remember {
+        { event: OrganizerEvent ->
+            val input = EventOverrideEditorCodec.fromEvent(event)
+            selectedEditableEventId = event.id
+            editorTitle = event.title
+            editorDescription = event.description.orEmpty()
+            editorStartsAt = event.startsAtIso
+            editorDoorsOpenAt = event.doorsOpenAtIso.orEmpty()
+            editorEndsAt = event.endsAtIso.orEmpty()
+            editorCurrency = event.currency
+            editorVisibilityKey = event.visibility.wireName
+            editorPriceZonesText = input.priceZonesText
+            editorPricingAssignmentsText = input.pricingAssignmentsText
+            editorAvailabilityOverridesText = input.availabilityOverridesText
+        }
+    }
+    val resetEditor = remember {
+        {
+            selectedEditableEventId = ""
+            editorTitle = ""
+            editorDescription = ""
+            editorStartsAt = ""
+            editorDoorsOpenAt = ""
+            editorEndsAt = ""
+            editorCurrency = "RUB"
+            editorVisibilityKey = "public"
+            editorPriceZonesText = ""
+            editorPricingAssignmentsText = ""
+            editorAvailabilityOverridesText = ""
+        }
+    }
 
     LaunchedEffect(workspaces) {
         if (selectedWorkspaceId.isBlank() || workspaces.none { workspace -> workspace.id == selectedWorkspaceId }) {
@@ -140,6 +228,13 @@ internal fun EventManagementTab(
             selectedTemplateId = selectedVenue?.hallTemplates?.firstOrNull()?.id.orEmpty()
         }
     }
+    LaunchedEffect(eventState.events) {
+        when {
+            eventState.events.isEmpty() -> resetEditor()
+            selectedEditableEventId.isBlank() -> loadEventIntoEditor(eventState.events.first())
+            eventState.events.none { event -> event.id == selectedEditableEventId } -> loadEventIntoEditor(eventState.events.first())
+        }
+    }
 
     Column(
         modifier = modifier
@@ -152,7 +247,7 @@ internal fun EventManagementTab(
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(
-            text = "Organizer slice для create/list/publish и frozen EventHallSnapshot",
+            text = "Organizer slice для create/list/publish и event-local pricing/availability overrides",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
         )
@@ -350,8 +445,157 @@ internal fun EventManagementTab(
                 OrganizerEventCard(
                     event = event,
                     isSubmitting = eventState.isSubmitting,
+                    onEditEvent = loadEventIntoEditor,
                     onPublishEvent = eventBindings.onPublishEvent,
                 )
+            }
+        }
+
+        HorizontalDivider()
+
+        Text(
+            text = "Редактор override-ов события",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        if (selectedEditableEvent == null) {
+            Text(
+                text = "Выберите или создайте событие, чтобы настроить event-local price zones и availability.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.testTag(EventScreenTags.EDITOR_EMPTY),
+            )
+        } else {
+            Text(
+                text = "Площадка: ${selectedEditableEvent.venueName} · snapshot: ${selectedEditableEvent.sourceTemplateName}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Доступные target refs: ${EventOverrideEditorCodec.targetHint(selectedEditableEvent)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            Text(
+                text = "Текущий override state: ${EventOverrideEditorCodec.summary(selectedEditableEvent)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            OutlinedTextField(
+                value = editorTitle,
+                onValueChange = { editorTitle = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_TITLE_INPUT),
+                label = { Text("Название события") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = editorDescription,
+                onValueChange = { editorDescription = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_DESCRIPTION_INPUT),
+                label = { Text("Описание") },
+            )
+            OutlinedTextField(
+                value = editorStartsAt,
+                onValueChange = { editorStartsAt = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_STARTS_AT_INPUT),
+                label = { Text("Начало (ISO)") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = editorDoorsOpenAt,
+                onValueChange = { editorDoorsOpenAt = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_DOORS_OPEN_AT_INPUT),
+                label = { Text("Открытие дверей (ISO)") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = editorEndsAt,
+                onValueChange = { editorEndsAt = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_ENDS_AT_INPUT),
+                label = { Text("Окончание (ISO)") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = editorCurrency,
+                onValueChange = { editorCurrency = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_CURRENCY_INPUT),
+                label = { Text("Валюта") },
+                singleLine = true,
+            )
+            EventSelectorRow(
+                items = listOf(
+                    "public" to "Публичное",
+                    "private" to "Приватное",
+                ),
+                selectedKey = editorVisibilityKey,
+                onSelect = { editorVisibilityKey = it },
+                tagPrefix = EventScreenTags.UPDATE_VISIBILITY_SELECTOR_PREFIX,
+            )
+            OutlinedTextField(
+                value = editorPriceZonesText,
+                onValueChange = { editorPriceZonesText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_PRICE_ZONES_INPUT),
+                label = { Text("Event price zones") },
+                supportingText = {
+                    Text("Формат: id|name|priceMinor|currency|salesStartAt|salesEndAt|sourceTemplatePriceZoneId")
+                },
+                minLines = 3,
+            )
+            OutlinedTextField(
+                value = editorPricingAssignmentsText,
+                onValueChange = { editorPricingAssignmentsText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_PRICING_ASSIGNMENTS_INPUT),
+                label = { Text("Pricing assignments") },
+                supportingText = { Text("Формат: targetType|targetRef|eventPriceZoneId") },
+                minLines = 3,
+            )
+            OutlinedTextField(
+                value = editorAvailabilityOverridesText,
+                onValueChange = { editorAvailabilityOverridesText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EventScreenTags.UPDATE_AVAILABILITY_OVERRIDES_INPUT),
+                label = { Text("Availability overrides") },
+                supportingText = { Text("Формат: targetType|targetRef|availabilityStatus") },
+                minLines = 3,
+            )
+            Button(
+                onClick = {
+                    eventBindings.onUpdateEvent(
+                        EventUpdateForm(
+                            eventId = selectedEditableEvent.id,
+                            title = editorTitle,
+                            description = editorDescription,
+                            startsAtIso = editorStartsAt,
+                            doorsOpenAtIso = editorDoorsOpenAt,
+                            endsAtIso = editorEndsAt,
+                            currency = editorCurrency,
+                            visibilityKey = editorVisibilityKey,
+                            priceZonesText = editorPriceZonesText,
+                            pricingAssignmentsText = editorPricingAssignmentsText,
+                            availabilityOverridesText = editorAvailabilityOverridesText,
+                        ),
+                    )
+                },
+                enabled = editorTitle.trim().length >= 3 && !eventState.isSubmitting,
+                modifier = Modifier.testTag(EventScreenTags.UPDATE_SAVE_BUTTON),
+            ) {
+                Text("Сохранить override-ы")
             }
         }
     }
@@ -396,12 +640,14 @@ private fun EventErrorBanner(
  *
  * @property event Доменная модель события.
  * @property isSubmitting Показывает активную event mutation.
+ * @property onEditEvent Команда загрузки события в editor surface.
  * @property onPublishEvent Команда публикации draft-события.
  */
 @Composable
 private fun OrganizerEventCard(
     event: OrganizerEvent,
     isSubmitting: Boolean,
+    onEditEvent: (OrganizerEvent) -> Unit,
     onPublishEvent: (String) -> Unit,
 ) {
     Surface(
@@ -436,13 +682,28 @@ private fun OrganizerEventCard(
                 text = "Snapshot: rows=${event.hallSnapshot.layout.rows.size}, zones=${event.hallSnapshot.layout.zones.size}, tables=${event.hallSnapshot.layout.tables.size}",
                 style = MaterialTheme.typography.bodySmall,
             )
-            if (event.status == EventStatus.DRAFT) {
-                Button(
-                    onClick = { onPublishEvent(event.id) },
+            Text(
+                text = EventOverrideEditorCodec.summary(event),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { onEditEvent(event) },
                     enabled = !isSubmitting,
-                    modifier = Modifier.testTag("${EventScreenTags.PUBLISH_BUTTON_PREFIX}${event.id}"),
+                    modifier = Modifier.testTag("${EventScreenTags.EDIT_BUTTON_PREFIX}${event.id}"),
                 ) {
-                    Text("Опубликовать")
+                    Text("Редактировать")
+                }
+                if (event.status == EventStatus.DRAFT) {
+                    Button(
+                        onClick = { onPublishEvent(event.id) },
+                        enabled = !isSubmitting,
+                        modifier = Modifier.testTag("${EventScreenTags.PUBLISH_BUTTON_PREFIX}${event.id}"),
+                    ) {
+                        Text("Опубликовать")
+                    }
                 }
             }
         }
@@ -534,22 +795,22 @@ internal object EventScreenTags {
     /** Тег пустого состояния templates. */
     const val TEMPLATE_EMPTY = "event.template.empty"
 
-    /** Тег поля названия события. */
+    /** Тег поля названия события для create form. */
     const val TITLE_INPUT = "event.form.title"
 
-    /** Тег поля описания события. */
+    /** Тег поля описания события для create form. */
     const val DESCRIPTION_INPUT = "event.form.description"
 
-    /** Тег поля времени старта. */
+    /** Тег поля времени старта для create form. */
     const val STARTS_AT_INPUT = "event.form.startsAt"
 
-    /** Тег поля времени открытия дверей. */
+    /** Тег поля времени открытия дверей для create form. */
     const val DOORS_OPEN_AT_INPUT = "event.form.doorsOpenAt"
 
-    /** Тег поля времени окончания. */
+    /** Тег поля времени окончания для create form. */
     const val ENDS_AT_INPUT = "event.form.endsAt"
 
-    /** Тег поля валюты. */
+    /** Тег поля валюты для create form. */
     const val CURRENCY_INPUT = "event.form.currency"
 
     /** Тег кнопки создания события. */
@@ -557,6 +818,39 @@ internal object EventScreenTags {
 
     /** Тег пустого состояния списка событий. */
     const val EVENTS_EMPTY = "event.list.empty"
+
+    /** Тег пустого состояния editor-а. */
+    const val EDITOR_EMPTY = "event.editor.empty"
+
+    /** Тег поля названия события для update form. */
+    const val UPDATE_TITLE_INPUT = "event.update.title"
+
+    /** Тег поля описания события для update form. */
+    const val UPDATE_DESCRIPTION_INPUT = "event.update.description"
+
+    /** Тег поля времени старта для update form. */
+    const val UPDATE_STARTS_AT_INPUT = "event.update.startsAt"
+
+    /** Тег поля времени открытия дверей для update form. */
+    const val UPDATE_DOORS_OPEN_AT_INPUT = "event.update.doorsOpenAt"
+
+    /** Тег поля времени окончания для update form. */
+    const val UPDATE_ENDS_AT_INPUT = "event.update.endsAt"
+
+    /** Тег поля валюты для update form. */
+    const val UPDATE_CURRENCY_INPUT = "event.update.currency"
+
+    /** Тег поля event-local price zones. */
+    const val UPDATE_PRICE_ZONES_INPUT = "event.update.priceZones"
+
+    /** Тег поля pricing assignments. */
+    const val UPDATE_PRICING_ASSIGNMENTS_INPUT = "event.update.pricingAssignments"
+
+    /** Тег поля availability overrides. */
+    const val UPDATE_AVAILABILITY_OVERRIDES_INPUT = "event.update.availabilityOverrides"
+
+    /** Тег кнопки сохранения update form. */
+    const val UPDATE_SAVE_BUTTON = "event.update.save"
 
     /** Префикс тегов selector-а workspace. */
     const val WORKSPACE_SELECTOR_PREFIX = "event.workspace."
@@ -567,8 +861,14 @@ internal object EventScreenTags {
     /** Префикс тегов selector-а template. */
     const val TEMPLATE_SELECTOR_PREFIX = "event.template."
 
-    /** Префикс тегов selector-а visibility. */
+    /** Префикс тегов selector-а visibility для create form. */
     const val VISIBILITY_SELECTOR_PREFIX = "event.visibility."
+
+    /** Префикс тегов selector-а visibility для update form. */
+    const val UPDATE_VISIBILITY_SELECTOR_PREFIX = "event.update.visibility."
+
+    /** Префикс тегов edit-кнопок event list-а. */
+    const val EDIT_BUTTON_PREFIX = "event.edit."
 
     /** Префикс тегов publish-кнопок event list-а. */
     const val PUBLISH_BUTTON_PREFIX = "event.publish."

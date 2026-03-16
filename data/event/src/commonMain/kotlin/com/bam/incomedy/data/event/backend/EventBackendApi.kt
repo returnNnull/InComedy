@@ -5,11 +5,17 @@ import com.bam.incomedy.core.backend.backendJson
 import com.bam.incomedy.core.backend.bearer
 import com.bam.incomedy.core.backend.createBackendHttpClient
 import com.bam.incomedy.core.backend.ensureBackendSuccess
+import com.bam.incomedy.domain.event.EventAvailabilityOverride
+import com.bam.incomedy.domain.event.EventAvailabilityStatus
 import com.bam.incomedy.domain.event.EventDraft
 import com.bam.incomedy.domain.event.EventHallSnapshot
 import com.bam.incomedy.domain.event.EventManagementService
+import com.bam.incomedy.domain.event.EventOverrideTargetType
+import com.bam.incomedy.domain.event.EventPriceZone
+import com.bam.incomedy.domain.event.EventPricingAssignment
 import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
+import com.bam.incomedy.domain.event.EventUpdateDraft
 import com.bam.incomedy.domain.event.EventVisibility
 import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.venue.HallLayout
@@ -23,6 +29,7 @@ import com.bam.incomedy.domain.venue.HallZone
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -56,6 +63,20 @@ class EventBackendApi(
         }
     }
 
+    /** Загружает полные details конкретного organizer event. */
+    suspend fun getEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/events/$eventId") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<EventResponse>().toDomain()
+        }
+    }
+
     /** Создает organizer event draft с frozen snapshot схемы зала. */
     suspend fun createEvent(
         accessToken: String,
@@ -66,6 +87,23 @@ class EventBackendApi(
                 bearer(accessToken)
                 contentType(ContentType.Application.Json)
                 setBody(CreateEventRequest.fromDomain(draft))
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<EventResponse>().toDomain()
+        }
+    }
+
+    /** Обновляет organizer event details и event-local overrides. */
+    suspend fun updateEvent(
+        accessToken: String,
+        eventId: String,
+        draft: EventUpdateDraft,
+    ): Result<OrganizerEvent> {
+        return runCatching {
+            val response = httpClient.patch("$baseUrl/api/v1/events/$eventId") {
+                bearer(accessToken)
+                contentType(ContentType.Application.Json)
+                setBody(UpdateEventRequest.fromDomain(draft))
             }
             ensureBackendSuccess(response, parser)
             response.body<EventResponse>().toDomain()
@@ -132,6 +170,45 @@ private data class CreateEventRequest(
     }
 }
 
+/** DTO полного organizer event update. */
+@Serializable
+private data class UpdateEventRequest(
+    val title: String,
+    val description: String? = null,
+    @SerialName("starts_at")
+    val startsAt: String,
+    @SerialName("doors_open_at")
+    val doorsOpenAt: String? = null,
+    @SerialName("ends_at")
+    val endsAt: String? = null,
+    val currency: String,
+    val visibility: String,
+    @SerialName("price_zones")
+    val priceZones: List<EventPriceZonePayload> = emptyList(),
+    @SerialName("pricing_assignments")
+    val pricingAssignments: List<EventPricingAssignmentPayload> = emptyList(),
+    @SerialName("availability_overrides")
+    val availabilityOverrides: List<EventAvailabilityOverridePayload> = emptyList(),
+) {
+    companion object {
+        /** Собирает transport request из доменного event update draft-а. */
+        fun fromDomain(draft: EventUpdateDraft): UpdateEventRequest {
+            return UpdateEventRequest(
+                title = draft.title,
+                description = draft.description,
+                startsAt = draft.startsAtIso,
+                doorsOpenAt = draft.doorsOpenAtIso,
+                endsAt = draft.endsAtIso,
+                currency = draft.currency,
+                visibility = draft.visibility.wireName,
+                priceZones = draft.priceZones.map(EventPriceZonePayload::fromDomain),
+                pricingAssignments = draft.pricingAssignments.map(EventPricingAssignmentPayload::fromDomain),
+                availabilityOverrides = draft.availabilityOverrides.map(EventAvailabilityOverridePayload::fromDomain),
+            )
+        }
+    }
+}
+
 /** DTO organizer event. */
 @Serializable
 private data class EventResponse(
@@ -163,6 +240,12 @@ private data class EventResponse(
     val visibility: String,
     @SerialName("hall_snapshot")
     val hallSnapshot: EventHallSnapshotPayload,
+    @SerialName("price_zones")
+    val priceZones: List<EventPriceZonePayload> = emptyList(),
+    @SerialName("pricing_assignments")
+    val pricingAssignments: List<EventPricingAssignmentPayload> = emptyList(),
+    @SerialName("availability_overrides")
+    val availabilityOverrides: List<EventAvailabilityOverridePayload> = emptyList(),
 ) {
     /** Маппит transport event в доменную модель. */
     fun toDomain(): OrganizerEvent {
@@ -184,6 +267,9 @@ private data class EventResponse(
             currency = currency,
             visibility = EventVisibility.fromWireName(visibility) ?: EventVisibility.PUBLIC,
             hallSnapshot = hallSnapshot.toDomain(),
+            priceZones = priceZones.map(EventPriceZonePayload::toDomain),
+            pricingAssignments = pricingAssignments.map(EventPricingAssignmentPayload::toDomain),
+            availabilityOverrides = availabilityOverrides.map(EventAvailabilityOverridePayload::toDomain),
         )
     }
 }
@@ -206,6 +292,112 @@ private data class EventHallSnapshotPayload(
             sourceTemplateId = sourceTemplateId,
             layout = layout.toDomain(),
         )
+    }
+}
+
+/** DTO event-local price zone. */
+@Serializable
+private data class EventPriceZonePayload(
+    val id: String,
+    val name: String,
+    @SerialName("price_minor")
+    val priceMinor: Int,
+    val currency: String,
+    @SerialName("sales_start_at")
+    val salesStartAt: String? = null,
+    @SerialName("sales_end_at")
+    val salesEndAt: String? = null,
+    @SerialName("source_template_price_zone_id")
+    val sourceTemplatePriceZoneId: String? = null,
+) {
+    /** Маппит transport DTO ценовой зоны в доменную модель. */
+    fun toDomain(): EventPriceZone {
+        return EventPriceZone(
+            id = id,
+            name = name,
+            priceMinor = priceMinor,
+            currency = currency,
+            salesStartAtIso = salesStartAt,
+            salesEndAtIso = salesEndAt,
+            sourceTemplatePriceZoneId = sourceTemplatePriceZoneId,
+        )
+    }
+
+    companion object {
+        /** Собирает transport DTO ценовой зоны из доменной модели. */
+        fun fromDomain(zone: EventPriceZone): EventPriceZonePayload {
+            return EventPriceZonePayload(
+                id = zone.id,
+                name = zone.name,
+                priceMinor = zone.priceMinor,
+                currency = zone.currency,
+                salesStartAt = zone.salesStartAtIso,
+                salesEndAt = zone.salesEndAtIso,
+                sourceTemplatePriceZoneId = zone.sourceTemplatePriceZoneId,
+            )
+        }
+    }
+}
+
+/** DTO pricing assignment. */
+@Serializable
+private data class EventPricingAssignmentPayload(
+    @SerialName("target_type")
+    val targetType: String,
+    @SerialName("target_ref")
+    val targetRef: String,
+    @SerialName("event_price_zone_id")
+    val eventPriceZoneId: String,
+) {
+    /** Маппит transport DTO assignment-а в доменную модель. */
+    fun toDomain(): EventPricingAssignment {
+        return EventPricingAssignment(
+            targetType = EventOverrideTargetType.fromWireName(targetType) ?: EventOverrideTargetType.SEAT,
+            targetRef = targetRef,
+            eventPriceZoneId = eventPriceZoneId,
+        )
+    }
+
+    companion object {
+        /** Собирает transport DTO assignment-а из доменной модели. */
+        fun fromDomain(assignment: EventPricingAssignment): EventPricingAssignmentPayload {
+            return EventPricingAssignmentPayload(
+                targetType = assignment.targetType.wireName,
+                targetRef = assignment.targetRef,
+                eventPriceZoneId = assignment.eventPriceZoneId,
+            )
+        }
+    }
+}
+
+/** DTO availability override. */
+@Serializable
+private data class EventAvailabilityOverridePayload(
+    @SerialName("target_type")
+    val targetType: String,
+    @SerialName("target_ref")
+    val targetRef: String,
+    @SerialName("availability_status")
+    val availabilityStatus: String,
+) {
+    /** Маппит transport DTO availability override-а в доменную модель. */
+    fun toDomain(): EventAvailabilityOverride {
+        return EventAvailabilityOverride(
+            targetType = EventOverrideTargetType.fromWireName(targetType) ?: EventOverrideTargetType.SEAT,
+            targetRef = targetRef,
+            availabilityStatus = EventAvailabilityStatus.fromWireName(availabilityStatus) ?: EventAvailabilityStatus.BLOCKED,
+        )
+    }
+
+    companion object {
+        /** Собирает transport DTO availability override-а из доменной модели. */
+        fun fromDomain(availabilityOverride: EventAvailabilityOverride): EventAvailabilityOverridePayload {
+            return EventAvailabilityOverridePayload(
+                targetType = availabilityOverride.targetType.wireName,
+                targetRef = availabilityOverride.targetRef,
+                availabilityStatus = availabilityOverride.availabilityStatus.wireName,
+            )
+        }
     }
 }
 
@@ -348,14 +540,14 @@ private data class HallTablePayload(
     }
 }
 
-/** DTO служебной зоны. */
+/** DTO service area. */
 @Serializable
 private data class HallServiceAreaPayload(
     val id: String,
     val name: String,
     val kind: String,
 ) {
-    /** Маппит transport DTO служебной зоны в доменную модель. */
+    /** Маппит transport DTO service area в доменную модель. */
     fun toDomain(): HallServiceArea {
         return HallServiceArea(
             id = id,

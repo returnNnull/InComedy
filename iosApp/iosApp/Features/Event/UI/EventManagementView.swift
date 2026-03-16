@@ -17,26 +17,59 @@ struct EventManagementView: View {
     /// Выбранный hall template.
     @State private var selectedTemplateId: String = ""
 
-    /// Название события.
+    /// Название события для create form.
     @State private var eventTitle: String = ""
 
-    /// Описание события.
+    /// Описание события для create form.
     @State private var eventDescription: String = ""
 
-    /// ISO timestamp начала события.
+    /// ISO timestamp начала события для create form.
     @State private var eventStartsAt: String = "2026-04-01T19:00:00+03:00"
 
-    /// ISO timestamp открытия дверей.
+    /// ISO timestamp открытия дверей для create form.
     @State private var eventDoorsOpenAt: String = "2026-04-01T18:30:00+03:00"
 
-    /// ISO timestamp окончания.
+    /// ISO timestamp окончания для create form.
     @State private var eventEndsAt: String = "2026-04-01T21:00:00+03:00"
 
-    /// Валюта события.
+    /// Валюта события для create form.
     @State private var eventCurrency: String = "RUB"
 
-    /// Visibility события.
+    /// Visibility события для create form.
     @State private var eventVisibilityKey: String = "public"
+
+    /// Выбранное событие для override editor-а.
+    @State private var selectedEditableEventId: String = ""
+
+    /// Название события для update form.
+    @State private var editorTitle: String = ""
+
+    /// Описание события для update form.
+    @State private var editorDescription: String = ""
+
+    /// ISO timestamp начала для update form.
+    @State private var editorStartsAt: String = ""
+
+    /// ISO timestamp открытия дверей для update form.
+    @State private var editorDoorsOpenAt: String = ""
+
+    /// ISO timestamp окончания для update form.
+    @State private var editorEndsAt: String = ""
+
+    /// Валюта для update form.
+    @State private var editorCurrency: String = "RUB"
+
+    /// Visibility для update form.
+    @State private var editorVisibilityKey: String = "public"
+
+    /// Текст event-local price zones.
+    @State private var editorPriceZones: String = ""
+
+    /// Текст pricing assignments.
+    @State private var editorPricingAssignments: String = ""
+
+    /// Текст availability overrides.
+    @State private var editorAvailabilityOverrides: String = ""
 
     /// Возвращает площадки выбранного workspace.
     private var filteredVenues: [EventVenueItem] {
@@ -53,14 +86,19 @@ struct EventManagementView: View {
         selectedVenue?.hallTemplates.first(where: { $0.id == selectedTemplateId }) ?? selectedVenue?.hallTemplates.first
     }
 
-    /// Отрисовывает organizer event surface с формой создания и списком событий.
+    /// Возвращает выбранное событие для editor-а или первое доступное.
+    private var selectedEditableEvent: EventItem? {
+        model.events.first(where: { $0.id == selectedEditableEventId }) ?? model.events.first
+    }
+
+    /// Отрисовывает organizer event surface с create form, списком и override editor-ом.
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("События и snapshot схемы")
                     .font(.title3.bold())
                     .accessibilityIdentifier("event.root")
-                Text("Organizer slice для create/list/publish и frozen EventHallSnapshot")
+                Text("Organizer slice для create/list/publish и event-local pricing/availability overrides")
                     .foregroundColor(.secondary)
 
                 if let errorMessage = model.errorMessage {
@@ -202,9 +240,104 @@ struct EventManagementView: View {
                             EventCardView(
                                 event: event,
                                 isSubmitting: model.isSubmitting,
+                                onEdit: { loadEventIntoEditor(event) },
                                 onPublish: { model.publishEvent(eventId: event.id) }
                             )
                         }
+                    }
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Редактор override-ов события")
+                        .font(.headline)
+                    if let selectedEditableEvent {
+                        Text("Площадка: \(selectedEditableEvent.venueName) · snapshot: \(selectedEditableEvent.sourceTemplateName)")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Доступные target refs: \(selectedEditableEvent.targetHintText)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text("Текущий override state: \(selectedEditableEvent.overrideSummaryText)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        TextField("Название события", text: $editorTitle)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("event.update.title")
+                        TextField("Описание", text: $editorDescription, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(2...4)
+                            .accessibilityIdentifier("event.update.description")
+                        TextField("Начало (ISO)", text: $editorStartsAt)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("event.update.startsAt")
+                        TextField("Открытие дверей (ISO)", text: $editorDoorsOpenAt)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("event.update.doorsOpenAt")
+                        TextField("Окончание (ISO)", text: $editorEndsAt)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("event.update.endsAt")
+                        TextField("Валюта", text: $editorCurrency)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("event.update.currency")
+                        EventSelectionStrip(
+                            items: [
+                                EventSelectionStripItem(id: "public", title: "Публичное"),
+                                EventSelectionStripItem(id: "private", title: "Приватное")
+                            ],
+                            selectedKey: editorVisibilityKey,
+                            onSelect: { editorVisibilityKey = $0 },
+                            tagPrefix: "event.update.visibility."
+                        )
+                        TextField(
+                            "Event price zones `id|name|priceMinor|currency|salesStartAt|salesEndAt|sourceTemplatePriceZoneId`",
+                            text: $editorPriceZones,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(3...6)
+                        .accessibilityIdentifier("event.update.priceZones")
+                        TextField(
+                            "Pricing assignments `targetType|targetRef|eventPriceZoneId`",
+                            text: $editorPricingAssignments,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(3...6)
+                        .accessibilityIdentifier("event.update.pricingAssignments")
+                        TextField(
+                            "Availability overrides `targetType|targetRef|availabilityStatus`",
+                            text: $editorAvailabilityOverrides,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(3...6)
+                        .accessibilityIdentifier("event.update.availabilityOverrides")
+                        Button("Сохранить override-ы") {
+                            model.updateEvent(
+                                eventId: selectedEditableEvent.id,
+                                title: editorTitle,
+                                description: editorDescription,
+                                startsAtIso: editorStartsAt,
+                                doorsOpenAtIso: editorDoorsOpenAt,
+                                endsAtIso: editorEndsAt,
+                                currency: editorCurrency,
+                                visibilityKey: editorVisibilityKey,
+                                priceZonesText: editorPriceZones,
+                                pricingAssignmentsText: editorPricingAssignments,
+                                availabilityOverridesText: editorAvailabilityOverrides
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(
+                            editorTitle.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 ||
+                            model.isSubmitting
+                        )
+                        .accessibilityIdentifier("event.update.save")
+                    } else {
+                        Text("Выберите или создайте событие, чтобы настроить event-local override-ы.")
+                            .foregroundColor(.secondary)
+                            .accessibilityIdentifier("event.editor.empty")
                     }
                 }
             }
@@ -215,6 +348,7 @@ struct EventManagementView: View {
             syncWorkspaceSelection()
             syncVenueSelection()
             syncTemplateSelection()
+            syncEditorSelection()
         }
         .onChange(of: workspaces.map(\.id)) { _, _ in
             syncWorkspaceSelection()
@@ -222,6 +356,9 @@ struct EventManagementView: View {
         .onChange(of: model.venues.map(\.id)) { _, _ in
             syncVenueSelection()
             syncTemplateSelection()
+        }
+        .onChange(of: model.events.map(\.id)) { _, _ in
+            syncEditorSelection()
         }
         .onChange(of: selectedWorkspaceId) { _, _ in
             syncVenueSelection()
@@ -256,6 +393,44 @@ struct EventManagementView: View {
             selectedTemplateId = selectedVenue.hallTemplates.first?.id ?? ""
         }
     }
+
+    /// Выравнивает выбранное событие для override editor-а.
+    private func syncEditorSelection() {
+        if selectedEditableEventId.isEmpty || !model.events.contains(where: { $0.id == selectedEditableEventId }) {
+            if let firstEvent = model.events.first {
+                loadEventIntoEditor(firstEvent)
+            } else {
+                selectedEditableEventId = ""
+                editorTitle = ""
+                editorDescription = ""
+                editorStartsAt = ""
+                editorDoorsOpenAt = ""
+                editorEndsAt = ""
+                editorCurrency = "RUB"
+                editorVisibilityKey = "public"
+                editorPriceZones = ""
+                editorPricingAssignments = ""
+                editorAvailabilityOverrides = ""
+            }
+        }
+    }
+
+    /// Загружает выбранное событие в text-based override editor.
+    ///
+    /// - Parameter event: Событие, которое нужно редактировать.
+    private func loadEventIntoEditor(_ event: EventItem) {
+        selectedEditableEventId = event.id
+        editorTitle = event.title
+        editorDescription = event.description ?? ""
+        editorStartsAt = event.startsAtIso
+        editorDoorsOpenAt = event.doorsOpenAtIso ?? ""
+        editorEndsAt = event.endsAtIso ?? ""
+        editorCurrency = event.currency
+        editorVisibilityKey = event.visibilityKey
+        editorPriceZones = event.priceZonesText
+        editorPricingAssignments = event.pricingAssignmentsText
+        editorAvailabilityOverrides = event.availabilityOverridesText
+    }
 }
 
 /// Баннер ошибки organizer event screen.
@@ -289,13 +464,16 @@ private struct EventCardView: View {
     /// Отображаемое organizer event.
     let event: EventItem
 
-    /// Показывает активную create/publish мутацию.
+    /// Показывает активную create/publish/update мутацию.
     let isSubmitting: Bool
+
+    /// Команда загрузки события в editor.
+    let onEdit: () -> Void
 
     /// Команда публикации draft-события.
     let onPublish: () -> Void
 
-    /// Отрисовывает карточку события и publish action для draft.
+    /// Отрисовывает карточку события, edit action и publish action для draft.
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(event.title)
@@ -310,13 +488,23 @@ private struct EventCardView: View {
                 .foregroundColor(.secondary)
             Text("Snapshot: \(event.layoutSummary)")
                 .font(.subheadline)
-            if event.statusKey == "draft" {
-                Button("Опубликовать") {
-                    onPublish()
+            Text(event.overrideSummaryText)
+                .font(.subheadline)
+            HStack(spacing: 8) {
+                Button("Редактировать") {
+                    onEdit()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .disabled(isSubmitting)
-                .accessibilityIdentifier("event.publish.\(event.id)")
+                .accessibilityIdentifier("event.edit.\(event.id)")
+                if event.statusKey == "draft" {
+                    Button("Опубликовать") {
+                        onPublish()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isSubmitting)
+                    .accessibilityIdentifier("event.publish.\(event.id)")
+                }
             }
         }
         .padding(12)

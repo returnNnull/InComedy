@@ -1,7 +1,10 @@
 package com.bam.incomedy.server.support
 
 import com.bam.incomedy.server.db.EventRepository
+import com.bam.incomedy.server.db.StoredEventAvailabilityOverride
 import com.bam.incomedy.server.db.StoredEventHallSnapshot
+import com.bam.incomedy.server.db.StoredEventPriceZone
+import com.bam.incomedy.server.db.StoredEventPricingAssignment
 import com.bam.incomedy.server.db.StoredOrganizerEvent
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -9,8 +12,8 @@ import java.util.UUID
 /**
  * In-memory реализация `EventRepository` для route/service тестов organizer event surface.
  *
- * Репозиторий хранит события и frozen snapshots без реальной БД, чтобы тесты могли детерминированно
- * проверять create/list/publish сценарии и стабильность snapshot после изменений template.
+ * Репозиторий хранит события, frozen snapshots и event-local override-ы без реальной БД, чтобы
+ * тесты могли детерминированно проверять create/get/update/publish сценарии.
  */
 class InMemoryEventRepository : EventRepository {
     /** Mutable события по их id. */
@@ -76,6 +79,33 @@ class InMemoryEventRepository : EventRepository {
         return eventsById[eventId]?.toStored(snapshotsById)
     }
 
+    override fun updateEvent(
+        eventId: String,
+        title: String,
+        description: String?,
+        startsAt: OffsetDateTime,
+        doorsOpenAt: OffsetDateTime?,
+        endsAt: OffsetDateTime?,
+        currency: String,
+        visibility: String,
+        priceZones: List<StoredEventPriceZone>,
+        pricingAssignments: List<StoredEventPricingAssignment>,
+        availabilityOverrides: List<StoredEventAvailabilityOverride>,
+    ): StoredOrganizerEvent? {
+        val event = eventsById[eventId] ?: return null
+        event.title = title
+        event.description = description
+        event.startsAt = startsAt
+        event.doorsOpenAt = doorsOpenAt
+        event.endsAt = endsAt
+        event.currency = currency
+        event.visibility = visibility
+        event.priceZones = priceZones.toMutableList()
+        event.pricingAssignments = pricingAssignments.toMutableList()
+        event.availabilityOverrides = availabilityOverrides.toMutableList()
+        return event.toStored(snapshotsById)
+    }
+
     override fun publishEvent(eventId: String): StoredOrganizerEvent? {
         val event = eventsById[eventId] ?: return null
         event.status = "published"
@@ -98,6 +128,9 @@ class InMemoryEventRepository : EventRepository {
         var currency: String,
         var visibility: String,
         val hallSnapshotId: String,
+        var priceZones: MutableList<StoredEventPriceZone> = mutableListOf(),
+        var pricingAssignments: MutableList<StoredEventPricingAssignment> = mutableListOf(),
+        var availabilityOverrides: MutableList<StoredEventAvailabilityOverride> = mutableListOf(),
     ) {
         /** Преобразует mutable запись в read-only stored модель. */
         fun toStored(
@@ -119,6 +152,9 @@ class InMemoryEventRepository : EventRepository {
                 currency = currency,
                 visibility = visibility,
                 hallSnapshot = snapshot,
+                priceZones = priceZones.toList(),
+                pricingAssignments = pricingAssignments.toList(),
+                availabilityOverrides = availabilityOverrides.toList(),
             )
         }
     }

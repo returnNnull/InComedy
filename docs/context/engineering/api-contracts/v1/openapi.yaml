@@ -1195,6 +1195,143 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events/{eventId}:
+    get:
+      tags: [Events]
+      summary: Get organizer event details with frozen snapshot and event-local overrides
+      operationId: getEventById
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Organizer event UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Event details returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEventResponse"
+        "400":
+          description: Invalid event id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage the requested event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or workspace scope not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags: [Events]
+      summary: Replace organizer event details and event-local overrides
+      operationId: patchEventById
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Organizer event UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventRequest"
+      responses:
+        "200":
+          description: Event details updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEventResponse"
+        "400":
+          description: Invalid event id, payload, chronology, or override references
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage the requested event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or workspace scope not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/venues/{venueId}/hall-templates:
     post:
       tags: [Venues]
@@ -2058,6 +2195,125 @@ components:
         visibility:
           type: string
           enum: [public, private]
+    UpdateEventRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - starts_at
+        - currency
+        - visibility
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 120
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        starts_at:
+          type: string
+          format: date-time
+        doors_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          example: RUB
+        visibility:
+          type: string
+          enum: [public, private]
+        price_zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventPriceZoneRequest"
+        pricing_assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventPricingAssignmentRequest"
+        availability_overrides:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventAvailabilityOverrideRequest"
+    EventPriceZoneRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - price_minor
+        - currency
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        sales_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        sales_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        source_template_price_zone_id:
+          type: string
+          nullable: true
+          maxLength: 64
+    EventPricingAssignmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - target_type
+        - target_ref
+        - event_price_zone_id
+      properties:
+        target_type:
+          type: string
+          enum: [seat, row, zone, table]
+        target_ref:
+          type: string
+          minLength: 1
+          maxLength: 64
+        event_price_zone_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+    EventAvailabilityOverrideRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - target_type
+        - target_ref
+        - availability_status
+      properties:
+        target_type:
+          type: string
+          enum: [seat, row, zone, table]
+        target_ref:
+          type: string
+          minLength: 1
+          maxLength: 64
+        availability_status:
+          type: string
+          enum: [available, blocked]
     OrganizerEventResponse:
       type: object
       additionalProperties: false
@@ -2076,6 +2332,9 @@ components:
         - currency
         - visibility
         - hall_snapshot
+        - price_zones
+        - pricing_assignments
+        - availability_overrides
       properties:
         id:
           type: string
@@ -2126,6 +2385,18 @@ components:
           enum: [public, private]
         hall_snapshot:
           $ref: "#/components/schemas/EventHallSnapshotResponse"
+        price_zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventPriceZoneResponse"
+        pricing_assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventPricingAssignmentResponse"
+        availability_overrides:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventAvailabilityOverrideResponse"
     EventHallSnapshotResponse:
       type: object
       additionalProperties: false
@@ -2149,6 +2420,65 @@ components:
           type: string
         layout:
           $ref: "#/components/schemas/HallLayoutResponse"
+    EventPriceZoneResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - price_minor
+        - currency
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price_minor:
+          type: integer
+        currency:
+          type: string
+        sales_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        sales_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        source_template_price_zone_id:
+          type: string
+          nullable: true
+    EventPricingAssignmentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - target_type
+        - target_ref
+        - event_price_zone_id
+      properties:
+        target_type:
+          type: string
+          enum: [seat, row, zone, table]
+        target_ref:
+          type: string
+        event_price_zone_id:
+          type: string
+    EventAvailabilityOverrideResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - target_type
+        - target_ref
+        - availability_status
+      properties:
+        target_type:
+          type: string
+          enum: [seat, row, zone, table]
+        target_ref:
+          type: string
+        availability_status:
+          type: string
+          enum: [available, blocked]
     VenueListResponse:
       type: object
       additionalProperties: false

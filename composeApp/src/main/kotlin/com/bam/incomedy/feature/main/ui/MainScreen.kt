@@ -104,6 +104,21 @@ fun MainScreen(
                     visibilityKey = form.visibilityKey,
                 )
             },
+            onUpdateEvent = { form ->
+                eventViewModel.updateEvent(
+                    eventId = form.eventId,
+                    title = form.title,
+                    description = form.description,
+                    startsAtIso = form.startsAtIso,
+                    doorsOpenAtIso = form.doorsOpenAtIso,
+                    endsAtIso = form.endsAtIso,
+                    currency = form.currency,
+                    visibilityKey = form.visibilityKey,
+                    priceZonesText = form.priceZonesText,
+                    pricingAssignmentsText = form.pricingAssignmentsText,
+                    availabilityOverridesText = form.availabilityOverridesText,
+                )
+            },
             onPublishEvent = eventViewModel::publishEvent,
             onClearError = eventViewModel::clearError,
         ),

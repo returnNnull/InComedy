@@ -1,12 +1,16 @@
 package com.bam.incomedy.feature.event
 
 import com.bam.incomedy.domain.event.EventDraft
+import com.bam.incomedy.domain.event.EventHallSnapshot
 import com.bam.incomedy.domain.event.EventManagementService
+import com.bam.incomedy.domain.event.EventOverrideTargetType
+import com.bam.incomedy.domain.event.EventPriceZone
+import com.bam.incomedy.domain.event.EventPricingAssignment
 import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
+import com.bam.incomedy.domain.event.EventUpdateDraft
 import com.bam.incomedy.domain.event.EventVisibility
 import com.bam.incomedy.domain.event.OrganizerEvent
-import com.bam.incomedy.domain.event.EventHallSnapshot
 import com.bam.incomedy.domain.venue.HallLayout
 import com.bam.incomedy.domain.venue.HallTemplate
 import com.bam.incomedy.domain.venue.HallTemplateStatus
@@ -86,6 +90,49 @@ class EventViewModelTest {
         assertEquals(EventStatus.PUBLISHED, eventService.events.single().status)
         assertEquals(EventStatus.PUBLISHED, viewModel.state.value.events.single().status)
     }
+
+    /** Проверяет обновление organizer event details и event-local price assignments. */
+    @Test
+    fun updateEventRefreshesList() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val eventService = FakeEventManagementService()
+        val viewModel = EventViewModel(
+            eventManagementService = eventService,
+            venueManagementService = FakeVenueManagementService(),
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.updateEvent(
+            eventId = "event-1",
+            draft = EventUpdateDraft(
+                title = "Updated Event",
+                startsAtIso = "2026-03-20T19:00:00+03:00",
+                currency = "RUB",
+                visibility = EventVisibility.PUBLIC,
+                priceZones = listOf(
+                    EventPriceZone(
+                        id = "event-vip",
+                        name = "VIP",
+                        priceMinor = 3_500,
+                        currency = "RUB",
+                    ),
+                ),
+                pricingAssignments = listOf(
+                    EventPricingAssignment(
+                        targetType = EventOverrideTargetType.ROW,
+                        targetRef = "row-a",
+                        eventPriceZoneId = "event-vip",
+                    ),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals("Updated Event", eventService.events.single().title)
+        assertEquals(1, viewModel.state.value.events.single().priceZones.size)
+        assertEquals("event-vip", viewModel.state.value.events.single().priceZones.single().id)
+    }
 }
 
 /**
@@ -121,6 +168,13 @@ private class FakeEventManagementService : EventManagementService {
 
     override suspend fun listEvents(accessToken: String): Result<List<OrganizerEvent>> = Result.success(events.toList())
 
+    override suspend fun getEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return Result.success(events.first { it.id == eventId })
+    }
+
     override suspend fun createEvent(
         accessToken: String,
         draft: EventDraft,
@@ -142,7 +196,34 @@ private class FakeEventManagementService : EventManagementService {
         eventId: String,
     ): Result<OrganizerEvent> {
         val updated = events.first { it.id == eventId }.copy(status = EventStatus.PUBLISHED)
-        events.replaceAll { event -> if (event.id == eventId) updated else event }
+        val index = events.indexOfFirst { it.id == eventId }
+        if (index >= 0) {
+            events[index] = updated
+        }
+        return Result.success(updated)
+    }
+
+    override suspend fun updateEvent(
+        accessToken: String,
+        eventId: String,
+        draft: EventUpdateDraft,
+    ): Result<OrganizerEvent> {
+        val updated = events.first { it.id == eventId }.copy(
+            title = draft.title,
+            description = draft.description,
+            startsAtIso = draft.startsAtIso,
+            doorsOpenAtIso = draft.doorsOpenAtIso,
+            endsAtIso = draft.endsAtIso,
+            currency = draft.currency,
+            visibility = draft.visibility,
+            priceZones = draft.priceZones,
+            pricingAssignments = draft.pricingAssignments,
+            availabilityOverrides = draft.availabilityOverrides,
+        )
+        val index = events.indexOfFirst { it.id == eventId }
+        if (index >= 0) {
+            events[index] = updated
+        }
         return Result.success(updated)
     }
 }

@@ -1,9 +1,14 @@
 package com.bam.incomedy.server.events
 
 import com.bam.incomedy.domain.event.EventDraft
+import com.bam.incomedy.domain.event.EventOverrideValidator
 import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
+import com.bam.incomedy.domain.event.EventUpdateDraft
 import com.bam.incomedy.server.db.EventRepository
+import com.bam.incomedy.server.db.StoredEventAvailabilityOverride
+import com.bam.incomedy.server.db.StoredEventPriceZone
+import com.bam.incomedy.server.db.StoredEventPricingAssignment
 import com.bam.incomedy.server.db.StoredOrganizerEvent
 import com.bam.incomedy.server.db.VenueRepository
 import com.bam.incomedy.server.db.WorkspacePermissionRole
@@ -14,12 +19,12 @@ import java.time.format.DateTimeParseException
 /**
  * Сервис organizer event management bounded context-а.
  *
- * Сервис отделяет permission policy и frozen snapshot orchestration от HTTP-роутов, чтобы
- * создание и публикация событий не дублировали workspace/venue/template scope validation.
+ * Сервис отделяет permission policy, frozen snapshot orchestration и event-local override
+ * validation от HTTP-роутов, чтобы `events` не смешивались с `ticketing`.
  *
  * @property workspaceRepository Репозиторий organizer workspace access policy.
  * @property venueRepository Репозиторий площадок и hall templates.
- * @property eventRepository Репозиторий organizer events и snapshot-ов.
+ * @property eventRepository Репозиторий organizer events, snapshot-ов и override-ов.
  */
 class OrganizerEventService(
     private val workspaceRepository: WorkspaceRepository,
@@ -28,6 +33,16 @@ class OrganizerEventService(
 ) {
     /** Возвращает события, доступные текущему пользователю по active memberships. */
     fun listEvents(userId: String): List<StoredOrganizerEvent> = eventRepository.listEvents(userId)
+
+    /** Возвращает одно событие с event-local overrides после проверки owner/manager scope. */
+    fun getEvent(
+        actorUserId: String,
+        eventId: String,
+    ): StoredOrganizerEvent {
+        val event = eventRepository.findEvent(eventId) ?: throw EventNotFoundException(eventId)
+        requireManageEventAccess(actorUserId, event.workspaceId)
+        return event
+    }
 
     /** Создает draft-событие и сразу замораживает hall snapshot выбранного template. */
     fun createEvent(
@@ -88,6 +103,86 @@ class OrganizerEventService(
             sourceTemplateName = template.name,
             snapshotJson = template.layoutJson,
         )
+    }
+
+    /** Обновляет organizer event details и event-local overrides поверх frozen snapshot. */
+    fun updateEvent(
+        actorUserId: String,
+        eventId: String,
+        draft: EventUpdateDraft,
+    ): StoredOrganizerEvent {
+        val event = eventRepository.findEvent(eventId) ?: throw EventNotFoundException(eventId)
+        requireManageEventAccess(actorUserId, event.workspaceId)
+        if (event.status == EventStatus.CANCELED.wireName) {
+            throw EventValidationException("Нельзя редактировать отмененное событие")
+        }
+        val validationError = EventOverrideValidator.validateEventUpdateDraft(
+            draft = draft,
+            snapshotLayout = decodeStoredSnapshotLayout(event.hallSnapshot.snapshotJson).toDomain(),
+        )
+        if (validationError != null) {
+            throw EventValidationException(validationError)
+        }
+        val startsAt = parseTimestamp(
+            value = draft.startsAtIso,
+            safeMessage = "Некорректный формат времени начала события",
+        )
+        val doorsOpenAt = draft.doorsOpenAtIso?.let {
+            parseTimestamp(
+                value = it,
+                safeMessage = "Некорректный формат времени открытия дверей",
+            )
+        }
+        val endsAt = draft.endsAtIso?.let {
+            parseTimestamp(
+                value = it,
+                safeMessage = "Некорректный формат времени окончания события",
+            )
+        }
+        validateChronology(
+            startsAt = startsAt,
+            doorsOpenAt = doorsOpenAt,
+            endsAt = endsAt,
+        )
+        return eventRepository.updateEvent(
+            eventId = eventId,
+            title = draft.title.trim(),
+            description = draft.description?.trim()?.takeIf(String::isNotBlank),
+            startsAt = startsAt,
+            doorsOpenAt = doorsOpenAt,
+            endsAt = endsAt,
+            currency = draft.currency.trim().uppercase(),
+            visibility = draft.visibility.wireName,
+            priceZones = draft.priceZones.map { zone ->
+                StoredEventPriceZone(
+                    id = zone.id,
+                    name = zone.name,
+                    priceMinor = zone.priceMinor,
+                    currency = zone.currency,
+                    salesStartAt = zone.salesStartAtIso?.let {
+                        parseTimestamp(it, "Некорректный формат sales start у event price zone")
+                    },
+                    salesEndAt = zone.salesEndAtIso?.let {
+                        parseTimestamp(it, "Некорректный формат sales end у event price zone")
+                    },
+                    sourceTemplatePriceZoneId = zone.sourceTemplatePriceZoneId,
+                )
+            },
+            pricingAssignments = draft.pricingAssignments.map { assignment ->
+                StoredEventPricingAssignment(
+                    targetType = assignment.targetType.wireName,
+                    targetRef = assignment.targetRef,
+                    eventPriceZoneId = assignment.eventPriceZoneId,
+                )
+            },
+            availabilityOverrides = draft.availabilityOverrides.map { availabilityOverride ->
+                StoredEventAvailabilityOverride(
+                    targetType = availabilityOverride.targetType.wireName,
+                    targetRef = availabilityOverride.targetRef,
+                    availabilityStatus = availabilityOverride.availabilityStatus.wireName,
+                )
+            },
+        ) ?: throw EventNotFoundException(eventId)
     }
 
     /** Публикует существующий draft-событие после проверки owner/manager доступа к workspace. */

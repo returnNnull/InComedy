@@ -9,8 +9,8 @@ import javax.sql.DataSource
 /**
  * PostgreSQL-реализация organizer event persistence.
  *
- * Репозиторий изолирует создание/list/publish событий и frozen hall snapshots от venue/workspace
- * persistence, чтобы новый bounded context не расширял существующие repository-классы.
+ * Репозиторий изолирует event create/list/detail/update/publish и хранение event-local override-ов
+ * от venue/workspace persistence, чтобы `events` slice не размывался в сторону ticketing.
  */
 class PostgresEventRepository(
     private val dataSource: DataSource,
@@ -48,7 +48,13 @@ class PostgresEventRepository(
             """.trimIndent()
             return connection.prepareStatement(sql).use { statement ->
                 statement.setObject(1, UUID.fromString(userId))
-                statement.executeQuery().use(::loadEventList)
+                statement.executeQuery().use { result ->
+                    buildList {
+                        while (result.next()) {
+                            add(enrichEvent(connection, result.toStoredOrganizerEventBase()))
+                        }
+                    }
+                }
             }
         }
     }
@@ -142,9 +148,71 @@ class PostgresEventRepository(
         }
     }
 
-    /** Возвращает одно событие вместе со snapshot. */
+    /** Возвращает одно событие вместе со snapshot и event-local overrides. */
     override fun findEvent(eventId: String): StoredOrganizerEvent? {
         dataSource.connection.use { connection ->
+            return loadEvent(connection, eventId)
+        }
+    }
+
+    /** Полностью заменяет event-local organizer configuration поверх frozen snapshot. */
+    override fun updateEvent(
+        eventId: String,
+        title: String,
+        description: String?,
+        startsAt: OffsetDateTime,
+        doorsOpenAt: OffsetDateTime?,
+        endsAt: OffsetDateTime?,
+        currency: String,
+        visibility: String,
+        priceZones: List<StoredEventPriceZone>,
+        pricingAssignments: List<StoredEventPricingAssignment>,
+        availabilityOverrides: List<StoredEventAvailabilityOverride>,
+    ): StoredOrganizerEvent? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                connection.prepareStatement(
+                    """
+                    UPDATE organizer_events
+                    SET
+                        title = ?,
+                        description = ?,
+                        starts_at = ?,
+                        doors_open_at = ?,
+                        ends_at = ?,
+                        currency = ?,
+                        visibility = ?,
+                        updated_at = NOW()
+                    WHERE id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, title)
+                    statement.setString(2, description)
+                    statement.setObject(3, startsAt)
+                    statement.setObject(4, doorsOpenAt)
+                    statement.setObject(5, endsAt)
+                    statement.setString(6, currency)
+                    statement.setString(7, visibility)
+                    statement.setObject(8, UUID.fromString(eventId))
+                    if (statement.executeUpdate() == 0) {
+                        connection.rollback()
+                        return null
+                    }
+                }
+
+                deleteOverrideCollections(connection, eventId)
+                insertPriceZones(connection, eventId, priceZones)
+                insertPricingAssignments(connection, eventId, pricingAssignments)
+                insertAvailabilityOverrides(connection, eventId, availabilityOverrides)
+
+                connection.commit()
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
             return loadEvent(connection, eventId)
         }
     }
@@ -168,7 +236,7 @@ class PostgresEventRepository(
         }
     }
 
-    /** Загружает одно событие вместе со snapshot по его id. */
+    /** Загружает одно событие вместе со snapshot и event-local overrides по его id. */
     private fun loadEvent(
         connection: Connection,
         eventId: String,
@@ -201,22 +269,248 @@ class PostgresEventRepository(
             statement.setObject(1, UUID.fromString(eventId))
             statement.executeQuery().use { result ->
                 if (!result.next()) return@use null
-                result.toStoredOrganizerEvent()
+                enrichEvent(connection, result.toStoredOrganizerEventBase())
             }
         }
     }
 
-    /** Преобразует result set списка в read-only stored модели. */
-    private fun loadEventList(result: ResultSet): List<StoredOrganizerEvent> {
-        return buildList {
-            while (result.next()) {
-                add(result.toStoredOrganizerEvent())
+    /** Подгружает event-local override collections к базовому stored event. */
+    private fun enrichEvent(
+        connection: Connection,
+        baseEvent: StoredOrganizerEvent,
+    ): StoredOrganizerEvent {
+        return baseEvent.copy(
+            priceZones = loadPriceZones(connection, baseEvent.id),
+            pricingAssignments = loadPricingAssignments(connection, baseEvent.id),
+            availabilityOverrides = loadAvailabilityOverrides(connection, baseEvent.id),
+        )
+    }
+
+    /** Загружает event-local ценовые зоны в сохраненном порядке. */
+    private fun loadPriceZones(
+        connection: Connection,
+        eventId: String,
+    ): List<StoredEventPriceZone> {
+        return connection.prepareStatement(
+            """
+            SELECT
+                id,
+                name,
+                price_minor,
+                currency,
+                sales_start_at,
+                sales_end_at,
+                source_template_price_zone_id
+            FROM event_price_zones
+            WHERE event_id = ?
+            ORDER BY sort_order, id
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            StoredEventPriceZone(
+                                id = result.getString("id"),
+                                name = result.getString("name"),
+                                priceMinor = result.getInt("price_minor"),
+                                currency = result.getString("currency"),
+                                salesStartAt = result.getObject("sales_start_at", OffsetDateTime::class.java),
+                                salesEndAt = result.getObject("sales_end_at", OffsetDateTime::class.java),
+                                sourceTemplatePriceZoneId = result.getString("source_template_price_zone_id"),
+                            ),
+                        )
+                    }
+                }
             }
         }
     }
 
-    /** Маппит текущую строку result set в stored organizer event. */
-    private fun ResultSet.toStoredOrganizerEvent(): StoredOrganizerEvent {
+    /** Загружает event-local pricing assignments. */
+    private fun loadPricingAssignments(
+        connection: Connection,
+        eventId: String,
+    ): List<StoredEventPricingAssignment> {
+        return connection.prepareStatement(
+            """
+            SELECT target_type, target_ref, event_price_zone_id
+            FROM event_pricing_assignments
+            WHERE event_id = ?
+            ORDER BY target_type, target_ref
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            StoredEventPricingAssignment(
+                                targetType = result.getString("target_type"),
+                                targetRef = result.getString("target_ref"),
+                                eventPriceZoneId = result.getString("event_price_zone_id"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Загружает event-local availability overrides. */
+    private fun loadAvailabilityOverrides(
+        connection: Connection,
+        eventId: String,
+    ): List<StoredEventAvailabilityOverride> {
+        return connection.prepareStatement(
+            """
+            SELECT target_type, target_ref, availability_status
+            FROM event_availability_overrides
+            WHERE event_id = ?
+            ORDER BY target_type, target_ref
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            StoredEventAvailabilityOverride(
+                                targetType = result.getString("target_type"),
+                                targetRef = result.getString("target_ref"),
+                                availabilityStatus = result.getString("availability_status"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Удаляет все override collections события перед replace-update. */
+    private fun deleteOverrideCollections(
+        connection: Connection,
+        eventId: String,
+    ) {
+        connection.prepareStatement(
+            "DELETE FROM event_pricing_assignments WHERE event_id = ?",
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeUpdate()
+        }
+        connection.prepareStatement(
+            "DELETE FROM event_availability_overrides WHERE event_id = ?",
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeUpdate()
+        }
+        connection.prepareStatement(
+            "DELETE FROM event_price_zones WHERE event_id = ?",
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.executeUpdate()
+        }
+    }
+
+    /** Вставляет актуальный набор event-local ценовых зон. */
+    private fun insertPriceZones(
+        connection: Connection,
+        eventId: String,
+        priceZones: List<StoredEventPriceZone>,
+    ) {
+        connection.prepareStatement(
+            """
+            INSERT INTO event_price_zones (
+                event_id,
+                id,
+                source_template_price_zone_id,
+                name,
+                price_minor,
+                currency,
+                sales_start_at,
+                sales_end_at,
+                sort_order,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            """.trimIndent(),
+        ).use { statement ->
+            priceZones.forEachIndexed { index, zone ->
+                statement.setObject(1, UUID.fromString(eventId))
+                statement.setString(2, zone.id)
+                statement.setString(3, zone.sourceTemplatePriceZoneId)
+                statement.setString(4, zone.name)
+                statement.setInt(5, zone.priceMinor)
+                statement.setString(6, zone.currency)
+                statement.setObject(7, zone.salesStartAt)
+                statement.setObject(8, zone.salesEndAt)
+                statement.setInt(9, index)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    /** Вставляет актуальный набор pricing assignments. */
+    private fun insertPricingAssignments(
+        connection: Connection,
+        eventId: String,
+        assignments: List<StoredEventPricingAssignment>,
+    ) {
+        connection.prepareStatement(
+            """
+            INSERT INTO event_pricing_assignments (
+                event_id,
+                target_type,
+                target_ref,
+                event_price_zone_id,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, NOW(), NOW())
+            """.trimIndent(),
+        ).use { statement ->
+            assignments.forEach { assignment ->
+                statement.setObject(1, UUID.fromString(eventId))
+                statement.setString(2, assignment.targetType)
+                statement.setString(3, assignment.targetRef)
+                statement.setString(4, assignment.eventPriceZoneId)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    /** Вставляет актуальный набор availability overrides. */
+    private fun insertAvailabilityOverrides(
+        connection: Connection,
+        eventId: String,
+        overrides: List<StoredEventAvailabilityOverride>,
+    ) {
+        connection.prepareStatement(
+            """
+            INSERT INTO event_availability_overrides (
+                event_id,
+                target_type,
+                target_ref,
+                availability_status,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, NOW(), NOW())
+            """.trimIndent(),
+        ).use { statement ->
+            overrides.forEach { availabilityOverride ->
+                statement.setObject(1, UUID.fromString(eventId))
+                statement.setString(2, availabilityOverride.targetType)
+                statement.setString(3, availabilityOverride.targetRef)
+                statement.setString(4, availabilityOverride.availabilityStatus)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    /** Маппит текущую строку result set в базовый stored organizer event без override collections. */
+    private fun ResultSet.toStoredOrganizerEventBase(): StoredOrganizerEvent {
         val eventId = getObject("id").toString()
         return StoredOrganizerEvent(
             id = eventId,

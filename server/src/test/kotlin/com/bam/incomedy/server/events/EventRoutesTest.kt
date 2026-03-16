@@ -11,6 +11,7 @@ import com.bam.incomedy.server.support.InMemoryUserRepository
 import com.bam.incomedy.server.support.InMemoryVenueRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -253,6 +254,202 @@ class EventRoutesTest {
         assertTrue(listBody.contains("row-a-2"))
         assertTrue(!listBody.contains("row-a-3"))
         assertTrue(listBody.contains("Late Layout"))
+    }
+
+    /** Проверяет чтение и замену event-local overrides через detail/update routes. */
+    @Test
+    fun `owner can get and update event override details`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = OWNER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val storedEvent = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Late Night Standup",
+            description = "Draft event",
+            startsAt = java.time.OffsetDateTime.parse("2026-03-20T19:00:00+03:00"),
+            doorsOpenAt = java.time.OffsetDateTime.parse("2026-03-20T18:30:00+03:00"),
+            endsAt = java.time.OffsetDateTime.parse("2026-03-20T21:00:00+03:00"),
+            status = "draft",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = "template-1",
+            sourceTemplateName = "Late Layout",
+            snapshotJson = """
+                {"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"},{"ref":"row-a-2","label":"2"}]}],"zones":[{"id":"zone-left","name":"Left","capacity":20,"kind":"sector"}],"tables":[{"id":"table-1","label":"T1","seat_count":4}]}
+            """.trimIndent(),
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService,
+        )
+
+        val updateResponse = client.patch("/api/v1/events/${storedEvent.id}") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                  "title":"Late Night Standup Updated",
+                  "description":"Override setup",
+                  "starts_at":"2026-03-20T19:30:00+03:00",
+                  "doors_open_at":"2026-03-20T18:45:00+03:00",
+                  "ends_at":"2026-03-20T21:30:00+03:00",
+                  "currency":"RUB",
+                  "visibility":"public",
+                  "price_zones":[
+                    {
+                      "id":"event-vip",
+                      "name":"VIP",
+                      "price_minor":3500,
+                      "currency":"RUB",
+                      "source_template_price_zone_id":"vip-template"
+                    }
+                  ],
+                  "pricing_assignments":[
+                    {
+                      "target_type":"row",
+                      "target_ref":"row-a",
+                      "event_price_zone_id":"event-vip"
+                    }
+                  ],
+                  "availability_overrides":[
+                    {
+                      "target_type":"seat",
+                      "target_ref":"row-a-2",
+                      "availability_status":"blocked"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals(HttpStatusCode.OK, updateResponse.status)
+        val updateBody = updateResponse.bodyAsText()
+        assertTrue(updateBody.contains("Late Night Standup Updated"))
+        assertTrue(updateBody.contains(""""price_zones":[{"id":"event-vip""""))
+        assertTrue(updateBody.contains(""""availability_overrides":[{"target_type":"seat""""))
+
+        val getResponse = client.get("/api/v1/events/${storedEvent.id}") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, getResponse.status)
+        val getBody = getResponse.bodyAsText()
+        assertTrue(getBody.contains("Late Night Standup Updated"))
+        assertTrue(getBody.contains(""""target_ref":"row-a-2""""))
+        assertTrue(getBody.contains(""""event_price_zone_id":"event-vip""""))
+    }
+
+    /** Проверяет safe validation ошибку при override на неизвестный snapshot target. */
+    @Test
+    fun `update event rejects unknown override target`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = OWNER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val storedEvent = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Late Night Standup",
+            description = null,
+            startsAt = java.time.OffsetDateTime.parse("2026-03-20T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "draft",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = "template-1",
+            sourceTemplateName = "Late Layout",
+            snapshotJson = """{"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"}]}]}""",
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService,
+        )
+
+        val response = client.patch("/api/v1/events/${storedEvent.id}") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                  "title":"Late Night Standup",
+                  "starts_at":"2026-03-20T19:00:00+03:00",
+                  "currency":"RUB",
+                  "visibility":"public",
+                  "price_zones":[
+                    {
+                      "id":"event-main",
+                      "name":"Main",
+                      "price_minor":2000,
+                      "currency":"RUB"
+                    }
+                  ],
+                  "pricing_assignments":[
+                    {
+                      "target_type":"seat",
+                      "target_ref":"missing-seat",
+                      "event_price_zone_id":"event-main"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(response.bodyAsText().contains("snapshot target"))
     }
 
     /** Поднимает тестовое Ktor-приложение только с organizer event routes. */

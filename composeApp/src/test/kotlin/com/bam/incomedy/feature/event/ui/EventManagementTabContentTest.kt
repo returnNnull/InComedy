@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import com.bam.incomedy.feature.main.ui.ComposeUiTestActivity
 import org.junit.Rule
@@ -89,5 +90,48 @@ class EventManagementTabContentTest {
         composeRule.onNodeWithTag("${EventScreenTags.PUBLISH_BUTTON_PREFIX}event-1").performScrollTo().performClick()
 
         assertEquals("event-1", publishedEventId)
+    }
+
+    /** Проверяет, что override editor прокидывает update form выбранного события. */
+    @Test
+    fun eventOverrideEditorInvokesUpdateCallback() {
+        var capturedForm: EventUpdateForm? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    EventManagementTab(
+                        workspaces = listOf(AndroidUiStateFactory.workspace()),
+                        eventBindings = EventTabBindings(
+                            state = AndroidUiStateFactory.eventState(),
+                            onUpdateEvent = { form -> capturedForm = form },
+                        ),
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("${EventScreenTags.EDIT_BUTTON_PREFIX}event-1").performScrollTo().performClick()
+        composeRule.onNodeWithTag(EventScreenTags.UPDATE_TITLE_INPUT).performScrollTo().performTextReplacement("Updated Event")
+        composeRule.onNodeWithTag(EventScreenTags.UPDATE_PRICE_ZONES_INPUT)
+            .performScrollTo()
+            .performTextReplacement("event-vip|VIP|3500|RUB")
+        composeRule.onNodeWithTag(EventScreenTags.UPDATE_PRICING_ASSIGNMENTS_INPUT)
+            .performScrollTo()
+            .performTextReplacement("row|row-a|event-vip")
+        composeRule.onNodeWithTag(EventScreenTags.UPDATE_AVAILABILITY_OVERRIDES_INPUT)
+            .performScrollTo()
+            .performTextReplacement("seat|row-a-2|blocked")
+        composeRule.onNodeWithTag(EventScreenTags.UPDATE_SAVE_BUTTON).performScrollTo().performClick()
+
+        val form = requireNotNull(capturedForm)
+        assertEquals("event-1", form.eventId)
+        assertEquals("Updated Event", form.title)
+        assertEquals("event-vip|VIP|3500|RUB", form.priceZonesText)
+        assertEquals("row|row-a|event-vip", form.pricingAssignmentsText)
+        assertEquals("seat|row-a-2|blocked", form.availabilityOverridesText)
     }
 }

@@ -81,3 +81,66 @@
   - `./gradlew :composeApp:testDebugUnitTest`
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16e,OS=26.2' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:iosAppUITests/iosAppUITests/testEventTabShowsEventManagementSurface test`
+
+## Formalized Implementation Request (Event Price/Availability Overrides)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md`
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/engineering/engineering-standards.md`
+  - `docs/context/engineering/test-strategy.md`
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `docs/standup-platform-ru/04-функциональные-требования.md`
+  - `docs/standup-platform-ru/05-архитектура-системы.md`
+  - `docs/standup-platform-ru/06-доменная-модель-и-данные.md`
+  - `docs/standup-platform-ru/08-api-и-событийная-модель.md`
+  - `D-047`
+- Current constraints:
+  - `events/EventHallSnapshot foundation` is already implemented and frozen snapshots exist independently from mutable hall templates.
+  - The next documented gap is organizer-local configuration of prices and availability for a concrete event, while ticket inventory transitions still belong to the future `ticketing` context.
+  - The user explicitly asked to proceed with implementation, while keeping Clean architecture, Russian comments, structured diagnostics, and bounded new modules.
+
+## Goal
+
+- What should be delivered:
+  - event details read/update surface for organizer events
+  - event-local price zones and mapping of snapshot elements to those price zones
+  - event-local availability overrides for seats/rows/zones/tables without mutating venue templates
+  - synchronized docs, API contract, tests, and governance memory
+
+## Scope
+
+- In scope:
+  - `GET /api/v1/events/{id}` and `PATCH /api/v1/events/{id}` foundation
+  - event-local `PriceZone` persistence with sales window fields
+  - event-local pricing assignments for `seat`, `row`, `zone`, and `table`
+  - event-local availability overrides for the same target types
+  - backend migration, repository, service, routes, diagnostics, and tests
+  - shared/client event models plus basic Android/iOS organizer editor surface
+- Out of scope:
+  - `InventoryUnit`, `SeatHold`, and sold/held/released transitions
+  - checkout, PSP integration, QR issuance, and check-in
+  - dynamic pricing, waitlist, and audience discovery/catalog
+  - lineup/staff/live-stage behavior
+
+## Constraints
+
+- Tech/business constraints:
+  - override logic must stay in `events` and must not mutate source venue templates
+  - frozen `EventHallSnapshot` remains the immutable base; overrides are stored separately and applied on top
+  - seat inventory must still change only through `ticketing`
+  - touched and new code must include Russian comments
+  - backend mutations must use the sanitized diagnostics system rather than ad-hoc logging
+
+## Definition of Done
+
+- Functional result:
+  - organizer can open event details, edit base event fields, manage event-local price zones, assign them to snapshot elements, and block/unblock event-local availability targets
+  - event override storage is isolated from venue templates and future ticketing inventory
+  - docs and OpenAPI reflect the new event override foundation
+- Required tests:
+  - backend route/repository/migration coverage for the new detail/update surface
+  - shared/domain/data tests for override validation and state handling
+  - Android/iOS UI coverage for event details and override editing

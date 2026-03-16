@@ -5,17 +5,30 @@ import com.bam.incomedy.domain.venue.HallLayout
 /**
  * Контракт organizer event management bounded context-а.
  *
- * Сервис отделяет event orchestration и frozen hall snapshot flow от конкретного backend transport-а
- * и задает единый API для списка событий, создания draft-события и публикации.
+ * Сервис отделяет event orchestration, frozen hall snapshot flow и event-local override storage от
+ * конкретного backend transport-а и задает единый API для списка, деталей и мутаций событий.
  */
 interface EventManagementService {
     /** Возвращает события, доступные текущей organizer-сессии. */
     suspend fun listEvents(accessToken: String): Result<List<OrganizerEvent>>
 
+    /** Возвращает одно событие с его frozen snapshot и event-local overrides. */
+    suspend fun getEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent>
+
     /** Создает organizer event draft с уже привязанным snapshot схемы зала. */
     suspend fun createEvent(
         accessToken: String,
         draft: EventDraft,
+    ): Result<OrganizerEvent>
+
+    /** Обновляет event-local organizer configuration поверх frozen snapshot. */
+    suspend fun updateEvent(
+        accessToken: String,
+        eventId: String,
+        draft: EventUpdateDraft,
     ): Result<OrganizerEvent>
 
     /** Публикует draft-событие и фиксирует его как готовое к следующему sales slice. */
@@ -45,6 +58,9 @@ interface EventManagementService {
  * @property currency Валюта события в ISO-формате.
  * @property visibility Публичность события.
  * @property hallSnapshot Frozen snapshot схемы зала для последующих event/ticketing шагов.
+ * @property priceZones Event-local ценовые зоны.
+ * @property pricingAssignments Event-local назначения ценовых зон на snapshot targets.
+ * @property availabilityOverrides Event-local overrides доступности snapshot targets.
  */
 data class OrganizerEvent(
     val id: String,
@@ -64,6 +80,9 @@ data class OrganizerEvent(
     val currency: String,
     val visibility: EventVisibility,
     val hallSnapshot: EventHallSnapshot,
+    val priceZones: List<EventPriceZone> = emptyList(),
+    val pricingAssignments: List<EventPricingAssignment> = emptyList(),
+    val availabilityOverrides: List<EventAvailabilityOverride> = emptyList(),
 )
 
 /**

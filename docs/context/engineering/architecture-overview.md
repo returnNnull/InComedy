@@ -8,7 +8,7 @@
   - Auth bounded context: `:feature:auth` + `:data:auth` для auth orchestration, callback parsing, provider launch/verify, refresh, logout
   - Post-auth session context: `:data:session` + shared session orchestration для ролей, active role и organizer workspace/team management
   - Organizer venue context: `:feature:venue` + `:data:venue` для venue catalog, hall template builder form orchestration, и backend venue API adapters
-  - Organizer event context: `:feature:event` + `:data:event` для event create/list/publish orchestration, venue/template selection, and frozen `EventHallSnapshot` API adapters
+  - Organizer event context: `:feature:event` + `:data:event` для event create/list/get/update/publish orchestration, venue/template selection, `EventHallSnapshot`, и event-local override API adapters
   - Presentation: shared MVI ViewModels + platform-specific UI (Android Compose, iOS SwiftUI)
   - Domain: use cases and entities
   - Data: repositories, remote/local sources
@@ -29,7 +29,7 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-16)
+## Current Implementation Status (2026-03-17)
 
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
@@ -40,7 +40,7 @@
   - backend role storage, active-role context, and organizer workspace create/list plus registered-user invitation inbox, invitation response, roster visibility, and bounded permission-role update routes;
   - shared session-focused ViewModel/bridge state with role context, linked providers, organizer workspace list/create wiring, invitation inbox handling, and workspace membership mutations;
   - organizer venue management foundation across backend migration/repository/routes, shared `domain/data/feature` venue modules, Android Compose, and iOS SwiftUI, covering venue list/create plus hall-template create/update/clone on top of a canonical 2D hall layout schema;
-  - organizer event management foundation across backend migration/repository/routes, shared `domain/data/feature` event modules, Android Compose, and iOS SwiftUI, covering event create/list/publish plus `workspace -> venue -> hall template` selection and frozen `EventHallSnapshot` persistence on top of the canonical hall layout schema;
+  - organizer event management foundation across backend migration/repository/routes, shared `domain/data/feature` event modules, Android Compose, and iOS SwiftUI, covering event create/list/get/update/publish, `workspace -> venue -> hall template` selection, frozen `EventHallSnapshot` persistence, and text-based organizer editing of event-local price zones, pricing assignments, and availability overrides on top of the canonical hall layout schema;
   - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, workspace create/list, invitation inbox, team roster, invite form, and permission-role edits bound to shared session state;
   - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, organizer venue/event tabs, avatar/profile data, role switching, sign-out, workspace create/list, invitation inbox, team roster, invite form, permission-role edits, and associated-domain handling for auth return links;
   - auth entry surfaces now expose credentials plus VK while preserving provider-extensible session/identity seams for future providers;
@@ -51,8 +51,8 @@
   - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
   - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
-  - event foundation currently stops at `create/list/publish` plus frozen hall snapshots; event-specific price/availability overrides, cancel/update flows, and ticket inventory transitions are still not implemented;
-  - current Android/iOS main flow now exposes organizer venue and event surfaces, but deeper organizer operational flows beyond workspaces, venues, and draft event publishing are still missing.
+  - event foundation now includes `create/list/get/update/publish` plus frozen hall snapshots and event-local price/availability overrides, but cancel flows, sales-open/pause transitions, and ticket inventory transitions are still not implemented;
+  - current Android/iOS main flow now exposes organizer venue and event surfaces, but deeper organizer operational flows beyond workspaces, venues, event override editing, and draft event publishing are still missing.
 - Planned next bounded contexts:
   - lineup,
   - ticketing/check-in,

@@ -3,6 +3,7 @@ package com.bam.incomedy.feature.event
 import com.bam.incomedy.domain.event.EventDraft
 import com.bam.incomedy.domain.event.EventDraftValidator
 import com.bam.incomedy.domain.event.EventManagementService
+import com.bam.incomedy.domain.event.EventUpdateDraft
 import com.bam.incomedy.domain.venue.VenueManagementService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,7 @@ class EventViewModel(
         when (intent) {
             EventIntent.LoadContext -> loadContext()
             is EventIntent.CreateEvent -> createEvent(intent.draft)
+            is EventIntent.UpdateEvent -> updateEvent(intent.eventId, intent.draft)
             is EventIntent.PublishEvent -> publishEvent(intent.eventId)
             EventIntent.ClearError -> clearError()
         }
@@ -104,6 +106,23 @@ class EventViewModel(
             errorMessage = "Не удалось создать событие",
         ) { accessToken ->
             eventManagementService.createEvent(accessToken = accessToken, draft = draft)
+        }
+    }
+
+    /** Упрощенный вызов обновления organizer event details и event-local overrides. */
+    fun updateEvent(
+        eventId: String,
+        draft: EventUpdateDraft,
+    ) {
+        mutate(
+            successMessage = "Событие обновлено",
+            errorMessage = "Не удалось обновить событие",
+        ) { accessToken ->
+            eventManagementService.updateEvent(
+                accessToken = accessToken,
+                eventId = eventId,
+                draft = draft,
+            )
         }
     }
 

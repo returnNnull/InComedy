@@ -74,6 +74,20 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.textFields["event.form.title"].waitForExistence(timeout: 2))
         XCTAssertTrue(scrollUntilVisible(app.buttons["event.form.create"]))
         XCTAssertTrue(app.buttons["event.publish.event-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["event.edit.event-1"]))
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(identifier: "event.update.title")
+                .firstMatch
+                .waitForExistence(timeout: 2)
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(identifier: "event.update.priceZones")
+                .firstMatch
+                .waitForExistence(timeout: 2)
+        )
+        XCTAssertTrue(app.buttons["event.update.save"].exists)
     }
 
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.

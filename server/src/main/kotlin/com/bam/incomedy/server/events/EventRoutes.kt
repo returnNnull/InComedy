@@ -20,6 +20,7 @@ import io.ktor.server.plugins.callid.callId
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.slf4j.LoggerFactory
@@ -28,8 +29,8 @@ import java.util.UUID
 /**
  * Organizer event management routes.
  *
- * Поверхность покрывает bounded foundation slice `create/list/publish` и хранит frozen
- * `EventHallSnapshot`, не смешивая event lifecycle с будущим ticketing/inventory flow.
+ * Поверхность покрывает bounded foundation slice `create/list/get/update/publish`, хранит frozen
+ * `EventHallSnapshot` и event-local overrides, не смешивая event lifecycle с ticketing flow.
  */
 object EventRoutes {
     /** Структурированный logger organizer event surface. */
@@ -37,6 +38,9 @@ object EventRoutes {
 
     /** Максимальный размер request тела создания organizer event. */
     private const val MAX_CREATE_EVENT_REQUEST_BYTES = 16 * 1024
+
+    /** Максимальный размер request тела обновления organizer event details. */
+    private const val MAX_UPDATE_EVENT_REQUEST_BYTES = 32 * 1024
 
     /** Регистрирует organizer event routes внутри защищенного session scope. */
     fun register(
@@ -89,6 +93,57 @@ object EventRoutes {
                         metadata = mapOf("count" to events.size.toString()),
                     )
                     call.respond(HttpStatusCode.OK, EventListResponse(events))
+                }
+
+                get("/events/{eventId}") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "event_get:${principal.user.id}", limit = 120, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.get.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@get
+                    }
+
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.get.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@get
+                    }
+
+                    try {
+                        val event = eventService.getEvent(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                        )
+                        logger.info(
+                            "organizer.event.get.success requestId={} userId={} eventId={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            event.id,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.get.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf("status" to event.status),
+                        )
+                        call.respond(HttpStatusCode.OK, OrganizerEventResponse.fromStored(event))
+                    } catch (error: Throwable) {
+                        call.respondEventScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
                 }
 
                 post("/events") {
@@ -181,6 +236,89 @@ object EventRoutes {
                             metadata = mapOf("status" to event.status),
                         )
                         call.respond(HttpStatusCode.Created, OrganizerEventResponse.fromStored(event))
+                    } catch (error: Throwable) {
+                        call.respondEventScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
+                patch("/events/{eventId}") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "event_update:${principal.user.id}", limit = 40, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.update.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@patch
+                    }
+
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.update.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@patch
+                    }
+
+                    val request = call.receiveJsonBodyLimited<UpdateEventRequest>(
+                        json = eventJson,
+                        maxBytes = MAX_UPDATE_EVENT_REQUEST_BYTES,
+                    ).getOrElse { error ->
+                        call.respondEventRequestError(
+                            error = error,
+                            payloadTooLargeStage = "organizer.event.update.payload_too_large",
+                            invalidPayloadStage = "organizer.event.update.invalid_payload",
+                            payloadTooLargeMessage = "Request body is too large",
+                            invalidPayloadMessage = "Invalid event update request",
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                        return@patch
+                    }
+
+                    val draft = try {
+                        request.toDomain()
+                    } catch (_: IllegalArgumentException) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.update.invalid_payload",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event update request"))
+                        return@patch
+                    }
+
+                    try {
+                        val event = eventService.updateEvent(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                            draft = draft,
+                        )
+                        logger.info(
+                            "organizer.event.update.success requestId={} userId={} eventId={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            event.id,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.update.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "priceZones" to event.priceZones.size.toString(),
+                                "availabilityOverrides" to event.availabilityOverrides.size.toString(),
+                            ),
+                        )
+                        call.respond(HttpStatusCode.OK, OrganizerEventResponse.fromStored(event))
                     } catch (error: Throwable) {
                         call.respondEventScopeError(
                             error = error,

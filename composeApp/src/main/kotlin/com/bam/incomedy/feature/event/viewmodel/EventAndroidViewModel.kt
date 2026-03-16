@@ -77,6 +77,58 @@ class EventAndroidViewModel(
     }
 
     /**
+     * Обновляет organizer event details и event-local override-ы из Compose editor form.
+     *
+     * @param eventId Идентификатор редактируемого события.
+     * @param title Название события.
+     * @param description Необязательное описание события.
+     * @param startsAtIso ISO timestamp начала события.
+     * @param doorsOpenAtIso ISO timestamp открытия дверей.
+     * @param endsAtIso ISO timestamp окончания события.
+     * @param currency Валюта события.
+     * @param visibilityKey Wire-ключ публичности события.
+     * @param priceZonesText Текст event-local price zones.
+     * @param pricingAssignmentsText Текст pricing assignments.
+     * @param availabilityOverridesText Текст availability overrides.
+     */
+    fun updateEvent(
+        eventId: String,
+        title: String,
+        description: String?,
+        startsAtIso: String,
+        doorsOpenAtIso: String?,
+        endsAtIso: String?,
+        currency: String,
+        visibilityKey: String,
+        priceZonesText: String,
+        pricingAssignmentsText: String,
+        availabilityOverridesText: String,
+    ) {
+        val event = sharedViewModel.state.value.events.firstOrNull { it.id == eventId }
+        if (event == null) {
+            sharedViewModel.showLocalError("Событие для редактирования не найдено")
+            return
+        }
+        val draft = EventFormCodec.toEventUpdateDraft(
+            event = event,
+            title = title,
+            description = description,
+            startsAtIso = startsAtIso,
+            doorsOpenAtIso = doorsOpenAtIso,
+            endsAtIso = endsAtIso,
+            currency = currency,
+            visibilityKey = visibilityKey,
+            priceZonesText = priceZonesText,
+            pricingAssignmentsText = pricingAssignmentsText,
+            availabilityOverridesText = availabilityOverridesText,
+        ).getOrElse { error ->
+            sharedViewModel.showLocalError(error.message ?: "Не удалось разобрать override-ы события")
+            return
+        }
+        sharedViewModel.updateEvent(eventId = eventId, draft = draft)
+    }
+
+    /**
      * Публикует существующий organizer event draft.
      *
      * @param eventId Идентификатор события.
