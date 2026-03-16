@@ -198,6 +198,39 @@ class OrganizerEventService(
         return eventRepository.publishEvent(eventId) ?: throw EventNotFoundException(eventId)
     }
 
+    /** Открывает продажи опубликованного organizer event после проверки допустимого transition-а. */
+    fun openEventSales(
+        actorUserId: String,
+        eventId: String,
+    ): StoredOrganizerEvent {
+        val event = eventRepository.findEvent(eventId) ?: throw EventNotFoundException(eventId)
+        requireManageEventAccess(actorUserId, event.workspaceId)
+        requireOpenSalesTransition(event)
+        return eventRepository.openEventSales(eventId) ?: throw EventNotFoundException(eventId)
+    }
+
+    /** Ставит продажи organizer event на паузу после проверки допустимого transition-а. */
+    fun pauseEventSales(
+        actorUserId: String,
+        eventId: String,
+    ): StoredOrganizerEvent {
+        val event = eventRepository.findEvent(eventId) ?: throw EventNotFoundException(eventId)
+        requireManageEventAccess(actorUserId, event.workspaceId)
+        requirePauseSalesTransition(event)
+        return eventRepository.pauseEventSales(eventId) ?: throw EventNotFoundException(eventId)
+    }
+
+    /** Отменяет organizer event и закрывает продажи после проверки допустимого transition-а. */
+    fun cancelEvent(
+        actorUserId: String,
+        eventId: String,
+    ): StoredOrganizerEvent {
+        val event = eventRepository.findEvent(eventId) ?: throw EventNotFoundException(eventId)
+        requireManageEventAccess(actorUserId, event.workspaceId)
+        requireCancelTransition(event)
+        return eventRepository.cancelEvent(eventId) ?: throw EventNotFoundException(eventId)
+    }
+
     /** Проверяет, что actor имеет owner/manager доступ к workspace события. */
     private fun requireManageEventAccess(
         actorUserId: String,
@@ -238,6 +271,59 @@ class OrganizerEventService(
         if (endsAt != null && !endsAt.isAfter(startsAt)) {
             throw EventValidationException("Время окончания должно быть позже начала события")
         }
+    }
+
+    /** Проверяет допустимость перехода published/paused -> sales open. */
+    private fun requireOpenSalesTransition(event: StoredOrganizerEvent) {
+        val status = event.requireStatus()
+        val salesStatus = event.requireSalesStatus()
+        if (status != EventStatus.PUBLISHED) {
+            throw EventValidationException("Открыть продажи можно только у опубликованного события")
+        }
+        if (salesStatus != EventSalesStatus.CLOSED && salesStatus != EventSalesStatus.PAUSED) {
+            throw EventValidationException("Продажи можно открыть только из состояний closed или paused")
+        }
+    }
+
+    /** Проверяет допустимость перехода sales open -> sales paused. */
+    private fun requirePauseSalesTransition(event: StoredOrganizerEvent) {
+        val status = event.requireStatus()
+        val salesStatus = event.requireSalesStatus()
+        if (status != EventStatus.PUBLISHED || salesStatus != EventSalesStatus.OPEN) {
+            throw EventValidationException("Поставить на паузу можно только активные продажи опубликованного события")
+        }
+    }
+
+    /** Проверяет допустимость organizer-side cancel transition без ticketing inventory semantics. */
+    private fun requireCancelTransition(event: StoredOrganizerEvent) {
+        val status = event.requireStatus()
+        val salesStatus = event.requireSalesStatus()
+        if (status == EventStatus.CANCELED) {
+            throw EventValidationException("Событие уже отменено")
+        }
+        if (status == EventStatus.DRAFT) {
+            return
+        }
+        if (status == EventStatus.PUBLISHED &&
+            (salesStatus == EventSalesStatus.CLOSED ||
+                salesStatus == EventSalesStatus.OPEN ||
+                salesStatus == EventSalesStatus.PAUSED)
+        ) {
+            return
+        }
+        throw EventValidationException("Нельзя отменить событие в текущем lifecycle state")
+    }
+
+    /** Возвращает доменный lifecycle-статус stored event или сигнализирует о поврежденных данных. */
+    private fun StoredOrganizerEvent.requireStatus(): EventStatus {
+        return EventStatus.fromWireName(status)
+            ?: throw IllegalStateException("Unknown persisted event status: $status")
+    }
+
+    /** Возвращает доменный sales-статус stored event или сигнализирует о поврежденных данных. */
+    private fun StoredOrganizerEvent.requireSalesStatus(): EventSalesStatus {
+        return EventSalesStatus.fromWireName(salesStatus)
+            ?: throw IllegalStateException("Unknown persisted event sales status: $salesStatus")
     }
 }
 

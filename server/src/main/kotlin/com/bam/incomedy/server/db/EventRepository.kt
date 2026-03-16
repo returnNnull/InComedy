@@ -153,4 +153,13 @@ interface EventRepository {
 
     /** Переводит событие в published-состояние и возвращает обновленную запись. */
     fun publishEvent(eventId: String): StoredOrganizerEvent?
+
+    /** Открывает продажи для опубликованного события. */
+    fun openEventSales(eventId: String): StoredOrganizerEvent?
+
+    /** Ставит продажи события на паузу. */
+    fun pauseEventSales(eventId: String): StoredOrganizerEvent?
+
+    /** Отменяет событие и закрывает его продажи. */
+    fun cancelEvent(eventId: String): StoredOrganizerEvent?
 }

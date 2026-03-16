@@ -91,6 +91,86 @@ class EventViewModelTest {
         assertEquals(EventStatus.PUBLISHED, viewModel.state.value.events.single().status)
     }
 
+    /** Проверяет открытие продаж опубликованного события с обновлением списка. */
+    @Test
+    fun openEventSalesRefreshesList() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val eventService = FakeEventManagementService(
+            initialEvents = mutableListOf(
+                defaultEvent(
+                    status = EventStatus.PUBLISHED,
+                    salesStatus = EventSalesStatus.CLOSED,
+                ),
+            ),
+        )
+        val viewModel = EventViewModel(
+            eventManagementService = eventService,
+            venueManagementService = FakeVenueManagementService(),
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.openEventSales("event-1")
+        advanceUntilIdle()
+
+        assertEquals(EventSalesStatus.OPEN, eventService.events.single().salesStatus)
+        assertEquals(EventSalesStatus.OPEN, viewModel.state.value.events.single().salesStatus)
+    }
+
+    /** Проверяет паузу продаж активного события с обновлением списка. */
+    @Test
+    fun pauseEventSalesRefreshesList() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val eventService = FakeEventManagementService(
+            initialEvents = mutableListOf(
+                defaultEvent(
+                    status = EventStatus.PUBLISHED,
+                    salesStatus = EventSalesStatus.OPEN,
+                ),
+            ),
+        )
+        val viewModel = EventViewModel(
+            eventManagementService = eventService,
+            venueManagementService = FakeVenueManagementService(),
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.pauseEventSales("event-1")
+        advanceUntilIdle()
+
+        assertEquals(EventSalesStatus.PAUSED, eventService.events.single().salesStatus)
+        assertEquals(EventSalesStatus.PAUSED, viewModel.state.value.events.single().salesStatus)
+    }
+
+    /** Проверяет отмену события с закрытием продаж и обновлением списка. */
+    @Test
+    fun cancelEventRefreshesList() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val eventService = FakeEventManagementService(
+            initialEvents = mutableListOf(
+                defaultEvent(
+                    status = EventStatus.PUBLISHED,
+                    salesStatus = EventSalesStatus.OPEN,
+                ),
+            ),
+        )
+        val viewModel = EventViewModel(
+            eventManagementService = eventService,
+            venueManagementService = FakeVenueManagementService(),
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.cancelEvent("event-1")
+        advanceUntilIdle()
+
+        assertEquals(EventStatus.CANCELED, eventService.events.single().status)
+        assertEquals(EventSalesStatus.CLOSED, eventService.events.single().salesStatus)
+        assertEquals(EventStatus.CANCELED, viewModel.state.value.events.single().status)
+        assertEquals(EventSalesStatus.CLOSED, viewModel.state.value.events.single().salesStatus)
+    }
+
     /** Проверяет обновление organizer event details и event-local price assignments. */
     @Test
     fun updateEventRefreshesList() = runTest {
@@ -139,32 +219,14 @@ class EventViewModelTest {
  * Тестовый event service для shared ViewModel.
  */
 private class FakeEventManagementService : EventManagementService {
-    val events = mutableListOf(
-        OrganizerEvent(
-            id = "event-1",
-            workspaceId = "ws-1",
-            venueId = "venue-1",
-            venueName = "Moscow Cellar",
-            hallSnapshotId = "snapshot-1",
-            sourceTemplateId = "template-1",
-            sourceTemplateName = "Late Layout",
-            title = "Late Night Standup",
-            description = "Вечер проверки event foundation",
-            startsAtIso = "2026-03-20T19:00:00+03:00",
-            doorsOpenAtIso = "2026-03-20T18:30:00+03:00",
-            endsAtIso = "2026-03-20T21:00:00+03:00",
-            status = EventStatus.DRAFT,
-            salesStatus = EventSalesStatus.CLOSED,
-            currency = "RUB",
-            visibility = EventVisibility.PUBLIC,
-            hallSnapshot = EventHallSnapshot(
-                id = "snapshot-1",
-                eventId = "event-1",
-                sourceTemplateId = "template-1",
-                layout = HallLayout(),
-            ),
-        ),
-    )
+    val events: MutableList<OrganizerEvent>
+
+    /** Инициализирует fake service стартовым списком событий для конкретного сценария теста. */
+    constructor(
+        initialEvents: MutableList<OrganizerEvent> = mutableListOf(defaultEvent()),
+    ) {
+        events = initialEvents
+    }
 
     override suspend fun listEvents(accessToken: String): Result<List<OrganizerEvent>> = Result.success(events.toList())
 
@@ -203,6 +265,45 @@ private class FakeEventManagementService : EventManagementService {
         return Result.success(updated)
     }
 
+    override suspend fun openEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        val updated = events.first { it.id == eventId }.copy(salesStatus = EventSalesStatus.OPEN)
+        val index = events.indexOfFirst { it.id == eventId }
+        if (index >= 0) {
+            events[index] = updated
+        }
+        return Result.success(updated)
+    }
+
+    override suspend fun pauseEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        val updated = events.first { it.id == eventId }.copy(salesStatus = EventSalesStatus.PAUSED)
+        val index = events.indexOfFirst { it.id == eventId }
+        if (index >= 0) {
+            events[index] = updated
+        }
+        return Result.success(updated)
+    }
+
+    override suspend fun cancelEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        val updated = events.first { it.id == eventId }.copy(
+            status = EventStatus.CANCELED,
+            salesStatus = EventSalesStatus.CLOSED,
+        )
+        val index = events.indexOfFirst { it.id == eventId }
+        if (index >= 0) {
+            events[index] = updated
+        }
+        return Result.success(updated)
+    }
+
     override suspend fun updateEvent(
         accessToken: String,
         eventId: String,
@@ -226,6 +327,37 @@ private class FakeEventManagementService : EventManagementService {
         }
         return Result.success(updated)
     }
+}
+
+/** Возвращает дефолтное organizer event для shared event ViewModel тестов. */
+private fun defaultEvent(
+    status: EventStatus = EventStatus.DRAFT,
+    salesStatus: EventSalesStatus = EventSalesStatus.CLOSED,
+): OrganizerEvent {
+    return OrganizerEvent(
+        id = "event-1",
+        workspaceId = "ws-1",
+        venueId = "venue-1",
+        venueName = "Moscow Cellar",
+        hallSnapshotId = "snapshot-1",
+        sourceTemplateId = "template-1",
+        sourceTemplateName = "Late Layout",
+        title = "Late Night Standup",
+        description = "Вечер проверки event foundation",
+        startsAtIso = "2026-03-20T19:00:00+03:00",
+        doorsOpenAtIso = "2026-03-20T18:30:00+03:00",
+        endsAtIso = "2026-03-20T21:00:00+03:00",
+        status = status,
+        salesStatus = salesStatus,
+        currency = "RUB",
+        visibility = EventVisibility.PUBLIC,
+        hallSnapshot = EventHallSnapshot(
+            id = "snapshot-1",
+            eventId = "event-1",
+            sourceTemplateId = "template-1",
+            layout = HallLayout(),
+        ),
+    )
 }
 
 /**

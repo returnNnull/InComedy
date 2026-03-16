@@ -58,6 +58,9 @@ class EventViewModel(
             is EventIntent.CreateEvent -> createEvent(intent.draft)
             is EventIntent.UpdateEvent -> updateEvent(intent.eventId, intent.draft)
             is EventIntent.PublishEvent -> publishEvent(intent.eventId)
+            is EventIntent.OpenEventSales -> openEventSales(intent.eventId)
+            is EventIntent.PauseEventSales -> pauseEventSales(intent.eventId)
+            is EventIntent.CancelEvent -> cancelEvent(intent.eventId)
             EventIntent.ClearError -> clearError()
         }
     }
@@ -133,6 +136,36 @@ class EventViewModel(
             errorMessage = "Не удалось опубликовать событие",
         ) { accessToken ->
             eventManagementService.publishEvent(accessToken = accessToken, eventId = eventId)
+        }
+    }
+
+    /** Упрощенный вызов открытия продаж опубликованного organizer event. */
+    fun openEventSales(eventId: String) {
+        mutate(
+            successMessage = "Продажи открыты",
+            errorMessage = "Не удалось открыть продажи",
+        ) { accessToken ->
+            eventManagementService.openEventSales(accessToken = accessToken, eventId = eventId)
+        }
+    }
+
+    /** Упрощенный вызов паузы активных продаж organizer event. */
+    fun pauseEventSales(eventId: String) {
+        mutate(
+            successMessage = "Продажи поставлены на паузу",
+            errorMessage = "Не удалось поставить продажи на паузу",
+        ) { accessToken ->
+            eventManagementService.pauseEventSales(accessToken = accessToken, eventId = eventId)
+        }
+    }
+
+    /** Упрощенный вызов отмены organizer event. */
+    fun cancelEvent(eventId: String) {
+        mutate(
+            successMessage = "Событие отменено",
+            errorMessage = "Не удалось отменить событие",
+        ) { accessToken ->
+            eventManagementService.cancelEvent(accessToken = accessToken, eventId = eventId)
         }
     }
 

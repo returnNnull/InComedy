@@ -110,6 +110,21 @@ class EventBridge(
         viewModel.publishEvent(eventId)
     }
 
+    /** Открывает продажи опубликованного события из SwiftUI. */
+    fun openEventSales(eventId: String) {
+        viewModel.openEventSales(eventId)
+    }
+
+    /** Ставит продажи события на паузу из SwiftUI. */
+    fun pauseEventSales(eventId: String) {
+        viewModel.pauseEventSales(eventId)
+    }
+
+    /** Отменяет событие из SwiftUI. */
+    fun cancelEvent(eventId: String) {
+        viewModel.cancelEvent(eventId)
+    }
+
     /** Очищает текущую ошибку event feature. */
     fun clearError() {
         viewModel.clearError()

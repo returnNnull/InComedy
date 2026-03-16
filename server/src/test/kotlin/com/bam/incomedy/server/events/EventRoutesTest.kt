@@ -174,6 +174,187 @@ class EventRoutesTest {
         assertTrue(publishBody.contains(""""status":"published""""))
     }
 
+    /** Проверяет открытие продаж опубликованного события через отдельный sales route. */
+    @Test
+    fun `owner can open sales for published event`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = OWNER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val storedEvent = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Published Event",
+            description = "Ready for sales",
+            startsAt = java.time.OffsetDateTime.parse("2026-03-20T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = "template-1",
+            sourceTemplateName = "Late Layout",
+            snapshotJson = """{"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"}]}]}""",
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService,
+        )
+
+        val response = client.post("/api/v1/events/${storedEvent.id}/sales/open") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""status":"published""""))
+        assertTrue(body.contains(""""sales_status":"open""""))
+    }
+
+    /** Проверяет паузу активных продаж через отдельный sales route. */
+    @Test
+    fun `owner can pause sales for on-sale event`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = OWNER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val storedEvent = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "On-sale Event",
+            description = "Sales are active",
+            startsAt = java.time.OffsetDateTime.parse("2026-03-20T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "open",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = "template-1",
+            sourceTemplateName = "Late Layout",
+            snapshotJson = """{"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"}]}]}""",
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService,
+        )
+
+        val response = client.post("/api/v1/events/${storedEvent.id}/sales/pause") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().contains(""""sales_status":"paused""""))
+    }
+
+    /** Проверяет отмену события с одновременным закрытием продаж. */
+    @Test
+    fun `owner can cancel published event`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = OWNER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val storedEvent = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Cancelable Event",
+            description = "Published and on sale",
+            startsAt = java.time.OffsetDateTime.parse("2026-03-20T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "open",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = "template-1",
+            sourceTemplateName = "Late Layout",
+            snapshotJson = """{"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"}]}]}""",
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService,
+        )
+
+        val response = client.post("/api/v1/events/${storedEvent.id}/cancel") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""status":"canceled""""))
+        assertTrue(body.contains(""""sales_status":"closed""""))
+    }
+
     /** Проверяет, что snapshot события остается frozen после правки исходного hall template. */
     @Test
     fun `event snapshot stays frozen after source template changes`() = testApplication {
@@ -450,6 +631,65 @@ class EventRoutesTest {
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         assertTrue(response.bodyAsText().contains("snapshot target"))
+    }
+
+    /** Проверяет safe validation ошибку при открытии продаж для draft-события. */
+    @Test
+    fun `open sales rejects draft event`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = OWNER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val storedEvent = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Draft Event",
+            description = null,
+            startsAt = java.time.OffsetDateTime.parse("2026-03-20T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "draft",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = "template-1",
+            sourceTemplateName = "Late Layout",
+            snapshotJson = """{"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"}]}]}""",
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService,
+        )
+
+        val response = client.post("/api/v1/events/${storedEvent.id}/sales/open") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(response.bodyAsText().contains("опубликованного события"))
     }
 
     /** Поднимает тестовое Ktor-приложение только с organizer event routes. */

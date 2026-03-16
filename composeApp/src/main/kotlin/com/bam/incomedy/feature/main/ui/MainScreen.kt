@@ -120,6 +120,9 @@ fun MainScreen(
                 )
             },
             onPublishEvent = eventViewModel::publishEvent,
+            onOpenEventSales = eventViewModel::openEventSales,
+            onPauseEventSales = eventViewModel::pauseEventSales,
+            onCancelEvent = eventViewModel::cancelEvent,
             onClearError = eventViewModel::clearError,
         ),
         venueBindings = VenueTabBindings(

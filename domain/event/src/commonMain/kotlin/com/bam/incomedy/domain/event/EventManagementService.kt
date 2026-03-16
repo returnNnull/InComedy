@@ -36,6 +36,24 @@ interface EventManagementService {
         accessToken: String,
         eventId: String,
     ): Result<OrganizerEvent>
+
+    /** Открывает продажи для уже опубликованного события. */
+    suspend fun openEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent>
+
+    /** Ставит активные продажи события на паузу. */
+    suspend fun pauseEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent>
+
+    /** Отменяет событие и закрывает его organizer-side lifecycle. */
+    suspend fun cancelEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent>
 }
 
 /**
@@ -54,7 +72,7 @@ interface EventManagementService {
  * @property doorsOpenAtIso Необязательное время открытия дверей.
  * @property endsAtIso Необязательное время окончания.
  * @property status Lifecycle-статус события.
- * @property salesStatus Статус продаж, который в этом slice пока остается закрытым.
+ * @property salesStatus Статус продаж события внутри bounded organizer lifecycle.
  * @property currency Валюта события в ISO-формате.
  * @property visibility Публичность события.
  * @property hallSnapshot Frozen snapshot схемы зала для последующих event/ticketing шагов.
@@ -151,8 +169,8 @@ enum class EventStatus(
 /**
  * Статусы продаж organizer event.
  *
- * Этот slice пока работает только с закрытым состоянием, но enum заранее фиксирует будущие
- * согласованные wire-значения lifecycle-а продаж.
+ * Текущий slice уже использует `closed/open/paused`, а `sold_out` зарезервирован до связки с
+ * будущим ticketing inventory bounded context-ом.
  *
  * @property wireName Значение для API/persistence.
  */

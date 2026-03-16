@@ -123,6 +123,48 @@ class EventBackendApi(
             response.body<EventResponse>().toDomain()
         }
     }
+
+    /** Открывает продажи organizer event. */
+    suspend fun openEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/events/$eventId/sales/open") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<EventResponse>().toDomain()
+        }
+    }
+
+    /** Ставит продажи organizer event на паузу. */
+    suspend fun pauseEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/events/$eventId/sales/pause") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<EventResponse>().toDomain()
+        }
+    }
+
+    /** Отменяет organizer event. */
+    suspend fun cancelEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/events/$eventId/cancel") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<EventResponse>().toDomain()
+        }
+    }
 }
 
 /** DTO списка событий. */

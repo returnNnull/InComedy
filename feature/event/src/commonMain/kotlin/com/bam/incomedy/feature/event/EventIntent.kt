@@ -26,6 +26,21 @@ sealed interface EventIntent {
         val eventId: String,
     ) : EventIntent
 
+    /** Открытие продаж опубликованного события. */
+    data class OpenEventSales(
+        val eventId: String,
+    ) : EventIntent
+
+    /** Пауза активных продаж события. */
+    data class PauseEventSales(
+        val eventId: String,
+    ) : EventIntent
+
+    /** Отмена события организатором. */
+    data class CancelEvent(
+        val eventId: String,
+    ) : EventIntent
+
     /** Очистка текущей ошибки event feature. */
     data object ClearError : EventIntent
 }

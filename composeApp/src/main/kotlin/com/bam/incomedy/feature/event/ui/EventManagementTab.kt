@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.session.OrganizerWorkspace
@@ -51,6 +52,12 @@ internal data class EventTabBindings(
     val onUpdateEvent: (EventUpdateForm) -> Unit = {},
     /** Команда публикации существующего draft-события. */
     val onPublishEvent: (String) -> Unit = {},
+    /** Команда открытия продаж опубликованного события. */
+    val onOpenEventSales: (String) -> Unit = {},
+    /** Команда паузы активных продаж события. */
+    val onPauseEventSales: (String) -> Unit = {},
+    /** Команда отмены события. */
+    val onCancelEvent: (String) -> Unit = {},
     /** Команда очистки верхнеуровневой event-ошибки. */
     val onClearError: () -> Unit = {},
 )
@@ -114,8 +121,8 @@ internal data class EventUpdateForm(
 /**
  * Вкладка organizer event management внутри авторизованного Android shell.
  *
- * Вкладка покрывает bounded slices `create/list/publish` и `event-local overrides` поверх frozen
- * `EventHallSnapshot`, не заходя в ticketing inventory semantics.
+ * Вкладка покрывает bounded slices `create/list/publish/sales controls` и `event-local
+ * overrides` поверх frozen `EventHallSnapshot`, не заходя в ticketing inventory semantics.
  *
  * @property workspaces Рабочие пространства, доступные текущему организатору.
  * @property eventBindings Event-specific state и callbacks.
@@ -247,7 +254,7 @@ internal fun EventManagementTab(
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(
-            text = "Organizer slice для create/list/publish и event-local pricing/availability overrides",
+            text = "Organizer slice для create/list/publish, sales controls и event-local pricing/availability overrides",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
         )
@@ -447,6 +454,9 @@ internal fun EventManagementTab(
                     isSubmitting = eventState.isSubmitting,
                     onEditEvent = loadEventIntoEditor,
                     onPublishEvent = eventBindings.onPublishEvent,
+                    onOpenEventSales = eventBindings.onOpenEventSales,
+                    onPauseEventSales = eventBindings.onPauseEventSales,
+                    onCancelEvent = eventBindings.onCancelEvent,
                 )
             }
         }
@@ -480,6 +490,13 @@ internal fun EventManagementTab(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
             )
+            if (!selectedEditableEvent.isEditable()) {
+                Text(
+                    text = "Отмененное событие доступно только для чтения. Для правок нужен новый draft.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
             OutlinedTextField(
                 value = editorTitle,
                 onValueChange = { editorTitle = it },
@@ -592,7 +609,9 @@ internal fun EventManagementTab(
                         ),
                     )
                 },
-                enabled = editorTitle.trim().length >= 3 && !eventState.isSubmitting,
+                enabled = editorTitle.trim().length >= 3 &&
+                    !eventState.isSubmitting &&
+                    selectedEditableEvent.isEditable(),
                 modifier = Modifier.testTag(EventScreenTags.UPDATE_SAVE_BUTTON),
             ) {
                 Text("Сохранить override-ы")
@@ -642,13 +661,20 @@ private fun EventErrorBanner(
  * @property isSubmitting Показывает активную event mutation.
  * @property onEditEvent Команда загрузки события в editor surface.
  * @property onPublishEvent Команда публикации draft-события.
+ * @property onOpenEventSales Команда открытия продаж опубликованного события.
+ * @property onPauseEventSales Команда паузы активных продаж.
+ * @property onCancelEvent Команда отмены события.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OrganizerEventCard(
     event: OrganizerEvent,
     isSubmitting: Boolean,
     onEditEvent: (OrganizerEvent) -> Unit,
     onPublishEvent: (String) -> Unit,
+    onOpenEventSales: (String) -> Unit,
+    onPauseEventSales: (String) -> Unit,
+    onCancelEvent: (String) -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -686,12 +712,13 @@ private fun OrganizerEventCard(
                 text = EventOverrideEditorCodec.summary(event),
                 style = MaterialTheme.typography.bodySmall,
             )
-            Row(
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
                     onClick = { onEditEvent(event) },
-                    enabled = !isSubmitting,
+                    enabled = !isSubmitting && event.isEditable(),
                     modifier = Modifier.testTag("${EventScreenTags.EDIT_BUTTON_PREFIX}${event.id}"),
                 ) {
                     Text("Редактировать")
@@ -703,6 +730,33 @@ private fun OrganizerEventCard(
                         modifier = Modifier.testTag("${EventScreenTags.PUBLISH_BUTTON_PREFIX}${event.id}"),
                     ) {
                         Text("Опубликовать")
+                    }
+                }
+                if (event.canOpenSales()) {
+                    Button(
+                        onClick = { onOpenEventSales(event.id) },
+                        enabled = !isSubmitting,
+                        modifier = Modifier.testTag("${EventScreenTags.OPEN_SALES_BUTTON_PREFIX}${event.id}"),
+                    ) {
+                        Text(if (event.salesStatus == EventSalesStatus.PAUSED) "Возобновить продажи" else "Открыть продажи")
+                    }
+                }
+                if (event.canPauseSales()) {
+                    OutlinedButton(
+                        onClick = { onPauseEventSales(event.id) },
+                        enabled = !isSubmitting,
+                        modifier = Modifier.testTag("${EventScreenTags.PAUSE_SALES_BUTTON_PREFIX}${event.id}"),
+                    ) {
+                        Text("Пауза продаж")
+                    }
+                }
+                if (event.canCancel()) {
+                    OutlinedButton(
+                        onClick = { onCancelEvent(event.id) },
+                        enabled = !isSubmitting,
+                        modifier = Modifier.testTag("${EventScreenTags.CANCEL_BUTTON_PREFIX}${event.id}"),
+                    ) {
+                        Text("Отменить")
                     }
                 }
             }
@@ -765,6 +819,29 @@ private fun salesStatusTitle(statusKey: String): String {
         "sold_out" -> "Sold out"
         else -> statusKey
     }
+}
+
+/** Возвращает `true`, если событие еще допускает organizer-side editing. */
+private fun OrganizerEvent.isEditable(): Boolean = status != EventStatus.CANCELED
+
+/** Возвращает `true`, если для события можно открыть или возобновить продажи. */
+private fun OrganizerEvent.canOpenSales(): Boolean {
+    return status == EventStatus.PUBLISHED &&
+        (salesStatus == EventSalesStatus.CLOSED || salesStatus == EventSalesStatus.PAUSED)
+}
+
+/** Возвращает `true`, если активные продажи можно поставить на паузу. */
+private fun OrganizerEvent.canPauseSales(): Boolean {
+    return status == EventStatus.PUBLISHED && salesStatus == EventSalesStatus.OPEN
+}
+
+/** Возвращает `true`, если событие можно отменить в текущем organizer lifecycle state. */
+private fun OrganizerEvent.canCancel(): Boolean {
+    return status == EventStatus.DRAFT ||
+        (status == EventStatus.PUBLISHED &&
+            (salesStatus == EventSalesStatus.CLOSED ||
+                salesStatus == EventSalesStatus.OPEN ||
+                salesStatus == EventSalesStatus.PAUSED))
 }
 
 /**
@@ -872,4 +949,13 @@ internal object EventScreenTags {
 
     /** Префикс тегов publish-кнопок event list-а. */
     const val PUBLISH_BUTTON_PREFIX = "event.publish."
+
+    /** Префикс тегов кнопок открытия продаж event list-а. */
+    const val OPEN_SALES_BUTTON_PREFIX = "event.sales.open."
+
+    /** Префикс тегов кнопок паузы продаж event list-а. */
+    const val PAUSE_SALES_BUTTON_PREFIX = "event.sales.pause."
+
+    /** Префикс тегов кнопок отмены события event list-а. */
+    const val CANCEL_BUTTON_PREFIX = "event.cancel."
 }

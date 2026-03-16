@@ -15,7 +15,7 @@ final class EventScreenModel: ObservableObject {
     /// Показывает загрузку event context.
     @Published var isLoading: Bool = false
 
-    /// Показывает активную create/publish мутацию.
+    /// Показывает активную organizer event мутацию.
     @Published var isSubmitting: Bool = false
 
     /// Хранит верхнеуровневую безопасную ошибку event feature.
@@ -144,6 +144,27 @@ final class EventScreenModel: ObservableObject {
         bridge?.publishEvent(eventId: eventId)
     }
 
+    /// Открывает продажи опубликованного organizer event.
+    ///
+    /// - Parameter eventId: Идентификатор события.
+    func openEventSales(eventId: String) {
+        bridge?.openEventSales(eventId: eventId)
+    }
+
+    /// Ставит активные продажи organizer event на паузу.
+    ///
+    /// - Parameter eventId: Идентификатор события.
+    func pauseEventSales(eventId: String) {
+        bridge?.pauseEventSales(eventId: eventId)
+    }
+
+    /// Отменяет organizer event.
+    ///
+    /// - Parameter eventId: Идентификатор события.
+    func cancelEvent(eventId: String) {
+        bridge?.cancelEvent(eventId: eventId)
+    }
+
     /// Очищает текущую event error.
     func clearError() {
         if let bridge {
@@ -225,7 +246,7 @@ struct EventScreenFixture {
     /// Текст безопасной ошибки.
     let errorMessage: String?
 
-    /// Возвращает типовую organizer fixture с одним draft-событием и одной площадкой.
+    /// Возвращает типовую organizer fixture с draft, published и on-sale событиями.
     ///
     /// - Parameter workspaceId: Workspace, к которому привязана fixture.
     static func preview(workspaceId: String = "ws-1") -> EventScreenFixture {
@@ -266,6 +287,54 @@ struct EventScreenFixture {
                     priceZonesText: "",
                     pricingAssignmentsText: "",
                     availabilityOverridesText: ""
+                ),
+                EventItem(
+                    id: "event-2",
+                    workspaceId: workspaceId,
+                    venueId: venue.id,
+                    venueName: venue.name,
+                    hallSnapshotId: "snapshot-2",
+                    sourceTemplateId: template.id,
+                    sourceTemplateName: template.name,
+                    title: "Published Sales Closed",
+                    description: "Событие готово к открытию продаж",
+                    startsAtIso: "2026-04-02T19:00:00+03:00",
+                    doorsOpenAtIso: "2026-04-02T18:30:00+03:00",
+                    endsAtIso: "2026-04-02T21:00:00+03:00",
+                    statusKey: "published",
+                    salesStatusKey: "closed",
+                    currency: "RUB",
+                    visibilityKey: "public",
+                    layoutSummary: "rows=1 · zones=0 · tables=0",
+                    overrideSummaryText: "price zones: 1 · pricing: 1 · availability: 0",
+                    targetHintText: "row: row-a · seat: row-a-1, row-a-2",
+                    priceZonesText: "event-main|Main|2500|RUB",
+                    pricingAssignmentsText: "row|row-a|event-main",
+                    availabilityOverridesText: ""
+                ),
+                EventItem(
+                    id: "event-3",
+                    workspaceId: workspaceId,
+                    venueId: venue.id,
+                    venueName: venue.name,
+                    hallSnapshotId: "snapshot-3",
+                    sourceTemplateId: template.id,
+                    sourceTemplateName: template.name,
+                    title: "Published Sales Open",
+                    description: "Событие с активными продажами",
+                    startsAtIso: "2026-04-03T19:00:00+03:00",
+                    doorsOpenAtIso: "2026-04-03T18:30:00+03:00",
+                    endsAtIso: "2026-04-03T21:00:00+03:00",
+                    statusKey: "published",
+                    salesStatusKey: "open",
+                    currency: "RUB",
+                    visibilityKey: "public",
+                    layoutSummary: "rows=1 · zones=0 · tables=0",
+                    overrideSummaryText: "price zones: 1 · pricing: 1 · availability: 1",
+                    targetHintText: "row: row-a · seat: row-a-1, row-a-2",
+                    priceZonesText: "event-vip|VIP|3500|RUB",
+                    pricingAssignmentsText: "row|row-a|event-vip",
+                    availabilityOverridesText: "seat|row-a-2|blocked"
                 )
             ],
             venues: [venue],
@@ -343,6 +412,28 @@ struct EventItem: Identifiable {
 
     /// Текст availability overrides.
     let availabilityOverridesText: String
+
+    /// Возвращает `true`, если событие еще допускает organizer-side редактирование.
+    var isEditable: Bool {
+        statusKey != "canceled"
+    }
+
+    /// Возвращает `true`, если для события можно открыть или возобновить продажи.
+    var canOpenSales: Bool {
+        statusKey == "published" && (salesStatusKey == "closed" || salesStatusKey == "paused")
+    }
+
+    /// Возвращает `true`, если активные продажи можно поставить на паузу.
+    var canPauseSales: Bool {
+        statusKey == "published" && salesStatusKey == "open"
+    }
+
+    /// Возвращает `true`, если событие можно отменить из текущего organizer lifecycle.
+    var canCancel: Bool {
+        statusKey == "draft" ||
+            (statusKey == "published" &&
+                (salesStatusKey == "closed" || salesStatusKey == "open" || salesStatusKey == "paused"))
+    }
 
     /// Маппит Kotlin snapshot в локальную SwiftUI-модель.
     ///

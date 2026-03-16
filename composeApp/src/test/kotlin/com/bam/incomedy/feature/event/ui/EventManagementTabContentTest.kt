@@ -11,6 +11,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import com.bam.incomedy.domain.event.EventSalesStatus
+import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import com.bam.incomedy.feature.main.ui.ComposeUiTestActivity
 import org.junit.Rule
@@ -90,6 +92,114 @@ class EventManagementTabContentTest {
         composeRule.onNodeWithTag("${EventScreenTags.PUBLISH_BUTTON_PREFIX}event-1").performScrollTo().performClick()
 
         assertEquals("event-1", publishedEventId)
+    }
+
+    /** Проверяет, что published-событие с закрытыми продажами вызывает open-sales callback. */
+    @Test
+    fun publishedEventCardInvokesOpenSalesCallback() {
+        var openedEventId: String? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    EventManagementTab(
+                        workspaces = listOf(AndroidUiStateFactory.workspace()),
+                        eventBindings = EventTabBindings(
+                            state = AndroidUiStateFactory.eventState(
+                                events = listOf(
+                                    AndroidUiStateFactory.event(
+                                        status = EventStatus.PUBLISHED,
+                                        salesStatus = EventSalesStatus.CLOSED,
+                                    ),
+                                ),
+                            ),
+                            onOpenEventSales = { eventId -> openedEventId = eventId },
+                        ),
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("${EventScreenTags.OPEN_SALES_BUTTON_PREFIX}event-1")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("event-1", openedEventId)
+    }
+
+    /** Проверяет, что on-sale событие вызывает pause-sales callback. */
+    @Test
+    fun onSaleEventCardInvokesPauseSalesCallback() {
+        var pausedEventId: String? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    EventManagementTab(
+                        workspaces = listOf(AndroidUiStateFactory.workspace()),
+                        eventBindings = EventTabBindings(
+                            state = AndroidUiStateFactory.eventState(
+                                events = listOf(
+                                    AndroidUiStateFactory.event(
+                                        status = EventStatus.PUBLISHED,
+                                        salesStatus = EventSalesStatus.OPEN,
+                                    ),
+                                ),
+                            ),
+                            onPauseEventSales = { eventId -> pausedEventId = eventId },
+                        ),
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("${EventScreenTags.PAUSE_SALES_BUTTON_PREFIX}event-1")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("event-1", pausedEventId)
+    }
+
+    /** Проверяет, что опубликованное событие вызывает cancel callback. */
+    @Test
+    fun publishedEventCardInvokesCancelCallback() {
+        var canceledEventId: String? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    EventManagementTab(
+                        workspaces = listOf(AndroidUiStateFactory.workspace()),
+                        eventBindings = EventTabBindings(
+                            state = AndroidUiStateFactory.eventState(
+                                events = listOf(
+                                    AndroidUiStateFactory.event(
+                                        status = EventStatus.PUBLISHED,
+                                        salesStatus = EventSalesStatus.OPEN,
+                                    ),
+                                ),
+                            ),
+                            onCancelEvent = { eventId -> canceledEventId = eventId },
+                        ),
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("${EventScreenTags.CANCEL_BUTTON_PREFIX}event-1")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("event-1", canceledEventId)
     }
 
     /** Проверяет, что override editor прокидывает update form выбранного события. */

@@ -29,8 +29,9 @@ import java.util.UUID
 /**
  * Organizer event management routes.
  *
- * Поверхность покрывает bounded foundation slice `create/list/get/update/publish`, хранит frozen
- * `EventHallSnapshot` и event-local overrides, не смешивая event lifecycle с ticketing flow.
+ * Поверхность покрывает bounded organizer slice `create/list/get/update/publish`, sales
+ * open/pause/cancel controls, хранит frozen `EventHallSnapshot` и event-local overrides, не
+ * смешивая event lifecycle с ticketing flow.
  */
 object EventRoutes {
     /** Структурированный logger organizer event surface. */
@@ -368,6 +369,168 @@ object EventRoutes {
                             stage = "organizer.event.publish.success",
                             status = HttpStatusCode.OK.value,
                             metadata = mapOf("status" to event.status),
+                        )
+                        call.respond(HttpStatusCode.OK, OrganizerEventResponse.fromStored(event))
+                    } catch (error: Throwable) {
+                        call.respondEventScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
+                post("/events/{eventId}/sales/open") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "event_sales_open:${principal.user.id}", limit = 30, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.sales_open.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@post
+                    }
+
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.sales_open.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@post
+                    }
+
+                    try {
+                        val event = eventService.openEventSales(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                        )
+                        logger.info(
+                            "organizer.event.sales_open.success requestId={} userId={} eventId={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            event.id,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.sales_open.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "status" to event.status,
+                                "salesStatus" to event.salesStatus,
+                            ),
+                        )
+                        call.respond(HttpStatusCode.OK, OrganizerEventResponse.fromStored(event))
+                    } catch (error: Throwable) {
+                        call.respondEventScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
+                post("/events/{eventId}/sales/pause") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "event_sales_pause:${principal.user.id}", limit = 30, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.sales_pause.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@post
+                    }
+
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.sales_pause.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@post
+                    }
+
+                    try {
+                        val event = eventService.pauseEventSales(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                        )
+                        logger.info(
+                            "organizer.event.sales_pause.success requestId={} userId={} eventId={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            event.id,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.sales_pause.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "status" to event.status,
+                                "salesStatus" to event.salesStatus,
+                            ),
+                        )
+                        call.respond(HttpStatusCode.OK, OrganizerEventResponse.fromStored(event))
+                    } catch (error: Throwable) {
+                        call.respondEventScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
+                post("/events/{eventId}/cancel") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "event_cancel:${principal.user.id}", limit = 30, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.cancel.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@post
+                    }
+
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.cancel.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@post
+                    }
+
+                    try {
+                        val event = eventService.cancelEvent(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                        )
+                        logger.info(
+                            "organizer.event.cancel.success requestId={} userId={} eventId={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            event.id,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.event.cancel.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "status" to event.status,
+                                "salesStatus" to event.salesStatus,
+                            ),
                         )
                         call.respond(HttpStatusCode.OK, OrganizerEventResponse.fromStored(event))
                     } catch (error: Throwable) {

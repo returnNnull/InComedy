@@ -13,7 +13,7 @@ import java.util.UUID
  * In-memory реализация `EventRepository` для route/service тестов organizer event surface.
  *
  * Репозиторий хранит события, frozen snapshots и event-local override-ы без реальной БД, чтобы
- * тесты могли детерминированно проверять create/get/update/publish сценарии.
+ * тесты могли детерминированно проверять create/get/update/lifecycle transition сценарии.
  */
 class InMemoryEventRepository : EventRepository {
     /** Mutable события по их id. */
@@ -109,6 +109,25 @@ class InMemoryEventRepository : EventRepository {
     override fun publishEvent(eventId: String): StoredOrganizerEvent? {
         val event = eventsById[eventId] ?: return null
         event.status = "published"
+        return event.toStored(snapshotsById)
+    }
+
+    override fun openEventSales(eventId: String): StoredOrganizerEvent? {
+        val event = eventsById[eventId] ?: return null
+        event.salesStatus = "open"
+        return event.toStored(snapshotsById)
+    }
+
+    override fun pauseEventSales(eventId: String): StoredOrganizerEvent? {
+        val event = eventsById[eventId] ?: return null
+        event.salesStatus = "paused"
+        return event.toStored(snapshotsById)
+    }
+
+    override fun cancelEvent(eventId: String): StoredOrganizerEvent? {
+        val event = eventsById[eventId] ?: return null
+        event.status = "canceled"
+        event.salesStatus = "closed"
         return event.toStored(snapshotsById)
     }
 

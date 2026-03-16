@@ -137,6 +137,33 @@ class EventAndroidViewModel(
         sharedViewModel.publishEvent(eventId = eventId)
     }
 
+    /**
+     * Открывает продажи опубликованного organizer event.
+     *
+     * @param eventId Идентификатор события.
+     */
+    fun openEventSales(eventId: String) {
+        sharedViewModel.openEventSales(eventId = eventId)
+    }
+
+    /**
+     * Ставит продажи organizer event на паузу.
+     *
+     * @param eventId Идентификатор события.
+     */
+    fun pauseEventSales(eventId: String) {
+        sharedViewModel.pauseEventSales(eventId = eventId)
+    }
+
+    /**
+     * Отменяет organizer event.
+     *
+     * @param eventId Идентификатор события.
+     */
+    fun cancelEvent(eventId: String) {
+        sharedViewModel.cancelEvent(eventId = eventId)
+    }
+
     /** Очищает текущую event-specific ошибку. */
     fun clearError() {
         sharedViewModel.clearError()

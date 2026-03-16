@@ -9,8 +9,9 @@ import javax.sql.DataSource
 /**
  * PostgreSQL-реализация organizer event persistence.
  *
- * Репозиторий изолирует event create/list/detail/update/publish и хранение event-local override-ов
- * от venue/workspace persistence, чтобы `events` slice не размывался в сторону ticketing.
+ * Репозиторий изолирует event create/list/detail/lifecycle transitions и хранение event-local
+ * override-ов от venue/workspace persistence, чтобы `events` slice не размывался в сторону
+ * ticketing.
  */
 class PostgresEventRepository(
     private val dataSource: DataSource,
@@ -220,20 +221,81 @@ class PostgresEventRepository(
     /** Публикует draft-событие и возвращает его текущее состояние. */
     override fun publishEvent(eventId: String): StoredOrganizerEvent? {
         dataSource.connection.use { connection ->
-            connection.prepareStatement(
-                """
-                UPDATE organizer_events
-                SET
-                    status = 'published',
-                    updated_at = NOW()
-                WHERE id = ?
-                """.trimIndent(),
-            ).use { statement ->
-                statement.setObject(1, UUID.fromString(eventId))
-                if (statement.executeUpdate() == 0) return null
-            }
-            return loadEvent(connection, eventId)
+            return updateLifecycleState(
+                connection = connection,
+                eventId = eventId,
+                status = "published",
+            )
         }
+    }
+
+    /** Открывает продажи опубликованного события и возвращает текущее состояние. */
+    override fun openEventSales(eventId: String): StoredOrganizerEvent? {
+        dataSource.connection.use { connection ->
+            return updateLifecycleState(
+                connection = connection,
+                eventId = eventId,
+                salesStatus = "open",
+            )
+        }
+    }
+
+    /** Ставит продажи события на паузу и возвращает текущее состояние. */
+    override fun pauseEventSales(eventId: String): StoredOrganizerEvent? {
+        dataSource.connection.use { connection ->
+            return updateLifecycleState(
+                connection = connection,
+                eventId = eventId,
+                salesStatus = "paused",
+            )
+        }
+    }
+
+    /** Отменяет событие, одновременно закрывая продажи. */
+    override fun cancelEvent(eventId: String): StoredOrganizerEvent? {
+        dataSource.connection.use { connection ->
+            return updateLifecycleState(
+                connection = connection,
+                eventId = eventId,
+                status = "canceled",
+                salesStatus = "closed",
+            )
+        }
+    }
+
+    /**
+     * Применяет точечный lifecycle transition к organizer event без затрагивания snapshot/override
+     * коллекций.
+     */
+    private fun updateLifecycleState(
+        connection: Connection,
+        eventId: String,
+        status: String? = null,
+        salesStatus: String? = null,
+    ): StoredOrganizerEvent? {
+        val assignments = buildList {
+            if (status != null) add("status = ?")
+            if (salesStatus != null) add("sales_status = ?")
+            add("updated_at = NOW()")
+        }
+        connection.prepareStatement(
+            """
+            UPDATE organizer_events
+            SET ${assignments.joinToString(", ")}
+            WHERE id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            var parameterIndex = 1
+            if (status != null) {
+                statement.setString(parameterIndex++, status)
+            }
+            if (salesStatus != null) {
+                statement.setString(parameterIndex++, salesStatus)
+            }
+            statement.setObject(parameterIndex, UUID.fromString(eventId))
+            if (statement.executeUpdate() == 0) return null
+        }
+        return loadEvent(connection, eventId)
     }
 
     /** Загружает одно событие вместе со snapshot и event-local overrides по его id. */

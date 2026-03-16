@@ -63,4 +63,37 @@ class BackendEventManagementService(
             eventId = eventId,
         )
     }
+
+    /** Открывает продажи опубликованного organizer event через backend API. */
+    override suspend fun openEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return eventBackendApi.openEventSales(
+            accessToken = accessToken,
+            eventId = eventId,
+        )
+    }
+
+    /** Ставит продажи organizer event на паузу через backend API. */
+    override suspend fun pauseEventSales(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return eventBackendApi.pauseEventSales(
+            accessToken = accessToken,
+            eventId = eventId,
+        )
+    }
+
+    /** Отменяет organizer event через backend API. */
+    override suspend fun cancelEvent(
+        accessToken: String,
+        eventId: String,
+    ): Result<OrganizerEvent> {
+        return eventBackendApi.cancelEvent(
+            accessToken = accessToken,
+            eventId = eventId,
+        )
+    }
 }

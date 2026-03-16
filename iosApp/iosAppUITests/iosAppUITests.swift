@@ -62,7 +62,7 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.buttons["venue.template.save"].exists)
     }
 
-    /// Проверяет organizer event tab, выбор venue/template и доступность publish action.
+    /// Проверяет organizer event tab, выбор venue/template и доступность lifecycle controls.
     func testEventTabShowsEventManagementSurface() {
         app.tabBars.buttons["События"].tap()
 
@@ -74,6 +74,10 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.textFields["event.form.title"].waitForExistence(timeout: 2))
         XCTAssertTrue(scrollUntilVisible(app.buttons["event.form.create"]))
         XCTAssertTrue(app.buttons["event.publish.event-1"].waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["event.sales.open.event-2"]))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["event.cancel.event-2"]))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["event.sales.pause.event-3"]))
+        XCTAssertTrue(scrollUntilVisible(app.buttons["event.cancel.event-3"]))
         XCTAssertTrue(scrollUntilVisible(app.buttons["event.edit.event-1"]))
         XCTAssertTrue(
             app.descendants(matching: .any)

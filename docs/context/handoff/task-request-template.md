@@ -32,8 +32,9 @@ Use this index for new implementation and review tasks.
 21. `task-request-template/task-request-template-part-21.md` (venue/hall delivery slicing and venues/templates foundation implementation request from 2026-03-16)
 22. `task-request-template/task-request-template-part-22.md` (events/EventHallSnapshot foundation request from 2026-03-16)
 23. `task-request-template/task-request-template-part-23.md` (new-chat baseline context sync and event override completion from 2026-03-17)
+24. `task-request-template/task-request-template-part-24.md` (event sales-state/cancel controls implementation outcome from 2026-03-17)
 
 ## Append Rule
 
-- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-23.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-24.md`, update this index, and continue appending there.
+- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-24.md`.
+- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-25.md`, update this index, and continue appending there.

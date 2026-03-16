@@ -98,7 +98,7 @@ struct EventManagementView: View {
                 Text("События и snapshot схемы")
                     .font(.title3.bold())
                     .accessibilityIdentifier("event.root")
-                Text("Organizer slice для create/list/publish и event-local pricing/availability overrides")
+                Text("Organizer slice для create/list/publish, sales controls и event-local pricing/availability overrides")
                     .foregroundColor(.secondary)
 
                 if let errorMessage = model.errorMessage {
@@ -241,7 +241,10 @@ struct EventManagementView: View {
                                 event: event,
                                 isSubmitting: model.isSubmitting,
                                 onEdit: { loadEventIntoEditor(event) },
-                                onPublish: { model.publishEvent(eventId: event.id) }
+                                onPublish: { model.publishEvent(eventId: event.id) },
+                                onOpenSales: { model.openEventSales(eventId: event.id) },
+                                onPauseSales: { model.pauseEventSales(eventId: event.id) },
+                                onCancel: { model.cancelEvent(eventId: event.id) }
                             )
                         }
                     }
@@ -261,6 +264,11 @@ struct EventManagementView: View {
                         Text("Текущий override state: \(selectedEditableEvent.overrideSummaryText)")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                        if !selectedEditableEvent.isEditable {
+                            Text("Отмененное событие доступно только для чтения. Для правок нужен новый draft.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                         TextField("Название события", text: $editorTitle)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("event.update.title")
@@ -331,6 +339,7 @@ struct EventManagementView: View {
                         .buttonStyle(.borderedProminent)
                         .disabled(
                             editorTitle.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 ||
+                            !selectedEditableEvent.isEditable ||
                             model.isSubmitting
                         )
                         .accessibilityIdentifier("event.update.save")
@@ -473,7 +482,16 @@ private struct EventCardView: View {
     /// Команда публикации draft-события.
     let onPublish: () -> Void
 
-    /// Отрисовывает карточку события, edit action и publish action для draft.
+    /// Команда открытия или возобновления продаж.
+    let onOpenSales: () -> Void
+
+    /// Команда паузы активных продаж.
+    let onPauseSales: () -> Void
+
+    /// Команда отмены события.
+    let onCancel: () -> Void
+
+    /// Отрисовывает карточку события, edit action и lifecycle controls.
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(event.title)
@@ -490,20 +508,48 @@ private struct EventCardView: View {
                 .font(.subheadline)
             Text(event.overrideSummaryText)
                 .font(.subheadline)
-            HStack(spacing: 8) {
-                Button("Редактировать") {
-                    onEdit()
-                }
-                .buttonStyle(.bordered)
-                .disabled(isSubmitting)
-                .accessibilityIdentifier("event.edit.\(event.id)")
-                if event.statusKey == "draft" {
-                    Button("Опубликовать") {
-                        onPublish()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Button("Редактировать") {
+                        onEdit()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isSubmitting)
-                    .accessibilityIdentifier("event.publish.\(event.id)")
+                    .buttonStyle(.bordered)
+                    .disabled(isSubmitting || !event.isEditable)
+                    .accessibilityIdentifier("event.edit.\(event.id)")
+                    if event.statusKey == "draft" {
+                        Button("Опубликовать") {
+                            onPublish()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isSubmitting)
+                        .accessibilityIdentifier("event.publish.\(event.id)")
+                    }
+                    if event.canOpenSales {
+                        Button(event.salesStatusKey == "paused" ? "Возобновить продажи" : "Открыть продажи") {
+                            onOpenSales()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isSubmitting)
+                        .accessibilityIdentifier("event.sales.open.\(event.id)")
+                    }
+                }
+                HStack(spacing: 8) {
+                    if event.canPauseSales {
+                        Button("Пауза продаж") {
+                            onPauseSales()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isSubmitting)
+                        .accessibilityIdentifier("event.sales.pause.\(event.id)")
+                    }
+                    if event.canCancel {
+                        Button("Отменить") {
+                            onCancel()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isSubmitting)
+                        .accessibilityIdentifier("event.cancel.\(event.id)")
+                    }
                 }
             }
         }

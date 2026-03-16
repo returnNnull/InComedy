@@ -84,3 +84,60 @@
   - `./gradlew :composeApp:compileDebugKotlin`
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16e,OS=26.2' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:iosAppUITests/iosAppUITests/testEventTabShowsEventManagementSurface test`
+
+## Formalized Implementation Request (Event Sales-State And Cancel Controls)
+
+## Context
+
+- Related docs/decisions:
+  - `docs/context/product/backlog.md`
+  - `docs/context/engineering/architecture-overview.md`
+  - `docs/context/engineering/engineering-standards.md`
+  - `docs/context/engineering/test-strategy.md`
+  - `docs/context/engineering/api-contracts/v1/openapi.yaml`
+  - `docs/standup-platform-ru/04-функциональные-требования.md`
+  - `docs/standup-platform-ru/06-доменная-модель-и-данные.md`
+  - `D-047`
+- Current constraints:
+  - `event price/availability overrides foundation` is now delivered and remains the last completed organizer event slice.
+  - The next documented gap inside the active `P0` event stream is organizer control over `sales lifecycle states`, while `InventoryUnit`, holds, checkout, and check-in still belong to the future `ticketing` context.
+  - The repository already stores `status` and `sales_status` separately, so the next bounded step should extend those controls rather than pulling ticketing semantics forward.
+
+## Goal
+
+- What should be delivered:
+  - organizer controls for `sales open`, `sales pause`, and event `cancel`
+  - backend, shared, Android, and iOS support for these bounded actions
+  - synchronized docs, API contract, tests, and governance memory
+
+## Scope
+
+- In scope:
+  - backend routes/services/repository support for organizer sales-state mutations and cancel
+  - transition validation over current `status + sales_status` model
+  - shared/domain/data contracts and mobile UI actions for the new controls
+  - route/unit/UI coverage and docs sync
+- Out of scope:
+  - `InventoryUnit`, `SeatHold`, and checkout/check-in
+  - automatic `sold_out` detection from inventory exhaustion
+  - `in_progress`, `completed`, and `archived` lifecycle handling
+  - refunds and released-seat return-to-sale behavior
+
+## Constraints
+
+- Tech/business constraints:
+  - the slice must stay inside `events` and must not introduce ticketing inventory semantics
+  - cancel/sales transitions must be validated centrally in shared backend service logic
+  - touched and new code must include Russian comments
+  - backend mutations must continue to use sanitized diagnostics rather than ad-hoc logging
+
+## Definition of Done
+
+- Functional result:
+  - organizer can open sales for a published event, pause sales for an on-sale event, and cancel an event through the bounded organizer surface
+  - the new transitions are enforced consistently across backend and mobile clients
+  - docs and OpenAPI reflect the new sales-state/cancel surface
+- Required tests:
+  - backend route/service/repository coverage for valid and invalid transitions
+  - shared ViewModel/domain tests for new mutation commands
+  - Android/iOS UI coverage for the new organizer controls
