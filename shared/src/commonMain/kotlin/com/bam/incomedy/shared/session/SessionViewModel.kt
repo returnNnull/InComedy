@@ -1,7 +1,11 @@
 package com.bam.incomedy.shared.session
 
-import com.bam.incomedy.feature.auth.domain.AuthSession
-import com.bam.incomedy.feature.auth.domain.SessionContextService
+import com.bam.incomedy.domain.auth.AuthSession
+import com.bam.incomedy.domain.session.SessionContextService
+import com.bam.incomedy.domain.session.SessionRoleContext
+import com.bam.incomedy.domain.session.OrganizerWorkspace
+import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
+import com.bam.incomedy.domain.session.WorkspaceInvitationDecision
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -16,10 +20,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Общая модель сессии, которая синхронизирует auth-состояние с ролями и рабочими пространствами.
+ * Общая модель сессии, которая синхронизирует auth-состояние с ролями, workspace roster и invitation inbox.
  *
  * @property authViewModel Общая модель авторизации, выступающая источником токенов и базовой сессии.
- * @property sessionContextService Сервис ролей и рабочих пространств.
+ * @property sessionContextService Сервис ролей, рабочих пространств и membership flows.
  * @property dispatcher Dispatcher для фоновых операций модели.
  */
 class SessionViewModel(
@@ -36,7 +40,7 @@ class SessionViewModel(
     /** Публичное состояние авторизованной части приложения. */
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
-    /** Последний access token, для которого уже был инициирован контекстный запрос. */
+    /** Последний access token, для которого уже был инициирован organizer context запрос. */
     private var observedAccessToken: String? = null
 
     init {
@@ -64,13 +68,15 @@ class SessionViewModel(
                         activeRole = session.user.activeRole,
                         linkedProviders = session.user.linkedProviders,
                         workspaces = if (tokenChanged) emptyList() else current.workspaces,
+                        workspaceInvitations = if (tokenChanged) emptyList() else current.workspaceInvitations,
                         isLoadingContext = if (tokenChanged) true else current.isLoadingContext,
                         isUpdatingRole = false,
                         isCreatingWorkspace = false,
+                        isManagingWorkspaceMembers = false,
                     )
                 }
                 if (tokenChanged) {
-                    loadWorkspaces(
+                    refreshOrganizerContext(
                         accessToken = session.accessToken,
                         showLoadingState = true,
                     )
@@ -121,7 +127,7 @@ class SessionViewModel(
         }
     }
 
-    /** Создает новое рабочее пространство и перезагружает зависимый контекст сессии. */
+    /** Создает новое рабочее пространство и обновляет organizer context. */
     fun createWorkspace(name: String, slug: String? = null) {
         val currentSession = authViewModel.state.value.session ?: return
         val normalizedName = name.trim()
@@ -138,17 +144,10 @@ class SessionViewModel(
                 name = normalizedName,
                 slug = normalizedSlug,
             ).fold(
-                onSuccess = { workspace ->
-                    _state.update { current ->
-                        current.copy(
-                            workspaces = current.workspaces
-                                .filterNot { it.id == workspace.id } + workspace,
-                            isCreatingWorkspace = false,
-                            errorMessage = null,
-                        )
-                    }
+                onSuccess = {
+                    _state.update { it.copy(isCreatingWorkspace = false, errorMessage = null) }
                     refreshRoleContext(currentSession)
-                    loadWorkspaces(
+                    refreshOrganizerContext(
                         accessToken = currentSession.accessToken,
                         showLoadingState = false,
                     )
@@ -158,6 +157,129 @@ class SessionViewModel(
                         it.copy(
                             isCreatingWorkspace = false,
                             errorMessage = error.message?.take(200) ?: "Не удалось создать рабочее пространство",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    /** Создает invitation существующему пользователю внутри workspace. */
+    fun createWorkspaceInvitation(
+        workspaceId: String,
+        inviteeIdentifier: String,
+        permissionRole: String,
+    ) {
+        val currentSession = authViewModel.state.value.session ?: return
+        val normalizedWorkspaceId = workspaceId.trim()
+        val normalizedInviteeIdentifier = inviteeIdentifier.trim()
+        val normalizedPermissionRole = permissionRole.trim().lowercase()
+        if (normalizedWorkspaceId.isBlank() || normalizedInviteeIdentifier.length !in 3..80 || normalizedPermissionRole.isBlank()) {
+            _state.update { it.copy(errorMessage = "Некорректные данные приглашения в рабочее пространство") }
+            return
+        }
+
+        scope.launch {
+            _state.update { it.copy(isManagingWorkspaceMembers = true, errorMessage = null) }
+            sessionContextService.createWorkspaceInvitation(
+                accessToken = currentSession.accessToken,
+                workspaceId = normalizedWorkspaceId,
+                inviteeIdentifier = normalizedInviteeIdentifier,
+                permissionRole = normalizedPermissionRole,
+            ).fold(
+                onSuccess = {
+                    _state.update { it.copy(isManagingWorkspaceMembers = false, errorMessage = null) }
+                    refreshOrganizerContext(
+                        accessToken = currentSession.accessToken,
+                        showLoadingState = false,
+                    )
+                },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(
+                            isManagingWorkspaceMembers = false,
+                            errorMessage = error.message?.take(200) ?: "Не удалось отправить приглашение",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    /** Принимает или отклоняет pending invitation текущего пользователя. */
+    fun respondToWorkspaceInvitation(
+        membershipId: String,
+        decision: WorkspaceInvitationDecision,
+    ) {
+        val currentSession = authViewModel.state.value.session ?: return
+        val normalizedMembershipId = membershipId.trim()
+        if (normalizedMembershipId.isBlank()) {
+            _state.update { it.copy(errorMessage = "Некорректный идентификатор приглашения") }
+            return
+        }
+
+        scope.launch {
+            _state.update { it.copy(isManagingWorkspaceMembers = true, errorMessage = null) }
+            sessionContextService.respondToWorkspaceInvitation(
+                accessToken = currentSession.accessToken,
+                membershipId = normalizedMembershipId,
+                decision = decision,
+            ).fold(
+                onSuccess = {
+                    _state.update { it.copy(isManagingWorkspaceMembers = false, errorMessage = null) }
+                    refreshRoleContext(currentSession)
+                    refreshOrganizerContext(
+                        accessToken = currentSession.accessToken,
+                        showLoadingState = false,
+                    )
+                },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(
+                            isManagingWorkspaceMembers = false,
+                            errorMessage = error.message?.take(200) ?: "Не удалось обработать приглашение",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    /** Меняет permission role membership внутри workspace. */
+    fun updateWorkspaceMembershipRole(
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: String,
+    ) {
+        val currentSession = authViewModel.state.value.session ?: return
+        val normalizedWorkspaceId = workspaceId.trim()
+        val normalizedMembershipId = membershipId.trim()
+        val normalizedPermissionRole = permissionRole.trim().lowercase()
+        if (normalizedWorkspaceId.isBlank() || normalizedMembershipId.isBlank() || normalizedPermissionRole.isBlank()) {
+            _state.update { it.copy(errorMessage = "Некорректные данные участника рабочего пространства") }
+            return
+        }
+
+        scope.launch {
+            _state.update { it.copy(isManagingWorkspaceMembers = true, errorMessage = null) }
+            sessionContextService.updateWorkspaceMembershipRole(
+                accessToken = currentSession.accessToken,
+                workspaceId = normalizedWorkspaceId,
+                membershipId = normalizedMembershipId,
+                permissionRole = normalizedPermissionRole,
+            ).fold(
+                onSuccess = {
+                    _state.update { it.copy(isManagingWorkspaceMembers = false, errorMessage = null) }
+                    refreshOrganizerContext(
+                        accessToken = currentSession.accessToken,
+                        showLoadingState = false,
+                    )
+                },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(
+                            isManagingWorkspaceMembers = false,
+                            errorMessage = error.message?.take(200) ?: "Не удалось обновить роль участника",
                         )
                     }
                 },
@@ -175,8 +297,8 @@ class SessionViewModel(
         scope.cancel()
     }
 
-    /** Загружает список рабочих пространств и при необходимости показывает состояние загрузки. */
-    private fun loadWorkspaces(
+    /** Обновляет organizer context: список workspaces и inbox pending invitations. */
+    private fun refreshOrganizerContext(
         accessToken: String,
         showLoadingState: Boolean,
     ) {
@@ -184,29 +306,42 @@ class SessionViewModel(
             if (showLoadingState) {
                 _state.update { it.copy(isLoadingContext = true, errorMessage = null) }
             }
+            var nextWorkspaces: List<OrganizerWorkspace>? = null
+            var nextInvitations: List<OrganizerWorkspaceInvitation>? = null
+            var nextErrorMessage: String? = null
+
             sessionContextService.listWorkspaces(accessToken).fold(
                 onSuccess = { workspaces ->
-                    _state.update {
-                        it.copy(
-                            workspaces = workspaces,
-                            isLoadingContext = false,
-                            errorMessage = null,
-                        )
-                    }
+                    nextWorkspaces = workspaces
                 },
                 onFailure = { error ->
-                    _state.update {
-                        it.copy(
-                            isLoadingContext = false,
-                            errorMessage = error.message?.take(200) ?: "Не удалось загрузить рабочие пространства",
-                        )
+                    nextErrorMessage = error.message?.take(200) ?: "Не удалось загрузить рабочие пространства"
+                },
+            )
+
+            sessionContextService.listWorkspaceInvitations(accessToken).fold(
+                onSuccess = { invitations ->
+                    nextInvitations = invitations
+                },
+                onFailure = { error ->
+                    if (nextErrorMessage == null) {
+                        nextErrorMessage = error.message?.take(200) ?: "Не удалось загрузить приглашения в рабочие пространства"
                     }
                 },
             )
+
+            _state.update { current ->
+                current.copy(
+                    workspaces = nextWorkspaces ?: current.workspaces,
+                    workspaceInvitations = nextInvitations ?: current.workspaceInvitations,
+                    isLoadingContext = false,
+                    errorMessage = nextErrorMessage,
+                )
+            }
         }
     }
 
-    /** Перезагружает роли и связанный контекст после операций, влияющих на доступ пользователя. */
+    /** Перезагружает роли и связанный auth context после операций, влияющих на доступ пользователя. */
     private fun refreshRoleContext(session: AuthSession) {
         scope.launch {
             sessionContextService.getRoleContext(session.accessToken).fold(
@@ -230,7 +365,7 @@ class SessionViewModel(
     /** Встраивает обновленный role context в общую auth-сессию. */
     private fun applyRoleContext(
         session: AuthSession,
-        roleContext: com.bam.incomedy.feature.auth.domain.SessionRoleContext,
+        roleContext: SessionRoleContext,
     ) {
         authViewModel.onIntent(
             AuthIntent.OnRestoreSession(

@@ -15,9 +15,11 @@ package com.bam.incomedy.shared.session
  * @property activeRole Текущая активная роль.
  * @property linkedProviders Все привязанные способы входа.
  * @property workspaces Экспортируемые рабочие пространства для iOS-слоя.
+ * @property workspaceInvitations Экспортируемые pending invitations текущего пользователя.
  * @property isLoadingContext Показывает, что загружается контекст сессии.
  * @property isUpdatingRole Показывает, что сейчас выполняется смена роли.
  * @property isCreatingWorkspace Показывает, что сейчас создается рабочее пространство.
+ * @property isManagingWorkspaceMembers Показывает, что выполняется membership mutation внутри workspace.
  * @property errorMessage Последняя ошибка слоя сессии.
  */
 data class SessionStateSnapshot(
@@ -33,8 +35,10 @@ data class SessionStateSnapshot(
     val activeRole: String?,
     val linkedProviders: List<String>,
     val workspaces: List<SessionWorkspaceSnapshot>,
+    val workspaceInvitations: List<SessionWorkspaceInvitationSnapshot>,
     val isLoadingContext: Boolean,
     val isUpdatingRole: Boolean,
     val isCreatingWorkspace: Boolean,
+    val isManagingWorkspaceMembers: Boolean,
     val errorMessage: String?,
 )

@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.bam.incomedy.shared.di.InComedyKoin
 import com.bam.incomedy.shared.session.SessionState
 import com.bam.incomedy.shared.session.SessionViewModel
+import com.bam.incomedy.domain.session.WorkspaceInvitationDecision
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -34,6 +35,48 @@ class SessionAndroidViewModel(
     /** Создает новое рабочее пространство организатора. */
     fun createWorkspace(name: String, slug: String? = null) {
         sharedViewModel.createWorkspace(name = name, slug = slug)
+    }
+
+    /** Создает invitation существующему пользователю внутри workspace. */
+    fun createWorkspaceInvitation(
+        workspaceId: String,
+        inviteeIdentifier: String,
+        permissionRole: String,
+    ) {
+        sharedViewModel.createWorkspaceInvitation(
+            workspaceId = workspaceId,
+            inviteeIdentifier = inviteeIdentifier,
+            permissionRole = permissionRole,
+        )
+    }
+
+    /** Принимает pending invitation текущего пользователя. */
+    fun acceptWorkspaceInvitation(membershipId: String) {
+        sharedViewModel.respondToWorkspaceInvitation(
+            membershipId = membershipId,
+            decision = WorkspaceInvitationDecision.ACCEPT,
+        )
+    }
+
+    /** Отклоняет pending invitation текущего пользователя. */
+    fun declineWorkspaceInvitation(membershipId: String) {
+        sharedViewModel.respondToWorkspaceInvitation(
+            membershipId = membershipId,
+            decision = WorkspaceInvitationDecision.DECLINE,
+        )
+    }
+
+    /** Меняет permission role membership внутри workspace. */
+    fun updateWorkspaceMembershipRole(
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: String,
+    ) {
+        sharedViewModel.updateWorkspaceMembershipRole(
+            workspaceId = workspaceId,
+            membershipId = membershipId,
+            permissionRole = permissionRole,
+        )
     }
 
     /** Скрывает текущую ошибку главного экрана. */

@@ -25,9 +25,11 @@ Use this index for new implementation and review tasks.
 14. `task-request-template/task-request-template-part-14.md` (platform developer-account constraint persistence, Android VK app-preferred launch, and collaboration-rule persistence from 2026-03-15)
 15. `task-request-template/task-request-template-part-15.md` (Android VK callback completion stabilization from 2026-03-15)
 16. `task-request-template/task-request-template-part-16.md` (external auth architecture comparison, token/session analysis, and Android VK OneTap implementation request from 2026-03-15)
-17. `task-request-template/task-request-template-part-17.md` (Android VK OneTap live diagnostics investigation from 2026-03-15)
+17. `task-request-template/task-request-template-part-17.md` (Android VK OneTap live diagnostics and documented Android rework requests from 2026-03-15)
+18. `task-request-template/task-request-template-part-18.md` (context resynchronization and organizer workspace invitations/permission-role requests from 2026-03-16)
+19. `task-request-template/task-request-template-part-19.md` (auth/session modular refactoring request from 2026-03-16)
 
 ## Append Rule
 
-- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-17.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-18.md`, update this index, and continue appending there.
+- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-19.md`.
+- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-20.md`, update this index, and continue appending there.

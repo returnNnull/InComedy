@@ -21,6 +21,9 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":data:auth"))
+            implementation(project(":data:session"))
+            implementation(project(":domain:auth"))
+            implementation(project(":domain:session"))
             implementation(project(":feature:auth"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)

@@ -1,15 +1,19 @@
 package com.bam.incomedy.shared.session
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthSession
-import com.bam.incomedy.feature.auth.domain.AuthorizedUser
-import com.bam.incomedy.feature.auth.domain.OrganizerWorkspace
-import com.bam.incomedy.feature.auth.domain.SessionContextService
-import com.bam.incomedy.feature.auth.domain.SessionRoleContext
-import com.bam.incomedy.feature.auth.domain.SessionTerminationService
-import com.bam.incomedy.feature.auth.domain.SessionValidationService
-import com.bam.incomedy.feature.auth.domain.SocialAuthService
-import com.bam.incomedy.feature.auth.domain.ValidatedSession
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthSession
+import com.bam.incomedy.domain.auth.AuthorizedUser
+import com.bam.incomedy.domain.auth.CredentialAuthService
+import com.bam.incomedy.domain.session.OrganizerWorkspace
+import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
+import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
+import com.bam.incomedy.domain.session.SessionContextService
+import com.bam.incomedy.domain.session.SessionRoleContext
+import com.bam.incomedy.domain.auth.SessionTerminationService
+import com.bam.incomedy.domain.auth.SessionValidationService
+import com.bam.incomedy.domain.auth.SocialAuthService
+import com.bam.incomedy.domain.auth.ValidatedSession
+import com.bam.incomedy.domain.session.WorkspaceInvitationDecision
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +45,17 @@ class SessionViewModelTest {
                     permissionRole = "owner",
                 ),
             ),
+            workspaceInvitations = listOf(
+                OrganizerWorkspaceInvitation(
+                    membershipId = "invite-1",
+                    workspaceId = "ws-2",
+                    workspaceName = "Late Night Standup",
+                    workspaceSlug = "late-night-standup",
+                    workspaceStatus = "active",
+                    permissionRole = "checker",
+                    invitedByDisplayName = "Owner User",
+                ),
+            ),
         )
         val authViewModel = createAuthViewModel(dispatcher)
         val sessionViewModel = SessionViewModel(
@@ -59,7 +74,10 @@ class SessionViewModelTest {
         assertEquals(listOf("telegram"), state.linkedProviders)
         assertEquals(1, state.workspaces.size)
         assertEquals("Moscow Cellar", state.workspaces.first().name)
+        assertEquals(1, state.workspaceInvitations.size)
+        assertEquals("Late Night Standup", state.workspaceInvitations.first().workspaceName)
         assertEquals(1, contextService.listWorkspacesCalls)
+        assertEquals(1, contextService.listWorkspaceInvitationsCalls)
     }
 
     /** Проверяет, что смена роли обновляет и локальное состояние, и общую auth-сессию. */
@@ -147,9 +165,145 @@ class SessionViewModelTest {
         assertTrue(contextService.listWorkspacesCalls >= 2)
     }
 
+    /** Проверяет, что invitation mutation обновляет organizer context. */
+    @Test
+    fun `create workspace invitation refreshes organizer context`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val contextService = FakeSessionContextService(
+            workspaces = listOf(
+                OrganizerWorkspace(
+                    id = "ws-1",
+                    name = "Moscow Cellar",
+                    slug = "moscow-cellar",
+                    status = "active",
+                    permissionRole = "owner",
+                    canManageMembers = true,
+                    assignablePermissionRoles = listOf("manager", "checker", "host"),
+                    memberships = listOf(
+                        OrganizerWorkspaceMembership(
+                            membershipId = "member-1",
+                            userId = "user-1",
+                            displayName = "Owner User",
+                            username = "owner",
+                            permissionRole = "owner",
+                            status = "active",
+                        ),
+                    ),
+                ),
+            ),
+            workspaceInvitations = listOf(
+                OrganizerWorkspaceInvitation(
+                    membershipId = "invite-1",
+                    workspaceId = "ws-2",
+                    workspaceName = "Late Night Standup",
+                    workspaceSlug = "late-night-standup",
+                    workspaceStatus = "active",
+                    permissionRole = "checker",
+                    invitedByDisplayName = "Owner User",
+                ),
+            ),
+        )
+        val authViewModel = createAuthViewModel(dispatcher)
+        val sessionViewModel = SessionViewModel(
+            authViewModel = authViewModel,
+            sessionContextService = contextService,
+            dispatcher = dispatcher,
+        )
+
+        authViewModel.onIntent(AuthIntent.OnRestoreSession(baseSession()))
+        advanceUntilIdle()
+
+        sessionViewModel.createWorkspaceInvitation(
+            workspaceId = "ws-1",
+            inviteeIdentifier = "checker_user",
+            permissionRole = "checker",
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, contextService.createWorkspaceInvitationCalls)
+        assertEquals("checker_user", contextService.lastInviteeIdentifier)
+        assertEquals("checker", contextService.lastRequestedWorkspacePermissionRole)
+        assertTrue(contextService.listWorkspacesCalls >= 2)
+        assertTrue(contextService.listWorkspaceInvitationsCalls >= 2)
+    }
+
+    /** Проверяет, что accept invitation обновляет роль organizer и очищает inbox. */
+    @Test
+    fun `responding to workspace invitation refreshes roles and invitations`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val contextService = FakeSessionContextService(
+            roleContext = SessionRoleContext(
+                roles = listOf("audience", "organizer"),
+                activeRole = "audience",
+                linkedProviders = listOf("telegram"),
+            ),
+        )
+        val authViewModel = createAuthViewModel(dispatcher)
+        val sessionViewModel = SessionViewModel(
+            authViewModel = authViewModel,
+            sessionContextService = contextService,
+            dispatcher = dispatcher,
+        )
+
+        authViewModel.onIntent(
+            AuthIntent.OnRestoreSession(
+                baseSession(
+                    user = AuthorizedUser(
+                        id = "user-1",
+                        displayName = "Invitee",
+                        roles = listOf("audience"),
+                        activeRole = "audience",
+                        linkedProviders = listOf("telegram"),
+                    ),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        sessionViewModel.respondToWorkspaceInvitation(
+            membershipId = "invite-1",
+            decision = WorkspaceInvitationDecision.ACCEPT,
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, contextService.respondToWorkspaceInvitationCalls)
+        assertEquals(WorkspaceInvitationDecision.ACCEPT, contextService.lastInvitationDecision)
+        assertEquals(listOf("audience", "organizer"), sessionViewModel.state.value.roles)
+        assertTrue(contextService.getRoleContextCalls >= 1)
+    }
+
+    /** Проверяет, что membership role update перезагружает organizer context. */
+    @Test
+    fun `update workspace membership role refreshes organizer context`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val contextService = FakeSessionContextService()
+        val authViewModel = createAuthViewModel(dispatcher)
+        val sessionViewModel = SessionViewModel(
+            authViewModel = authViewModel,
+            sessionContextService = contextService,
+            dispatcher = dispatcher,
+        )
+
+        authViewModel.onIntent(AuthIntent.OnRestoreSession(baseSession()))
+        advanceUntilIdle()
+
+        sessionViewModel.updateWorkspaceMembershipRole(
+            workspaceId = "ws-1",
+            membershipId = "member-2",
+            permissionRole = "host",
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, contextService.updateWorkspaceMembershipRoleCalls)
+        assertEquals("member-2", contextService.lastWorkspaceMembershipId)
+        assertEquals("host", contextService.lastRequestedWorkspacePermissionRole)
+        assertTrue(contextService.listWorkspacesCalls >= 2)
+    }
+
     /** Создает auth `ViewModel` с тестовыми зависимостями. */
     private fun createAuthViewModel(dispatcher: TestDispatcher): AuthViewModel {
         return AuthViewModel(
+            credentialAuthService = FakeCredentialAuthService(),
             socialAuthService = SocialAuthService(emptyList()),
             sessionValidationService = FakeSessionValidationService(),
             sessionTerminationService = FakeSessionTerminationService(),
@@ -207,12 +361,38 @@ private class FakeSessionTerminationService : SessionTerminationService {
     }
 }
 
+/** Фейковая credential auth реализация для конструирования `AuthViewModel` в session tests. */
+private class FakeCredentialAuthService : CredentialAuthService {
+    /** Возвращает стабильную password-сессию для тестовой модели. */
+    override suspend fun signIn(login: String, password: String): Result<AuthSession> {
+        return Result.success(
+            AuthSession(
+                provider = AuthProviderType.PASSWORD,
+                userId = "user-1",
+                accessToken = "access-token",
+                refreshToken = "refresh-token",
+                user = AuthorizedUser(
+                    id = "user-1",
+                    displayName = login,
+                    username = login,
+                ),
+            ),
+        )
+    }
+
+    /** Для session tests регистрация эквивалентна успешному sign-in. */
+    override suspend fun register(login: String, password: String): Result<AuthSession> {
+        return signIn(login = login, password = password)
+    }
+}
+
 /**
  * Фейковая реализация `SessionContextService`, которая считает вызовы и возвращает
  * детерминированные роли/рабочие пространства.
  *
  * @property roleContext Контекст ролей, который будут возвращать role-методы.
  * @property workspaces Рабочие пространства, которые вернет list.
+ * @property workspaceInvitations Pending invitations, которые вернет inbox list.
  * @property createdWorkspace Рабочее пространство, которое вернет create.
  */
 private class FakeSessionContextService(
@@ -222,6 +402,7 @@ private class FakeSessionContextService(
         linkedProviders = listOf("telegram"),
     ),
     private val workspaces: List<OrganizerWorkspace> = emptyList(),
+    private val workspaceInvitations: List<OrganizerWorkspaceInvitation> = emptyList(),
     private val createdWorkspace: OrganizerWorkspace = OrganizerWorkspace(
         id = "ws-created",
         name = "Created Workspace",
@@ -242,8 +423,32 @@ private class FakeSessionContextService(
     /** Счетчик вызовов создания рабочего пространства. */
     var createWorkspaceCalls: Int = 0
 
+    /** Счетчик вызовов загрузки pending invitations. */
+    var listWorkspaceInvitationsCalls: Int = 0
+
+    /** Счетчик вызовов создания workspace invitation. */
+    var createWorkspaceInvitationCalls: Int = 0
+
+    /** Счетчик вызовов ответа по invitation. */
+    var respondToWorkspaceInvitationCalls: Int = 0
+
+    /** Счетчик вызовов update membership role. */
+    var updateWorkspaceMembershipRoleCalls: Int = 0
+
     /** Последняя роль, которую запросили сделать активной. */
     var lastRequestedRole: String? = null
+
+    /** Последний invitee identifier для create invitation. */
+    var lastInviteeIdentifier: String? = null
+
+    /** Последний membership id для invitation/member operations. */
+    var lastWorkspaceMembershipId: String? = null
+
+    /** Последняя permission role для workspace member operations. */
+    var lastRequestedWorkspacePermissionRole: String? = null
+
+    /** Последнее решение invitee по pending invitation. */
+    var lastInvitationDecision: WorkspaceInvitationDecision? = null
 
     /** Возвращает тестовый role context. */
     override suspend fun getRoleContext(accessToken: String): Result<SessionRoleContext> {
@@ -275,6 +480,70 @@ private class FakeSessionContextService(
             createdWorkspace.copy(
                 name = name,
                 slug = slug ?: createdWorkspace.slug,
+            ),
+        )
+    }
+
+    /** Возвращает pending invitations текущего пользователя. */
+    override suspend fun listWorkspaceInvitations(accessToken: String): Result<List<OrganizerWorkspaceInvitation>> {
+        listWorkspaceInvitationsCalls += 1
+        return Result.success(workspaceInvitations)
+    }
+
+    /** Запоминает параметры invitation create flow. */
+    override suspend fun createWorkspaceInvitation(
+        accessToken: String,
+        workspaceId: String,
+        inviteeIdentifier: String,
+        permissionRole: String,
+    ): Result<OrganizerWorkspaceMembership> {
+        createWorkspaceInvitationCalls += 1
+        lastInviteeIdentifier = inviteeIdentifier
+        lastRequestedWorkspacePermissionRole = permissionRole
+        return Result.success(
+            OrganizerWorkspaceMembership(
+                membershipId = "membership-created",
+                userId = "user-2",
+                displayName = inviteeIdentifier,
+                username = inviteeIdentifier,
+                permissionRole = permissionRole,
+                status = "invited",
+                invitedByDisplayName = "Owner User",
+            ),
+        )
+    }
+
+    /** Запоминает решение invitee по pending invitation. */
+    override suspend fun respondToWorkspaceInvitation(
+        accessToken: String,
+        membershipId: String,
+        decision: WorkspaceInvitationDecision,
+    ): Result<Unit> {
+        respondToWorkspaceInvitationCalls += 1
+        lastWorkspaceMembershipId = membershipId
+        lastInvitationDecision = decision
+        return Result.success(Unit)
+    }
+
+    /** Запоминает membership role update и возвращает фиктивный membership. */
+    override suspend fun updateWorkspaceMembershipRole(
+        accessToken: String,
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: String,
+    ): Result<OrganizerWorkspaceMembership> {
+        updateWorkspaceMembershipRoleCalls += 1
+        lastWorkspaceMembershipId = membershipId
+        lastRequestedWorkspacePermissionRole = permissionRole
+        return Result.success(
+            OrganizerWorkspaceMembership(
+                membershipId = membershipId,
+                userId = "user-2",
+                displayName = "Member User",
+                username = "member_user",
+                permissionRole = permissionRole,
+                status = "active",
+                assignablePermissionRoles = listOf("checker", "host"),
             ),
         )
     }

@@ -1,6 +1,6 @@
 package com.bam.incomedy.feature.auth.mvi
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthProviderType
 
 /**
  * Shared sanitized client auth logger.

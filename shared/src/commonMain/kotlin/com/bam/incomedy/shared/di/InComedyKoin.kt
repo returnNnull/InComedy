@@ -1,6 +1,7 @@
 package com.bam.incomedy.shared.di
 
 import com.bam.incomedy.data.auth.di.authDataModule
+import com.bam.incomedy.data.session.di.sessionDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.shared.session.SessionViewModel
@@ -19,6 +20,7 @@ object InComedyKoin {
     /** Базовый набор общих модулей DI для auth и session слоев. */
     private val baseModules: List<Module> = listOf(
         authDataModule,
+        sessionDataModule,
         authFeatureModule,
         module {
             single {

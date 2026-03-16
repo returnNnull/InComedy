@@ -28,7 +28,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthProviderType
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthFlowLogger
 import com.bam.incomedy.feature.auth.mvi.AuthIntent

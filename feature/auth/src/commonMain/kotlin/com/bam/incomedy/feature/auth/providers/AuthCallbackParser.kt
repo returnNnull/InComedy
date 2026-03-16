@@ -1,6 +1,6 @@
 package com.bam.incomedy.feature.auth.providers
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthProviderType
 
 /**
  * Нормализованный результат разбора callback URL внешнего auth-провайдера.

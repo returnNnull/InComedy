@@ -1,7 +1,7 @@
 package com.bam.incomedy.feature.auth.mvi
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthSession
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthSession
 
 data class AuthState(
     val isLoading: Boolean = false,

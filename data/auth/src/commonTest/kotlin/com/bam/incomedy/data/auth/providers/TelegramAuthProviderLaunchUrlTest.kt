@@ -4,8 +4,8 @@ import com.bam.incomedy.data.auth.backend.TelegramAuthGateway
 import com.bam.incomedy.data.auth.backend.TelegramAuthLaunch
 import com.bam.incomedy.data.auth.backend.TelegramBackendSession
 import com.bam.incomedy.data.auth.backend.TelegramVerifyPayload
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthorizedUser
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthorizedUser
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals

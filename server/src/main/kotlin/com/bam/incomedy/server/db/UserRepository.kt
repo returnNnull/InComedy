@@ -44,6 +44,26 @@ enum class WorkspacePermissionRole(
     CHECKER("checker"),
     HOST("host"),
     ;
+
+    companion object {
+        fun fromWireName(value: String): WorkspacePermissionRole? {
+            return entries.firstOrNull { it.wireName == value }
+        }
+    }
+}
+
+enum class WorkspaceMembershipStatus(
+    val wireName: String,
+) {
+    INVITED("invited"),
+    ACTIVE("active"),
+    ;
+
+    companion object {
+        fun fromJoined(joined: Boolean): WorkspaceMembershipStatus {
+            return if (joined) ACTIVE else INVITED
+        }
+    }
 }
 
 data class StoredUser(
@@ -62,6 +82,33 @@ data class StoredWorkspace(
     val name: String,
     val slug: String,
     val status: String,
+    val permissionRole: WorkspacePermissionRole,
+    val memberships: List<StoredWorkspaceMembership> = emptyList(),
+)
+
+data class StoredWorkspaceMembership(
+    val membershipId: String,
+    val userId: String,
+    val displayName: String,
+    val username: String?,
+    val permissionRole: WorkspacePermissionRole,
+    val status: WorkspaceMembershipStatus,
+    val invitedByDisplayName: String? = null,
+)
+
+data class StoredWorkspaceInvitation(
+    val membershipId: String,
+    val workspaceId: String,
+    val workspaceName: String,
+    val workspaceSlug: String,
+    val workspaceStatus: String,
+    val permissionRole: WorkspacePermissionRole,
+    val invitedByDisplayName: String? = null,
+)
+
+data class StoredWorkspaceAccess(
+    val workspaceId: String,
+    val membershipId: String,
     val permissionRole: WorkspacePermissionRole,
 )
 
@@ -91,8 +138,39 @@ interface UserRepository {
     fun setActiveRole(userId: String, role: UserRole): StoredUser?
     fun createWorkspace(ownerUserId: String, name: String, slug: String): StoredWorkspace
     fun listWorkspaces(userId: String): List<StoredWorkspace>
+    fun listWorkspaceInvitations(userId: String): List<StoredWorkspaceInvitation>
+    fun findWorkspaceAccess(workspaceId: String, userId: String): StoredWorkspaceAccess?
+    fun findWorkspaceMembership(workspaceId: String, membershipId: String): StoredWorkspaceMembership?
+    fun createWorkspaceInvitation(
+        workspaceId: String,
+        invitedByUserId: String,
+        inviteeIdentifier: String,
+        permissionRole: WorkspacePermissionRole,
+    ): StoredWorkspaceMembership
+
+    fun updateWorkspaceMembershipRole(
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: WorkspacePermissionRole,
+    ): StoredWorkspaceMembership?
+
+    fun respondToWorkspaceInvitation(
+        userId: String,
+        membershipId: String,
+        accept: Boolean,
+    ): Boolean
 }
 
 class DuplicateCredentialLoginException(
     val normalizedLogin: String,
 ) : IllegalStateException("Credential login is already registered")
+
+class WorkspaceInviteeNotFoundException(
+    val inviteeIdentifier: String,
+) : IllegalStateException("Workspace invitee was not found")
+
+class WorkspaceMembershipAlreadyExistsException(
+    val workspaceId: String,
+    val userId: String,
+    val pending: Boolean,
+) : IllegalStateException("Workspace membership already exists")

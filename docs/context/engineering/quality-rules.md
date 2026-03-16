@@ -39,8 +39,15 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 ## Dependency and Layer Rules
 
-- Enforce `presentation -> domain -> data` dependency direction.
+- Enforce layer intent together with compile-time direction:
+  - `feature/presentation -> domain`
+  - `data -> domain`
+  - `core` is reusable technical support, not a business layer
+  - `domain` must stay independent from `data` and `feature`
+  - `data` must not depend on `feature/presentation`
 - External SDKs/APIs must be wrapped behind adapters/interfaces.
+- `data -> data` dependencies are an exception and require promoting the shared concern into `core/*` or another dedicated shared module unless a documented decision explicitly allows otherwise.
+- Business contracts, enums, ports, and use cases must live in `domain/*`; if such code is discovered under `feature/*`, it should be treated as architectural debt and moved.
 - Region- or provider-specific external flows must not become the default production path until staging/device smoke checks confirm they operate in the current target market.
 - When a provider's live browser behavior requires an approved first-party web origin, mobile clients must open a backend-issued first-party launch surface instead of direct raw provider URLs.
 

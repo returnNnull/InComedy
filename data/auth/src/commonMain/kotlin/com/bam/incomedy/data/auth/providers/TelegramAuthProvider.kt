@@ -2,10 +2,10 @@ package com.bam.incomedy.data.auth.providers
 
 import com.bam.incomedy.data.auth.backend.TelegramAuthGateway
 import com.bam.incomedy.data.auth.backend.TelegramVerifyPayload
-import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthSession
-import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
+import com.bam.incomedy.domain.auth.AuthLaunchRequest
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthSession
+import com.bam.incomedy.domain.auth.SocialAuthProvider
 
 /**
  * Telegram auth provider, который делегирует официальный launch/verify flow backend-у.

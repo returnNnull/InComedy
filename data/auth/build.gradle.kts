@@ -12,7 +12,8 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":feature:auth"))
+            implementation(project(":core:backend"))
+            implementation(project(":domain:auth"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
             implementation(libs.kotlinx.serialization.json)

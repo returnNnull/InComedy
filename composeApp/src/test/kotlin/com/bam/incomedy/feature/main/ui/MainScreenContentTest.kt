@@ -42,13 +42,17 @@ class MainScreenContentTest {
         composeRule.onNodeWithTag(MainScreenTags.HOME_CONTENT).assertIsDisplayed()
         composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_COUNT).assertTextEquals("1")
         composeRule.onNodeWithText("Moscow Cellar").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(MainScreenTags.WORKSPACE_INVITATION_INBOX).assertCountEquals(0)
     }
 
     /** Проверяет пустое состояние рабочих пространств без привязки к длинной строке счетчика. */
     @Test
     fun homeTabShowsEmptyWorkspaceState() {
         setMainScreenContent(
-            state = AndroidUiStateFactory.sessionState(workspaces = emptyList()),
+            state = AndroidUiStateFactory.sessionState(
+                workspaces = emptyList(),
+                workspaceInvitations = emptyList(),
+            ),
         )
 
         composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_COUNT).assertTextEquals("0")
@@ -59,10 +63,107 @@ class MainScreenContentTest {
     @Test
     fun mainScreenShowsLoadingIndicatorWhileContextLoads() {
         setMainScreenContent(
-            state = AndroidUiStateFactory.sessionState(isLoadingContext = true),
+            state = AndroidUiStateFactory.sessionState(isManagingWorkspaceMembers = true),
         )
 
         composeRule.onNodeWithTag(MainScreenTags.LOADING).assertIsDisplayed()
+    }
+
+    /** Проверяет отображение inbox pending invitations и отправку accept/decline действий. */
+    @Test
+    fun homeTabShowsWorkspaceInvitationsAndInvokesActions() {
+        var acceptedInvitationId: String? = null
+        var declinedInvitationId: String? = null
+
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(
+                workspaceInvitations = listOf(AndroidUiStateFactory.workspaceInvitation()),
+            ),
+            onAcceptWorkspaceInvitation = { acceptedInvitationId = it },
+            onDeclineWorkspaceInvitation = { declinedInvitationId = it },
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.WORKSPACE_INVITATION_INBOX).assertIsDisplayed()
+        composeRule.onNodeWithTag("${MainScreenTags.WORKSPACE_INVITATION_ACCEPT_PREFIX}wm-invite-1")
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag("${MainScreenTags.WORKSPACE_INVITATION_DECLINE_PREFIX}wm-invite-1")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("wm-invite-1", acceptedInvitationId)
+        assertEquals("wm-invite-1", declinedInvitationId)
+    }
+
+    /** Проверяет invitation form внутри workspace и прокидывание выбранной роли. */
+    @Test
+    fun workspaceCardSendsInvitationIdentifierAndRole() {
+        var invitedWorkspaceId: String? = null
+        var invitedIdentifier: String? = null
+        var invitedRole: String? = null
+
+        setMainScreenContent(
+            onCreateWorkspaceInvitation = { workspaceId, identifier, role ->
+                invitedWorkspaceId = workspaceId
+                invitedIdentifier = identifier
+                invitedRole = role
+            },
+        )
+
+        composeRule.onNodeWithTag("${MainScreenTags.WORKSPACE_INVITEE_INPUT_PREFIX}ws-1")
+            .performTextInput("checker_user")
+        composeRule.onNodeWithTag("${MainScreenTags.WORKSPACE_INVITE_ROLE_PREFIX}ws-1.checker")
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag("${MainScreenTags.WORKSPACE_INVITE_BUTTON_PREFIX}ws-1")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("ws-1", invitedWorkspaceId)
+        assertEquals("checker_user", invitedIdentifier)
+        assertEquals("checker", invitedRole)
+    }
+
+    /** Проверяет смену роли участника workspace из roster карточки. */
+    @Test
+    fun workspaceCardInvokesMembershipRoleUpdate() {
+        var updatedWorkspaceId: String? = null
+        var updatedMembershipId: String? = null
+        var updatedRole: String? = null
+
+        setMainScreenContent(
+            state = AndroidUiStateFactory.sessionState(
+                workspaces = listOf(
+                    AndroidUiStateFactory.workspace(
+                        memberships = listOf(
+                            AndroidUiStateFactory.workspaceMembership(
+                                membershipId = "wm-2",
+                                userId = "user-2",
+                                displayName = "Checker User",
+                                permissionRole = "checker",
+                                status = "active",
+                                isCurrentUser = false,
+                                canEditRole = true,
+                                assignablePermissionRoles = listOf("checker", "host"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            onUpdateWorkspaceMembershipRole = { workspaceId, membershipId, role ->
+                updatedWorkspaceId = workspaceId
+                updatedMembershipId = membershipId
+                updatedRole = role
+            },
+        )
+
+        composeRule.onNodeWithTag("${MainScreenTags.WORKSPACE_MEMBERSHIP_ROLE_PREFIX}wm-2.host")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("ws-1", updatedWorkspaceId)
+        assertEquals("wm-2", updatedMembershipId)
+        assertEquals("host", updatedRole)
     }
 
     /** Проверяет, что вкладка аккаунта показывает профиль и прокидывает действия роли и выхода. */
@@ -190,6 +291,10 @@ class MainScreenContentTest {
                     state = state.value,
                     onSetActiveRole = {},
                     onCreateWorkspace = { _, _ -> },
+                    onCreateWorkspaceInvitation = { _, _, _ -> },
+                    onAcceptWorkspaceInvitation = {},
+                    onDeclineWorkspaceInvitation = {},
+                    onUpdateWorkspaceMembershipRole = { _, _, _ -> },
                     onClearError = { state.value = state.value.copy(errorMessage = null) },
                     onSignOut = {},
                 )
@@ -206,6 +311,10 @@ class MainScreenContentTest {
         state: com.bam.incomedy.shared.session.SessionState = AndroidUiStateFactory.sessionState(),
         onSetActiveRole: (String) -> Unit = {},
         onCreateWorkspace: (String, String?) -> Unit = { _, _ -> },
+        onCreateWorkspaceInvitation: (String, String, String) -> Unit = { _, _, _ -> },
+        onAcceptWorkspaceInvitation: (String) -> Unit = {},
+        onDeclineWorkspaceInvitation: (String) -> Unit = {},
+        onUpdateWorkspaceMembershipRole: (String, String, String) -> Unit = { _, _, _ -> },
         onClearError: () -> Unit = {},
         onSignOut: () -> Unit = {},
     ) {
@@ -215,6 +324,10 @@ class MainScreenContentTest {
                     state = state,
                     onSetActiveRole = onSetActiveRole,
                     onCreateWorkspace = onCreateWorkspace,
+                    onCreateWorkspaceInvitation = onCreateWorkspaceInvitation,
+                    onAcceptWorkspaceInvitation = onAcceptWorkspaceInvitation,
+                    onDeclineWorkspaceInvitation = onDeclineWorkspaceInvitation,
+                    onUpdateWorkspaceMembershipRole = onUpdateWorkspaceMembershipRole,
                     onClearError = onClearError,
                     onSignOut = onSignOut,
                 )

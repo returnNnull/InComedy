@@ -1,6 +1,6 @@
 package com.bam.incomedy.feature.auth.providers
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthProviderType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

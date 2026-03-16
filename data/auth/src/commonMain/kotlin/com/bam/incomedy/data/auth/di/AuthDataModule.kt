@@ -1,35 +1,30 @@
 package com.bam.incomedy.data.auth.di
 
-import com.bam.incomedy.data.auth.backend.BackendSessionContextService
+import com.bam.incomedy.data.auth.backend.AuthBackendApi
 import com.bam.incomedy.data.auth.backend.BackendCredentialAuthService
 import com.bam.incomedy.data.auth.backend.BackendSessionTerminationService
 import com.bam.incomedy.data.auth.backend.BackendSessionValidationService
-import com.bam.incomedy.data.auth.backend.TelegramBackendApi
 import com.bam.incomedy.data.auth.providers.VkAuthProvider
-import com.bam.incomedy.feature.auth.domain.CredentialAuthService
-import com.bam.incomedy.feature.auth.domain.SessionContextService
-import com.bam.incomedy.feature.auth.domain.SessionTerminationService
-import com.bam.incomedy.feature.auth.domain.SessionValidationService
-import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
+import com.bam.incomedy.domain.auth.CredentialAuthService
+import com.bam.incomedy.domain.auth.SessionTerminationService
+import com.bam.incomedy.domain.auth.SessionValidationService
+import com.bam.incomedy.domain.auth.SocialAuthProvider
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-/** DI-модуль data-слоя авторизации и серверного session/profile API. */
+/** DI-модуль data-слоя авторизации и session lifecycle, не включающий post-auth context. */
 val authDataModule = module {
     single {
-        TelegramBackendApi()
+        AuthBackendApi()
     }
     single<CredentialAuthService> {
         BackendCredentialAuthService(backendApi = get())
     }
     single<SessionValidationService> {
-        BackendSessionValidationService(telegramBackendApi = get())
-    }
-    single<SessionContextService> {
-        BackendSessionContextService(telegramBackendApi = get())
+        BackendSessionValidationService(authBackendApi = get())
     }
     single<SessionTerminationService> {
-        BackendSessionTerminationService(telegramBackendApi = get())
+        BackendSessionTerminationService(authBackendApi = get())
     }
 
     single {

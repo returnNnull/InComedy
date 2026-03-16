@@ -5,9 +5,20 @@ This document defines mandatory engineering rules for InComedy.
 ## Architecture
 
 - Project architecture style: `Clean` (layered boundaries and dependency direction from outer layers to domain abstractions).
-- Feature modules should keep clear separation of concerns (presentation/domain/data).
+- Module taxonomy is mandatory:
+  - `core/*` for shared technical primitives and cross-cutting infrastructure only;
+  - `domain/*` for business entities, ports, use cases, and feature-neutral contracts;
+  - `data/*` for implementations of domain ports and infrastructure-backed adapters;
+  - `feature/*` for presentation, orchestration, feature-local reducers/ViewModels, and UI-adjacent pure helpers.
+- Feature modules should keep clear separation of concerns and must not be used as the place where domain contracts permanently live.
 - Dependency injection standard: `Koin`.
 - Dependencies should be wired via feature modules and resolved through shared DI entry points (no ad-hoc object factories).
+- Compile-time dependency rules are mandatory:
+  - `domain` must not depend on `data` or `feature`;
+  - `data` may depend on `domain` and `core`, but must not depend on `feature/presentation`;
+  - `feature` may depend on `domain` and `core`, but must not be depended on by `data`;
+  - if multiple `data` modules need the same code, that code must be promoted into `core/*` or another dedicated shared module instead of introducing `data -> data` coupling by default.
+- `core` must stay technical: if a module starts speaking in product terms like `workspace`, `invitation`, `ticket`, or `role policy`, it belongs in `domain`, not in `core`.
 
 ## Presentation
 
@@ -16,6 +27,7 @@ This document defines mandatory engineering rules for InComedy.
   - Android: Jetpack Compose
   - iOS: SwiftUI
 - Shared feature modules should contain platform-agnostic logic (domain/use-cases/ViewModel/contracts), not platform UI widgets.
+- App composition layers such as `shared` may assemble `feature + data + domain` modules, but they must not become a dumping ground for business contracts that belong in `domain/*`.
 - Android navigation must be organized as a root `NavHost` with feature-owned nested subgraphs (`NavGraphBuilder` extensions), not a single flat route list.
 - Each Android feature should keep its own navigation package (`.../feature/<name>/navigation/*`) with graph and destination declarations.
 - iOS navigation must be organized as a root app graph container (app-level navigator) with feature-owned graph views, not direct screen switching in `ContentView`.

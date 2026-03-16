@@ -1,25 +1,26 @@
 package com.bam.incomedy.data.auth.backend
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthorizedUser
-import com.bam.incomedy.feature.auth.domain.SessionValidationException
-import com.bam.incomedy.feature.auth.domain.SessionValidationFailureReason
-import com.bam.incomedy.feature.auth.domain.SessionValidationService
-import com.bam.incomedy.feature.auth.domain.ValidatedSession
+import com.bam.incomedy.core.backend.BackendStatusException
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthorizedUser
+import com.bam.incomedy.domain.auth.SessionValidationException
+import com.bam.incomedy.domain.auth.SessionValidationFailureReason
+import com.bam.incomedy.domain.auth.SessionValidationService
+import com.bam.incomedy.domain.auth.ValidatedSession
 
 /**
  * Реализация `SessionValidationService`, которая валидирует access token на backend
  * и при необходимости выполняет refresh.
  *
- * @property telegramBackendApi HTTP-клиент backend API сессии.
+ * @property authBackendApi HTTP-клиент backend API auth/session lifecycle.
  */
 class BackendSessionValidationService(
-    private val telegramBackendApi: TelegramBackendApi,
+    private val authBackendApi: AuthBackendApi,
 ) : SessionValidationService {
 
     /** Проверяет access token и при необходимости обновляет сессию по refresh token. */
     override suspend fun validate(accessToken: String, refreshToken: String?): Result<ValidatedSession> {
-        val directValidation = telegramBackendApi.getSessionUser(accessToken)
+        val directValidation = authBackendApi.getSessionUser(accessToken)
         if (directValidation.isSuccess) {
             return directValidation.map { user ->
                 ValidatedSession(
@@ -45,7 +46,7 @@ class BackendSessionValidationService(
         val validationReason = classifyFailure(validationError)
 
         if (validationReason == SessionValidationFailureReason.UNAUTHORIZED && !refreshToken.isNullOrBlank()) {
-            return telegramBackendApi.refreshSession(refreshToken)
+            return authBackendApi.refreshSession(refreshToken)
                 .map { refreshed ->
                     ValidatedSession(
                         provider = refreshed.provider,

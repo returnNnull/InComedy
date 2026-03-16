@@ -4,6 +4,8 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +50,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bam.incomedy.feature.auth.domain.OrganizerWorkspace
+import com.bam.incomedy.domain.session.OrganizerWorkspace
+import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
+import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.shared.session.SessionState
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +76,10 @@ fun MainScreen(
         state = state,
         onSetActiveRole = sessionViewModel::setActiveRole,
         onCreateWorkspace = sessionViewModel::createWorkspace,
+        onCreateWorkspaceInvitation = sessionViewModel::createWorkspaceInvitation,
+        onAcceptWorkspaceInvitation = sessionViewModel::acceptWorkspaceInvitation,
+        onDeclineWorkspaceInvitation = sessionViewModel::declineWorkspaceInvitation,
+        onUpdateWorkspaceMembershipRole = sessionViewModel::updateWorkspaceMembershipRole,
         onClearError = sessionViewModel::clearError,
         onSignOut = sessionViewModel::signOut,
         modifier = modifier,
@@ -84,6 +92,10 @@ fun MainScreen(
  * @property state Данные текущей сессии для отрисовки вкладок.
  * @property onSetActiveRole Обработчик переключения активной роли.
  * @property onCreateWorkspace Обработчик создания рабочего пространства.
+ * @property onCreateWorkspaceInvitation Обработчик создания invitation внутри workspace.
+ * @property onAcceptWorkspaceInvitation Обработчик принятия pending invitation.
+ * @property onDeclineWorkspaceInvitation Обработчик отклонения pending invitation.
+ * @property onUpdateWorkspaceMembershipRole Обработчик смены permission role membership.
  * @property onClearError Обработчик скрытия ошибки.
  * @property onSignOut Обработчик выхода из профиля.
  * @property modifier Внешний модификатор контейнера.
@@ -93,6 +105,10 @@ internal fun MainScreenContent(
     state: SessionState,
     onSetActiveRole: (String) -> Unit,
     onCreateWorkspace: (String, String?) -> Unit,
+    onCreateWorkspaceInvitation: (String, String, String) -> Unit,
+    onAcceptWorkspaceInvitation: (String) -> Unit,
+    onDeclineWorkspaceInvitation: (String) -> Unit,
+    onUpdateWorkspaceMembershipRole: (String, String, String) -> Unit,
     onClearError: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -133,7 +149,7 @@ internal fun MainScreenContent(
                 onClearError = onClearError,
             )
 
-            if (state.isLoadingContext || state.isUpdatingRole || state.isCreatingWorkspace) {
+            if (state.isLoadingContext || state.isUpdatingRole || state.isCreatingWorkspace || state.isManagingWorkspaceMembers) {
                 CircularProgressIndicator(
                     modifier = Modifier.testTag(MainScreenTags.LOADING),
                 )
@@ -143,6 +159,10 @@ internal fun MainScreenContent(
                 MainTab.HOME -> MainHomeTab(
                     state = state,
                     onCreateWorkspace = onCreateWorkspace,
+                    onCreateWorkspaceInvitation = onCreateWorkspaceInvitation,
+                    onAcceptWorkspaceInvitation = onAcceptWorkspaceInvitation,
+                    onDeclineWorkspaceInvitation = onDeclineWorkspaceInvitation,
+                    onUpdateWorkspaceMembershipRole = onUpdateWorkspaceMembershipRole,
                 )
                 MainTab.ACCOUNT -> AccountTab(
                     state = state,
@@ -198,11 +218,19 @@ private fun ErrorBanner(
  *
  * @property state Данные сессии для отрисовки списка рабочих пространств.
  * @property onCreateWorkspace Обработчик создания нового рабочего пространства.
+ * @property onCreateWorkspaceInvitation Обработчик создания invitation внутри workspace.
+ * @property onAcceptWorkspaceInvitation Обработчик принятия pending invitation.
+ * @property onDeclineWorkspaceInvitation Обработчик отклонения pending invitation.
+ * @property onUpdateWorkspaceMembershipRole Обработчик смены роли участника workspace.
  */
 @Composable
 private fun MainHomeTab(
     state: SessionState,
     onCreateWorkspace: (String, String?) -> Unit,
+    onCreateWorkspaceInvitation: (String, String, String) -> Unit,
+    onAcceptWorkspaceInvitation: (String) -> Unit,
+    onDeclineWorkspaceInvitation: (String) -> Unit,
+    onUpdateWorkspaceMembershipRole: (String, String, String) -> Unit,
 ) {
     /** Хранит имя создаваемого рабочего пространства. */
     var workspaceName by remember { mutableStateOf("") }
@@ -239,6 +267,15 @@ private fun MainHomeTab(
             )
         }
         HorizontalDivider()
+        if (state.workspaceInvitations.isNotEmpty()) {
+            InvitationInboxSection(
+                invitations = state.workspaceInvitations,
+                isManagingWorkspaceMembers = state.isManagingWorkspaceMembers,
+                onAcceptWorkspaceInvitation = onAcceptWorkspaceInvitation,
+                onDeclineWorkspaceInvitation = onDeclineWorkspaceInvitation,
+            )
+            HorizontalDivider()
+        }
         if (state.workspaces.isEmpty()) {
             Text(
                 text = "Пока нет рабочих пространств",
@@ -247,7 +284,12 @@ private fun MainHomeTab(
             )
         } else {
             state.workspaces.forEach { workspace ->
-                WorkspaceCard(workspace = workspace)
+                WorkspaceCard(
+                    workspace = workspace,
+                    isManagingWorkspaceMembers = state.isManagingWorkspaceMembers,
+                    onCreateWorkspaceInvitation = onCreateWorkspaceInvitation,
+                    onUpdateWorkspaceMembershipRole = onUpdateWorkspaceMembershipRole,
+                )
             }
         }
         HorizontalDivider()
@@ -298,15 +340,27 @@ private fun MainHomeTab(
 @Composable
 private fun WorkspaceCard(
     workspace: OrganizerWorkspace,
+    isManagingWorkspaceMembers: Boolean,
+    onCreateWorkspaceInvitation: (String, String, String) -> Unit,
+    onUpdateWorkspaceMembershipRole: (String, String, String) -> Unit,
 ) {
+    /** Хранит login/username пользователя, которого хотят пригласить в workspace. */
+    var inviteeIdentifier by remember(workspace.id) { mutableStateOf("") }
+    /** Хранит выбранную permission role для нового приглашения. */
+    var selectedInviteRole by remember(workspace.id, workspace.assignablePermissionRoles) {
+        mutableStateOf(workspace.assignablePermissionRoles.firstOrNull().orEmpty())
+    }
+
     Surface(
         tonalElevation = 1.dp,
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("${MainScreenTags.WORKSPACE_CARD_PREFIX}${workspace.id}"),
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = workspace.name,
@@ -316,6 +370,241 @@ private fun WorkspaceCard(
                 text = "${workspace.slug} · ${permissionRoleTitle(workspace.permissionRole)} · ${workspaceStatusTitle(workspace.status)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            if (workspace.memberships.isNotEmpty()) {
+                HorizontalDivider()
+                Text(
+                    text = "Команда",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.testTag("${MainScreenTags.WORKSPACE_TEAM_PREFIX}${workspace.id}"),
+                )
+                workspace.memberships.forEach { membership ->
+                    WorkspaceMembershipRow(
+                        workspaceId = workspace.id,
+                        membership = membership,
+                        isManagingWorkspaceMembers = isManagingWorkspaceMembers,
+                        onUpdateWorkspaceMembershipRole = onUpdateWorkspaceMembershipRole,
+                    )
+                }
+            }
+            if (workspace.canManageMembers && workspace.assignablePermissionRoles.isNotEmpty()) {
+                HorizontalDivider()
+                Text(
+                    text = "Пригласить участника",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                OutlinedTextField(
+                    value = inviteeIdentifier,
+                    onValueChange = { inviteeIdentifier = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("${MainScreenTags.WORKSPACE_INVITEE_INPUT_PREFIX}${workspace.id}"),
+                    label = { Text("Логин или username") },
+                    singleLine = true,
+                )
+                PermissionRoleSelector(
+                    roles = workspace.assignablePermissionRoles,
+                    selectedRole = selectedInviteRole,
+                    onSelectRole = { selectedInviteRole = it },
+                    tagPrefix = "${MainScreenTags.WORKSPACE_INVITE_ROLE_PREFIX}${workspace.id}.",
+                )
+                Button(
+                    onClick = {
+                        onCreateWorkspaceInvitation(
+                            workspace.id,
+                            inviteeIdentifier,
+                            selectedInviteRole,
+                        )
+                    },
+                    enabled = inviteeIdentifier.trim().length in 3..80 &&
+                        selectedInviteRole.isNotBlank() &&
+                        !isManagingWorkspaceMembers,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("${MainScreenTags.WORKSPACE_INVITE_BUTTON_PREFIX}${workspace.id}"),
+                ) {
+                    Text("Отправить приглашение")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Секция pending invitations текущего пользователя.
+ *
+ * @property invitations Pending invitations в organizer workspaces.
+ * @property isManagingWorkspaceMembers Показывает, что сейчас выполняется membership mutation.
+ * @property onAcceptWorkspaceInvitation Обработчик принятия invitation.
+ * @property onDeclineWorkspaceInvitation Обработчик отклонения invitation.
+ */
+@Composable
+private fun InvitationInboxSection(
+    invitations: List<OrganizerWorkspaceInvitation>,
+    isManagingWorkspaceMembers: Boolean,
+    onAcceptWorkspaceInvitation: (String) -> Unit,
+    onDeclineWorkspaceInvitation: (String) -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.testTag(MainScreenTags.WORKSPACE_INVITATION_INBOX),
+    ) {
+        Text(
+            text = "Ожидают решения",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        invitations.forEach { invitation ->
+            Surface(
+                tonalElevation = 1.dp,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("${MainScreenTags.WORKSPACE_INVITATION_CARD_PREFIX}${invitation.membershipId}"),
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = invitation.workspaceName,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = "${permissionRoleTitle(invitation.permissionRole)} · ${workspaceStatusTitle(invitation.workspaceStatus)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    invitation.invitedByDisplayName?.let { inviterName ->
+                        Text(
+                            text = "Пригласил: $inviterName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = { onAcceptWorkspaceInvitation(invitation.membershipId) },
+                            enabled = !isManagingWorkspaceMembers,
+                            modifier = Modifier.testTag("${MainScreenTags.WORKSPACE_INVITATION_ACCEPT_PREFIX}${invitation.membershipId}"),
+                        ) {
+                            Text("Принять")
+                        }
+                        OutlinedButton(
+                            onClick = { onDeclineWorkspaceInvitation(invitation.membershipId) },
+                            enabled = !isManagingWorkspaceMembers,
+                            modifier = Modifier.testTag("${MainScreenTags.WORKSPACE_INVITATION_DECLINE_PREFIX}${invitation.membershipId}"),
+                        ) {
+                            Text("Отклонить")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Строка одного участника или pending invitation внутри workspace.
+ *
+ * @property workspaceId Идентификатор workspace, которому принадлежит запись.
+ * @property membership Membership или pending invitation для отображения.
+ * @property isManagingWorkspaceMembers Показывает, что membership mutation уже выполняется.
+ * @property onUpdateWorkspaceMembershipRole Обработчик смены permission role.
+ */
+@Composable
+private fun WorkspaceMembershipRow(
+    workspaceId: String,
+    membership: OrganizerWorkspaceMembership,
+    isManagingWorkspaceMembers: Boolean,
+    onUpdateWorkspaceMembershipRole: (String, String, String) -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = membership.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = buildString {
+                    append(permissionRoleTitle(membership.permissionRole))
+                    append(" · ")
+                    append(workspaceMembershipStatusTitle(membership.status))
+                    membership.username?.takeIf { it.isNotBlank() }?.let {
+                        append(" · @")
+                        append(it)
+                    }
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            membership.invitedByDisplayName?.takeIf { membership.status == "invited" }?.let { inviterName ->
+                Text(
+                    text = "Пригласил: $inviterName",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            if (membership.canEditRole && membership.assignablePermissionRoles.isNotEmpty()) {
+                PermissionRoleSelector(
+                    roles = membership.assignablePermissionRoles,
+                    selectedRole = membership.permissionRole,
+                    onSelectRole = { role ->
+                        onUpdateWorkspaceMembershipRole(
+                            workspaceId,
+                            membership.membershipId,
+                            role,
+                        )
+                    },
+                    enabled = !isManagingWorkspaceMembers,
+                    tagPrefix = "${MainScreenTags.WORKSPACE_MEMBERSHIP_ROLE_PREFIX}${membership.membershipId}.",
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Группа кнопок выбора permission role.
+ *
+ * @property roles Роли, которые можно выбрать.
+ * @property selectedRole Текущая выбранная роль.
+ * @property onSelectRole Обработчик выбора роли.
+ * @property enabled Показывает, что выбор разрешен.
+ * @property tagPrefix Префикс тестовых тегов для кнопок ролей.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PermissionRoleSelector(
+    roles: List<String>,
+    selectedRole: String,
+    onSelectRole: (String) -> Unit,
+    enabled: Boolean = true,
+    tagPrefix: String,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        roles.forEach { role ->
+            val isSelected = selectedRole == role
+            OutlinedButton(
+                onClick = { onSelectRole(role) },
+                enabled = enabled,
+                border = BorderStroke(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                ),
+                modifier = Modifier.testTag("$tagPrefix$role"),
+            ) {
+                Text(permissionRoleTitle(role))
+            }
         }
     }
 }
@@ -637,6 +926,36 @@ object MainScreenTags {
     /** Тег пустого состояния списка рабочих пространств. */
     const val WORKSPACE_EMPTY = "main.workspace.empty"
 
+    /** Тег секции inbox pending invitations. */
+    const val WORKSPACE_INVITATION_INBOX = "main.workspace.invitations"
+
+    /** Префикс карточек pending invitations. */
+    const val WORKSPACE_INVITATION_CARD_PREFIX = "main.workspace.invitation.card."
+
+    /** Префикс кнопок принятия pending invitations. */
+    const val WORKSPACE_INVITATION_ACCEPT_PREFIX = "main.workspace.invitation.accept."
+
+    /** Префикс кнопок отклонения pending invitations. */
+    const val WORKSPACE_INVITATION_DECLINE_PREFIX = "main.workspace.invitation.decline."
+
+    /** Префикс карточек рабочих пространств. */
+    const val WORKSPACE_CARD_PREFIX = "main.workspace.card."
+
+    /** Префикс заголовка команды внутри workspace. */
+    const val WORKSPACE_TEAM_PREFIX = "main.workspace.team."
+
+    /** Префикс полей ввода invitee identifier внутри workspace. */
+    const val WORKSPACE_INVITEE_INPUT_PREFIX = "main.workspace.invitee."
+
+    /** Префикс кнопок отправки invitation внутри workspace. */
+    const val WORKSPACE_INVITE_BUTTON_PREFIX = "main.workspace.invite."
+
+    /** Префикс кнопок выбора role в invite form. */
+    const val WORKSPACE_INVITE_ROLE_PREFIX = "main.workspace.invite.role."
+
+    /** Префикс кнопок смены role у membership записей. */
+    const val WORKSPACE_MEMBERSHIP_ROLE_PREFIX = "main.workspace.membership.role."
+
     /** Тег текста текущей активной роли. */
     const val ACTIVE_ROLE = "main.account.activeRole"
 
@@ -707,6 +1026,19 @@ private fun permissionRoleTitle(role: String): String {
 private fun workspaceStatusTitle(status: String): String {
     return when (status) {
         "active" -> "Активно"
+        else -> status
+    }
+}
+
+/**
+ * Переводит код состояния membership в подпись для UI.
+ *
+ * @property status Внутренний код состояния membership.
+ */
+private fun workspaceMembershipStatusTitle(status: String): String {
+    return when (status) {
+        "active" -> "Активен"
+        "invited" -> "Ожидает подтверждения"
         else -> status
     }
 }

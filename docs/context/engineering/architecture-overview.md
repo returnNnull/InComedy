@@ -3,6 +3,10 @@
 ## High-Level Components
 
 - Mobile Client (`Kotlin Multiplatform`)
+  - Core support: `:core:common` для shared primitives и `:core:backend` для backend environment/config + HTTP helper-ов
+  - Domain contracts: `:domain:auth` и `:domain:session` для бизнес-моделей, портов и use-case contract-ов
+  - Auth bounded context: `:feature:auth` + `:data:auth` для auth orchestration, callback parsing, provider launch/verify, refresh, logout
+  - Post-auth session context: `:data:session` + shared session orchestration для ролей, active role и organizer workspace/team management
   - Presentation: shared MVI ViewModels + platform-specific UI (Android Compose, iOS SwiftUI)
   - Domain: use cases and entities
   - Data: repositories, remote/local sources
@@ -23,18 +27,18 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-15)
+## Current Implementation Status (2026-03-16)
 
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
   - Argon2id-backed credential storage/migration plus server-side credential abuse controls for register/login routes;
   - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge with auto-return attempt plus manual fallback, Android official VK OneTap in documented auth-code mode with client-generated `state/PKCE` plus browser fallback, and iOS/browser handoff;
-  - auth/session foundation across mobile and server;
+  - auth/session foundation across mobile and server, with mobile split into dedicated `core`, `domain`, `feature`, and `data` responsibilities so role/workspace growth stays out of the auth presentation layer and data adapters depend on domain contracts instead of feature modules;
   - provider-agnostic backend `User + AuthIdentity` persistence foundation that can support multiple auth providers without turning provider ids into primary business ids;
-  - backend role storage, active-role context, and minimal organizer workspace create/list routes;
-  - shared session-focused ViewModel/bridge state with role context, linked providers, and organizer workspace list/create wiring;
-  - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, and workspace create/list bound to shared session state;
-  - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, workspace create/list bound to shared session state, and associated-domain handling for auth return links;
+  - backend role storage, active-role context, and organizer workspace create/list plus registered-user invitation inbox, invitation response, roster visibility, and bounded permission-role update routes;
+  - shared session-focused ViewModel/bridge state with role context, linked providers, organizer workspace list/create wiring, invitation inbox handling, and workspace membership mutations;
+  - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, workspace create/list, invitation inbox, team roster, invite form, and permission-role edits bound to shared session state;
+  - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, workspace create/list, invitation inbox, team roster, invite form, permission-role edits, and associated-domain handling for auth return links;
   - auth entry surfaces now expose credentials plus VK while preserving provider-extensible session/identity seams for future providers;
   - session restore/refresh/logout backend contract;
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
@@ -42,7 +46,7 @@
 - Partial:
   - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
-  - organizer workspace currently supports owner create/list only; invites, member management, and permission editing are still missing;
+  - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
   - current Android/iOS main flow exposes a foundation shell for account/workspace context, but dedicated organizer feature graphs and deeper operational flows are still missing.
 - Planned next bounded contexts:
   - venues,
@@ -55,7 +59,11 @@
 
 ## Dependency Direction (Client)
 
-- `presentation -> domain -> data`
+- Compile-time dependencies follow:
+  - `feature -> domain`
+  - `data -> domain`
+  - `core` is shared technical support and may be used by both `feature` and `data`
+  - `domain` does not depend on `feature` or `data`
 - External frameworks/providers are accessed through adapters/interfaces.
 
 ## ViewModel Integration (KMP)
@@ -79,6 +87,7 @@
 ## Notes
 
 - Keep module boundaries aligned with feature domains and Clean architecture rules.
+- Keep auth entry flows, post-auth session context, domain contracts, and shared backend environment/config in separate mobile modules so organizer role/workspace growth does not bloat `auth` and data adapters never need to depend on feature modules for business contracts.
 - PostgreSQL schema evolution must live in versioned migration files; application code should invoke migration execution, not own mutable schema DDL as business logic.
 - Internal identity must be modeled provider-agnostically (`User` + linked auth identities); provider-specific ids must not become the primary keys for profile, RBAC, or workspace domains.
 - Password-based auth is implemented as a first-party backend flow with secure password hashing and credential-abuse controls; VK ID plugs into the same internal user/session model as a linked external identity.

@@ -1,7 +1,10 @@
 package com.bam.incomedy.shared.session
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.OrganizerWorkspace
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.session.OrganizerWorkspace
+import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
+import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
+import com.bam.incomedy.domain.session.WorkspaceInvitationDecision
 import com.bam.incomedy.shared.bridge.BaseFeatureBridge
 import com.bam.incomedy.shared.di.InComedyKoin
 
@@ -39,6 +42,48 @@ class SessionBridge(
         viewModel.createWorkspace(name = name, slug = slug)
     }
 
+    /** Создает invitation существующему пользователю внутри workspace. */
+    fun createWorkspaceInvitation(
+        workspaceId: String,
+        inviteeIdentifier: String,
+        permissionRole: String,
+    ) {
+        viewModel.createWorkspaceInvitation(
+            workspaceId = workspaceId,
+            inviteeIdentifier = inviteeIdentifier,
+            permissionRole = permissionRole,
+        )
+    }
+
+    /** Принимает pending invitation текущего пользователя. */
+    fun acceptWorkspaceInvitation(membershipId: String) {
+        viewModel.respondToWorkspaceInvitation(
+            membershipId = membershipId,
+            decision = WorkspaceInvitationDecision.ACCEPT,
+        )
+    }
+
+    /** Отклоняет pending invitation текущего пользователя. */
+    fun declineWorkspaceInvitation(membershipId: String) {
+        viewModel.respondToWorkspaceInvitation(
+            membershipId = membershipId,
+            decision = WorkspaceInvitationDecision.DECLINE,
+        )
+    }
+
+    /** Меняет permission role membership внутри workspace. */
+    fun updateWorkspaceMembershipRole(
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: String,
+    ) {
+        viewModel.updateWorkspaceMembershipRole(
+            workspaceId = workspaceId,
+            membershipId = membershipId,
+            permissionRole = permissionRole,
+        )
+    }
+
     /** Скрывает текущую ошибку слоя сессии. */
     fun clearError() {
         viewModel.clearError()
@@ -65,9 +110,11 @@ private fun SessionState.toSnapshot(): SessionStateSnapshot {
         activeRole = activeRole,
         linkedProviders = linkedProviders,
         workspaces = workspaces.map(OrganizerWorkspace::toSnapshot),
+        workspaceInvitations = workspaceInvitations.map(OrganizerWorkspaceInvitation::toSnapshot),
         isLoadingContext = isLoadingContext,
         isUpdatingRole = isUpdatingRole,
         isCreatingWorkspace = isCreatingWorkspace,
+        isManagingWorkspaceMembers = isManagingWorkspaceMembers,
         errorMessage = errorMessage,
     )
 }
@@ -80,6 +127,38 @@ private fun OrganizerWorkspace.toSnapshot(): SessionWorkspaceSnapshot {
         slug = slug,
         status = status,
         permissionRole = permissionRole,
+        canManageMembers = canManageMembers,
+        assignablePermissionRoles = assignablePermissionRoles,
+        memberships = memberships.map(OrganizerWorkspaceMembership::toSnapshot),
+    )
+}
+
+/** Преобразует доменную membership-модель в bridge-модель для iOS. */
+private fun OrganizerWorkspaceMembership.toSnapshot(): SessionWorkspaceMembershipSnapshot {
+    return SessionWorkspaceMembershipSnapshot(
+        membershipId = membershipId,
+        userId = userId,
+        displayName = displayName,
+        username = username,
+        permissionRole = permissionRole,
+        status = status,
+        invitedByDisplayName = invitedByDisplayName,
+        isCurrentUser = isCurrentUser,
+        canEditRole = canEditRole,
+        assignablePermissionRoles = assignablePermissionRoles,
+    )
+}
+
+/** Преобразует pending invitation в bridge-модель для iOS. */
+private fun OrganizerWorkspaceInvitation.toSnapshot(): SessionWorkspaceInvitationSnapshot {
+    return SessionWorkspaceInvitationSnapshot(
+        membershipId = membershipId,
+        workspaceId = workspaceId,
+        workspaceName = workspaceName,
+        workspaceSlug = workspaceSlug,
+        workspaceStatus = workspaceStatus,
+        permissionRole = permissionRole,
+        invitedByDisplayName = invitedByDisplayName,
     )
 }
 

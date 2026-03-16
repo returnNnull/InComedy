@@ -2,7 +2,7 @@ package com.bam.incomedy.feature.auth.ui
 
 import android.content.Intent
 import android.net.Uri
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthProviderType
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 
 internal data class ExternalAuthLaunchPlan(

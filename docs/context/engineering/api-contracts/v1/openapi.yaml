@@ -713,6 +713,276 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/workspace-invitations:
+    get:
+      tags: [Organizer]
+      summary: List pending organizer workspace invitations for the authenticated user
+      operationId: getWorkspaceInvitations
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Pending invitation inbox returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceInvitationListResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/workspaces/{workspaceId}/invitations:
+    post:
+      tags: [Organizer]
+      summary: Invite an already registered user into an organizer workspace
+      operationId: postWorkspaceInvitation
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: workspaceId
+          required: true
+          description: Organizer workspace UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceInvitationRequest"
+      responses:
+        "201":
+          description: Invitation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMembershipResponse"
+        "400":
+          description: Invalid workspace id or invitation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current workspace role cannot create the requested invitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Workspace or invitee not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Active membership or pending invitation already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/workspaces/{workspaceId}/memberships/{membershipId}:
+    patch:
+      tags: [Organizer]
+      summary: Update a workspace membership permission role within the bounded role matrix
+      operationId: patchWorkspaceMembership
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: workspaceId
+          required: true
+          description: Organizer workspace UUID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: membershipId
+          required: true
+          description: Workspace membership UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWorkspaceMembershipRoleRequest"
+      responses:
+        "200":
+          description: Membership role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMembershipResponse"
+        "400":
+          description: Invalid path or membership update payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current workspace role cannot change the requested membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Workspace or membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/workspace-invitations/{membershipId}/respond:
+    post:
+      tags: [Organizer]
+      summary: Accept or decline a pending organizer workspace invitation
+      operationId: postWorkspaceInvitationRespond
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: membershipId
+          required: true
+          description: Pending invitation membership UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RespondWorkspaceInvitationRequest"
+      responses:
+        "200":
+          description: Invitation decision stored successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceInvitationDecisionResponse"
+        "400":
+          description: Invalid invitation decision payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found for the current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
@@ -1079,6 +1349,9 @@ components:
         - slug
         - status
         - permission_role
+        - can_manage_members
+        - assignable_permission_roles
+        - memberships
       properties:
         id:
           type: string
@@ -1093,6 +1366,141 @@ components:
         permission_role:
           type: string
           enum: [owner, manager, checker, host]
+        can_manage_members:
+          type: boolean
+        assignable_permission_roles:
+          type: array
+          items:
+            type: string
+            enum: [owner, manager, checker, host]
+        memberships:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceMembershipResponse"
+    WorkspaceMembershipResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - membership_id
+        - user_id
+        - display_name
+        - permission_role
+        - status
+        - is_current_user
+        - can_edit_role
+        - assignable_permission_roles
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        username:
+          type: string
+          nullable: true
+        permission_role:
+          type: string
+          enum: [owner, manager, checker, host]
+        status:
+          type: string
+          enum: [active, invited]
+        invited_by_display_name:
+          type: string
+          nullable: true
+        is_current_user:
+          type: boolean
+        can_edit_role:
+          type: boolean
+        assignable_permission_roles:
+          type: array
+          items:
+            type: string
+            enum: [owner, manager, checker, host]
+    WorkspaceInvitationListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - invitations
+      properties:
+        invitations:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceInvitationResponse"
+    WorkspaceInvitationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - membership_id
+        - workspace_id
+        - workspace_name
+        - workspace_slug
+        - workspace_status
+        - permission_role
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        workspace_name:
+          type: string
+        workspace_slug:
+          type: string
+        workspace_status:
+          type: string
+          example: active
+        permission_role:
+          type: string
+          enum: [owner, manager, checker, host]
+        invited_by_display_name:
+          type: string
+          nullable: true
+    CreateWorkspaceInvitationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - invitee_identifier
+        - permission_role
+      properties:
+        invitee_identifier:
+          type: string
+          minLength: 3
+          maxLength: 80
+          description: Exact credential login or username of an already registered user.
+        permission_role:
+          type: string
+          enum: [owner, manager, checker, host]
+    UpdateWorkspaceMembershipRoleRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - permission_role
+      properties:
+        permission_role:
+          type: string
+          enum: [owner, manager, checker, host]
+    RespondWorkspaceInvitationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - decision
+      properties:
+        decision:
+          type: string
+          enum: [accept, decline]
+    WorkspaceInvitationDecisionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [accept, decline]
     ErrorResponse:
       type: object
       additionalProperties: false

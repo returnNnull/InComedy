@@ -15,10 +15,13 @@ final class iosAppUITests: XCTestCase {
 
     /// Проверяет домашнюю вкладку и отображение рабочих пространств.
     func testHomeTabShowsWorkspaceSummary() {
+        let invitationAcceptButton = app.buttons["Принять"]
         XCTAssertTrue(app.otherElements["main.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["main.content.home"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["main.home.workspaceCount"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Moscow Cellar"].exists)
+        XCTAssertTrue(app.staticTexts["Late Night Standup"].exists)
+        XCTAssertTrue(scrollUntilVisible(invitationAcceptButton))
     }
 
     /// Проверяет создание рабочего пространства через форму на главной вкладке.
@@ -33,6 +36,17 @@ final class iosAppUITests: XCTestCase {
         createButton.tap()
 
         XCTAssertTrue(app.staticTexts["Fresh Space"].waitForExistence(timeout: 2))
+    }
+
+    /// Проверяет accept pending invitation и смену роли участника workspace.
+    func testHomeTabHandlesInvitationsAndMembershipRoleActions() {
+        let acceptButton = app.buttons["Принять"]
+        XCTAssertTrue(scrollUntilVisible(acceptButton))
+        acceptButton.tap()
+
+        let hostRoleButton = app.buttons["Ведущий"].firstMatch
+        XCTAssertTrue(scrollUntilVisible(hostRoleButton))
+        hostRoleButton.tap()
     }
 
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.
@@ -58,5 +72,26 @@ final class iosAppUITests: XCTestCase {
         signOutButton.tap()
 
         XCTAssertTrue(app.staticTexts["Авторизация"].waitForExistence(timeout: 2))
+    }
+
+    /// Прокручивает домашний экран, пока нужный элемент не появится в accessibility-дереве.
+    ///
+    /// - Parameters:
+    ///   - element: Целевой UI-элемент.
+    ///   - maxSwipes: Максимальное число прокруток вверх.
+    /// - Returns: `true`, если элемент найден до исчерпания попыток.
+    private func scrollUntilVisible(_ element: XCUIElement, maxSwipes: Int = 6) -> Bool {
+        if element.waitForExistence(timeout: 2) {
+            return true
+        }
+
+        for _ in 0..<maxSwipes {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        return false
     }
 }

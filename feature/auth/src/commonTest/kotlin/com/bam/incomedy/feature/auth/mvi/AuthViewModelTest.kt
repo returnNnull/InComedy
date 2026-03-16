@@ -1,16 +1,16 @@
 package com.bam.incomedy.feature.auth.mvi
 
-import com.bam.incomedy.feature.auth.domain.AuthLaunchRequest
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthSession
-import com.bam.incomedy.feature.auth.domain.AuthStateGenerator
-import com.bam.incomedy.feature.auth.domain.AuthorizedUser
-import com.bam.incomedy.feature.auth.domain.CredentialAuthService
-import com.bam.incomedy.feature.auth.domain.SessionTerminationService
-import com.bam.incomedy.feature.auth.domain.SessionValidationService
-import com.bam.incomedy.feature.auth.domain.SocialAuthProvider
-import com.bam.incomedy.feature.auth.domain.SocialAuthService
-import com.bam.incomedy.feature.auth.domain.ValidatedSession
+import com.bam.incomedy.domain.auth.AuthLaunchRequest
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthSession
+import com.bam.incomedy.domain.auth.AuthStateGenerator
+import com.bam.incomedy.domain.auth.AuthorizedUser
+import com.bam.incomedy.domain.auth.CredentialAuthService
+import com.bam.incomedy.domain.auth.SessionTerminationService
+import com.bam.incomedy.domain.auth.SessionValidationService
+import com.bam.incomedy.domain.auth.SocialAuthProvider
+import com.bam.incomedy.domain.auth.SocialAuthService
+import com.bam.incomedy.domain.auth.ValidatedSession
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first

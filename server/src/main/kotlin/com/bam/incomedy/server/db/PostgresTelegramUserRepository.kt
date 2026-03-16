@@ -396,6 +396,7 @@ class PostgresTelegramUserRepository(
                     slug = slug,
                     status = "active",
                     permissionRole = WorkspacePermissionRole.OWNER,
+                    memberships = loadWorkspaceMemberships(connection, workspaceId.toString()),
                 )
             } catch (error: Throwable) {
                 connection.rollback()
@@ -411,7 +412,7 @@ class PostgresTelegramUserRepository(
             SELECT w.id, w.name, w.slug, w.status, wm.permission_role
             FROM organizer_workspaces w
             JOIN workspace_members wm ON wm.workspace_id = w.id
-            WHERE wm.user_id = ?
+            WHERE wm.user_id = ? AND wm.joined_at IS NOT NULL
             ORDER BY w.created_at ASC
         """.trimIndent()
 
@@ -429,10 +430,264 @@ class PostgresTelegramUserRepository(
                             permissionRole = WorkspacePermissionRole.entries.first {
                                 it.wireName == result.getString("permission_role")
                             },
+                            memberships = loadWorkspaceMemberships(
+                                connection = connection,
+                                workspaceId = result.getObject("id").toString(),
+                            ),
                         )
                     }
                     return workspaces
                 }
+            }
+        }
+    }
+
+    override fun listWorkspaceInvitations(userId: String): List<StoredWorkspaceInvitation> {
+        val sql = """
+            SELECT
+                wm.id,
+                w.id AS workspace_id,
+                w.name AS workspace_name,
+                w.slug AS workspace_slug,
+                w.status AS workspace_status,
+                wm.permission_role,
+                inviter.display_name AS invited_by_display_name
+            FROM workspace_members wm
+            JOIN organizer_workspaces w ON w.id = wm.workspace_id
+            LEFT JOIN users inviter ON inviter.id = wm.invited_by
+            WHERE wm.user_id = ? AND wm.joined_at IS NULL
+            ORDER BY wm.created_at ASC
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setObject(1, UUID.fromString(userId))
+                statement.executeQuery().use { result ->
+                    val invitations = mutableListOf<StoredWorkspaceInvitation>()
+                    while (result.next()) {
+                        invitations += StoredWorkspaceInvitation(
+                            membershipId = result.getObject("id").toString(),
+                            workspaceId = result.getObject("workspace_id").toString(),
+                            workspaceName = result.getString("workspace_name"),
+                            workspaceSlug = result.getString("workspace_slug"),
+                            workspaceStatus = result.getString("workspace_status"),
+                            permissionRole = WorkspacePermissionRole.entries.first {
+                                it.wireName == result.getString("permission_role")
+                            },
+                            invitedByDisplayName = result.getString("invited_by_display_name"),
+                        )
+                    }
+                    return invitations
+                }
+            }
+        }
+    }
+
+    override fun findWorkspaceAccess(workspaceId: String, userId: String): StoredWorkspaceAccess? {
+        val sql = """
+            SELECT id, permission_role
+            FROM workspace_members
+            WHERE workspace_id = ? AND user_id = ? AND joined_at IS NOT NULL
+            LIMIT 1
+        """.trimIndent()
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setObject(1, UUID.fromString(workspaceId))
+                statement.setObject(2, UUID.fromString(userId))
+                statement.executeQuery().use { result ->
+                    if (!result.next()) return null
+                    return StoredWorkspaceAccess(
+                        workspaceId = workspaceId,
+                        membershipId = result.getObject("id").toString(),
+                        permissionRole = WorkspacePermissionRole.entries.first {
+                            it.wireName == result.getString("permission_role")
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    override fun findWorkspaceMembership(
+        workspaceId: String,
+        membershipId: String,
+    ): StoredWorkspaceMembership? {
+        dataSource.connection.use { connection ->
+            return loadWorkspaceMembershipById(
+                connection = connection,
+                workspaceId = workspaceId,
+                membershipId = membershipId,
+            )
+        }
+    }
+
+    override fun createWorkspaceInvitation(
+        workspaceId: String,
+        invitedByUserId: String,
+        inviteeIdentifier: String,
+        permissionRole: WorkspacePermissionRole,
+    ): StoredWorkspaceMembership {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val inviteeUserId = resolveInviteeUserId(
+                    connection = connection,
+                    inviteeIdentifier = inviteeIdentifier,
+                ) ?: throw WorkspaceInviteeNotFoundException(inviteeIdentifier)
+
+                loadWorkspaceMembershipByUserId(
+                    connection = connection,
+                    workspaceId = workspaceId,
+                    userId = inviteeUserId,
+                )?.let { membership ->
+                    throw WorkspaceMembershipAlreadyExistsException(
+                        workspaceId = workspaceId,
+                        userId = inviteeUserId,
+                        pending = membership.status == WorkspaceMembershipStatus.INVITED,
+                    )
+                }
+
+                val membershipId = UUID.randomUUID()
+                connection.prepareStatement(
+                    """
+                    INSERT INTO workspace_members (
+                        id,
+                        workspace_id,
+                        user_id,
+                        permission_role,
+                        invited_by,
+                        joined_at,
+                        created_at
+                    ) VALUES (?, ?, ?, ?, ?, NULL, NOW())
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setObject(1, membershipId)
+                    statement.setObject(2, UUID.fromString(workspaceId))
+                    statement.setObject(3, UUID.fromString(inviteeUserId))
+                    statement.setString(4, permissionRole.wireName)
+                    statement.setObject(5, UUID.fromString(invitedByUserId))
+                    statement.executeUpdate()
+                }
+
+                val membership = loadWorkspaceMembershipById(
+                    connection = connection,
+                    workspaceId = workspaceId,
+                    membershipId = membershipId.toString(),
+                ) ?: error("Failed to load created workspace invitation")
+                connection.commit()
+                return membership
+            } catch (error: Throwable) {
+                connection.rollback()
+                if (error.message?.contains("workspace_members_workspace_id_user_id_key", ignoreCase = true) == true) {
+                    throw WorkspaceMembershipAlreadyExistsException(
+                        workspaceId = workspaceId,
+                        userId = "unknown",
+                        pending = true,
+                    )
+                }
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    override fun updateWorkspaceMembershipRole(
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: WorkspacePermissionRole,
+    ): StoredWorkspaceMembership? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                connection.prepareStatement(
+                    """
+                    UPDATE workspace_members
+                    SET permission_role = ?
+                    WHERE workspace_id = ? AND id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, permissionRole.wireName)
+                    statement.setObject(2, UUID.fromString(workspaceId))
+                    statement.setObject(3, UUID.fromString(membershipId))
+                    if (statement.executeUpdate() == 0) {
+                        connection.rollback()
+                        return null
+                    }
+                }
+                val membership = loadWorkspaceMembershipById(
+                    connection = connection,
+                    workspaceId = workspaceId,
+                    membershipId = membershipId,
+                )
+                connection.commit()
+                return membership
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    override fun respondToWorkspaceInvitation(
+        userId: String,
+        membershipId: String,
+        accept: Boolean,
+    ): Boolean {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val invitation = loadPendingInvitationForUser(
+                    connection = connection,
+                    userId = userId,
+                    membershipId = membershipId,
+                ) ?: run {
+                    connection.rollback()
+                    return false
+                }
+
+                if (accept) {
+                    ensureRole(connection, userId, UserRole.ORGANIZER)
+                    connection.prepareStatement(
+                        """
+                        UPDATE workspace_members
+                        SET joined_at = NOW()
+                        WHERE id = ? AND user_id = ? AND joined_at IS NULL
+                        """.trimIndent(),
+                    ).use { statement ->
+                        statement.setObject(1, UUID.fromString(membershipId))
+                        statement.setObject(2, UUID.fromString(userId))
+                        if (statement.executeUpdate() == 0) {
+                            connection.rollback()
+                            return false
+                        }
+                    }
+                } else {
+                    connection.prepareStatement(
+                        """
+                        DELETE FROM workspace_members
+                        WHERE id = ? AND user_id = ? AND joined_at IS NULL
+                        """.trimIndent(),
+                    ).use { statement ->
+                        statement.setObject(1, UUID.fromString(invitation.membershipId))
+                        statement.setObject(2, UUID.fromString(userId))
+                        if (statement.executeUpdate() == 0) {
+                            connection.rollback()
+                            return false
+                        }
+                    }
+                }
+
+                connection.commit()
+                return true
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
             }
         }
     }
@@ -810,5 +1065,195 @@ class PostgresTelegramUserRepository(
                 return providers
             }
         }
+    }
+
+    private fun loadWorkspaceMemberships(
+        connection: Connection,
+        workspaceId: String,
+    ): List<StoredWorkspaceMembership> {
+        val sql = """
+            SELECT
+                wm.id,
+                wm.user_id,
+                u.display_name,
+                u.username,
+                wm.permission_role,
+                wm.joined_at,
+                inviter.display_name AS invited_by_display_name
+            FROM workspace_members wm
+            JOIN users u ON u.id = wm.user_id
+            LEFT JOIN users inviter ON inviter.id = wm.invited_by
+            WHERE wm.workspace_id = ?
+            ORDER BY
+                CASE WHEN wm.joined_at IS NULL THEN 1 ELSE 0 END ASC,
+                wm.created_at ASC
+        """.trimIndent()
+
+        connection.prepareStatement(sql).use { statement ->
+            statement.setObject(1, UUID.fromString(workspaceId))
+            statement.executeQuery().use { result ->
+                val memberships = mutableListOf<StoredWorkspaceMembership>()
+                while (result.next()) {
+                    memberships += result.toWorkspaceMembership()
+                }
+                return memberships
+            }
+        }
+    }
+
+    private fun loadWorkspaceMembershipById(
+        connection: Connection,
+        workspaceId: String,
+        membershipId: String,
+    ): StoredWorkspaceMembership? {
+        val sql = """
+            SELECT
+                wm.id,
+                wm.user_id,
+                u.display_name,
+                u.username,
+                wm.permission_role,
+                wm.joined_at,
+                inviter.display_name AS invited_by_display_name
+            FROM workspace_members wm
+            JOIN users u ON u.id = wm.user_id
+            LEFT JOIN users inviter ON inviter.id = wm.invited_by
+            WHERE wm.workspace_id = ? AND wm.id = ?
+            LIMIT 1
+        """.trimIndent()
+
+        connection.prepareStatement(sql).use { statement ->
+            statement.setObject(1, UUID.fromString(workspaceId))
+            statement.setObject(2, UUID.fromString(membershipId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return null
+                return result.toWorkspaceMembership()
+            }
+        }
+    }
+
+    private fun loadWorkspaceMembershipByUserId(
+        connection: Connection,
+        workspaceId: String,
+        userId: String,
+    ): StoredWorkspaceMembership? {
+        val sql = """
+            SELECT
+                wm.id,
+                wm.user_id,
+                u.display_name,
+                u.username,
+                wm.permission_role,
+                wm.joined_at,
+                inviter.display_name AS invited_by_display_name
+            FROM workspace_members wm
+            JOIN users u ON u.id = wm.user_id
+            LEFT JOIN users inviter ON inviter.id = wm.invited_by
+            WHERE wm.workspace_id = ? AND wm.user_id = ?
+            LIMIT 1
+        """.trimIndent()
+
+        connection.prepareStatement(sql).use { statement ->
+            statement.setObject(1, UUID.fromString(workspaceId))
+            statement.setObject(2, UUID.fromString(userId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return null
+                return result.toWorkspaceMembership()
+            }
+        }
+    }
+
+    private fun loadPendingInvitationForUser(
+        connection: Connection,
+        userId: String,
+        membershipId: String,
+    ): StoredWorkspaceInvitation? {
+        val sql = """
+            SELECT
+                wm.id,
+                w.id AS workspace_id,
+                w.name AS workspace_name,
+                w.slug AS workspace_slug,
+                w.status AS workspace_status,
+                wm.permission_role,
+                inviter.display_name AS invited_by_display_name
+            FROM workspace_members wm
+            JOIN organizer_workspaces w ON w.id = wm.workspace_id
+            LEFT JOIN users inviter ON inviter.id = wm.invited_by
+            WHERE wm.id = ? AND wm.user_id = ? AND wm.joined_at IS NULL
+            LIMIT 1
+        """.trimIndent()
+
+        connection.prepareStatement(sql).use { statement ->
+            statement.setObject(1, UUID.fromString(membershipId))
+            statement.setObject(2, UUID.fromString(userId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return null
+                return StoredWorkspaceInvitation(
+                    membershipId = result.getObject("id").toString(),
+                    workspaceId = result.getObject("workspace_id").toString(),
+                    workspaceName = result.getString("workspace_name"),
+                    workspaceSlug = result.getString("workspace_slug"),
+                    workspaceStatus = result.getString("workspace_status"),
+                    permissionRole = WorkspacePermissionRole.entries.first {
+                        it.wireName == result.getString("permission_role")
+                    },
+                    invitedByDisplayName = result.getString("invited_by_display_name"),
+                )
+            }
+        }
+    }
+
+    private fun resolveInviteeUserId(
+        connection: Connection,
+        inviteeIdentifier: String,
+    ): String? {
+        val normalizedIdentifier = inviteeIdentifier.trim().lowercase()
+        if (normalizedIdentifier.isBlank()) return null
+
+        connection.prepareStatement(
+            """
+            SELECT user_id
+            FROM credential_accounts
+            WHERE login_normalized = ?
+            LIMIT 1
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, normalizedIdentifier)
+            statement.executeQuery().use { result ->
+                if (result.next()) {
+                    return result.getObject("user_id").toString()
+                }
+            }
+        }
+
+        connection.prepareStatement(
+            """
+            SELECT id
+            FROM users
+            WHERE LOWER(COALESCE(username, '')) = ?
+            LIMIT 1
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, normalizedIdentifier)
+            statement.executeQuery().use { result ->
+                if (!result.next()) return null
+                return result.getObject("id").toString()
+            }
+        }
+    }
+
+    private fun java.sql.ResultSet.toWorkspaceMembership(): StoredWorkspaceMembership {
+        return StoredWorkspaceMembership(
+            membershipId = getObject("id").toString(),
+            userId = getObject("user_id").toString(),
+            displayName = getString("display_name"),
+            username = getString("username"),
+            permissionRole = WorkspacePermissionRole.entries.first {
+                it.wireName == getString("permission_role")
+            },
+            status = WorkspaceMembershipStatus.fromJoined(getTimestamp("joined_at") != null),
+            invitedByDisplayName = getString("invited_by_display_name"),
+        )
     }
 }

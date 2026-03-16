@@ -11,10 +11,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":domain:auth"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
         }
         commonTest.dependencies {
+            implementation(project(":domain:auth"))
             implementation(libs.kotlinx.coroutines.test)
         }
     }

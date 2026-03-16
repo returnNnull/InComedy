@@ -1,7 +1,7 @@
 package com.bam.incomedy.feature.auth.ui
 
 import android.net.Uri
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthProviderType
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import org.junit.Test
 import org.junit.runner.RunWith

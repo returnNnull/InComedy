@@ -20,6 +20,7 @@
 - Backend persistence changes must include migration-path verification for both clean schema creation and upgrade of a legacy initialized schema.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 - Mobile UI changes in active product flows must have executable platform UI coverage where in-repo infrastructure exists.
+- Auth/session boundary refactors must execute `:domain:auth:allTests`, `:domain:session:allTests`, `:core:backend:allTests`, `:data:auth:allTests`, `:data:session:allTests`, `:shared:allTests`, `:composeApp:testDebugUnitTest`, and `:composeApp:compileDebugKotlin` before completion.
 
 ## MVI-Specific Expectations
 
@@ -35,15 +36,15 @@
 - Flaky tests must be fixed or quarantined with explicit follow-up.
 - Android repository changes that affect `composeApp`/shared mobile flows must execute `./gradlew :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin` in GitHub Actions CI.
 
-## Current Mobile UI Coverage (2026-03-13)
+## Current Mobile UI Coverage (2026-03-16)
 
 - Android root auth/main navigation is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/navigation/AppNavHostContentTest.kt`, including `unauthorized -> auth`, `authorized -> main`, and `state reset/logout -> auth`.
-- Android post-auth main shell is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including happy path, empty state, loading indicator, disabled actions, fallback-profile rendering, and dismissible error state.
+- Android post-auth main shell is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including happy path, empty state, loading indicator, disabled actions, fallback-profile rendering, dismissible error state, workspace invitation inbox actions, workspace invite form, and membership permission-role updates.
 - Android auth entry UI is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/auth/ui/AuthScreenContentTest.kt`, including provider dispatch, loading lock, error rendering, and authorized state.
 - Android UI tests use stable `testTag` hooks plus shared Android UI state factories to avoid brittle ad-hoc state assembly.
 - GitHub Actions mobile CI coverage is implemented through `.github/workflows/ci-android.yml` for Android UI unit tests and `composeApp` compilation.
 - Более глубокое Android integration coverage на реальной связке `App -> AuthScreen -> MainScreen` осознанно отложено и должно быть возобновлено после staging smoke-проверок для `auth/roles/workspaces`.
-- iOS post-auth main shell is covered by the real `iosAppUITests` XCUITest target using the `--ui-test-main` launch fixture.
+- iOS post-auth main shell is covered by the real `iosAppUITests` XCUITest target using the `--ui-test-main` launch fixture, including workspace invitation inbox rendering plus permission-role action coverage on the home tab.
 
 ## High-Risk Scenario Set
 

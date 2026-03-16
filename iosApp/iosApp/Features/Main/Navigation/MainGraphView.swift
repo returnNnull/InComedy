@@ -63,7 +63,7 @@ struct MainGraphView: View {
             .accessibilityIdentifier("main.tab.account")
         }
         .accessibilityIdentifier("main.root")
-        .onChange(of: model.isAuthorized) { isAuthorized in
+        .onChange(of: model.isAuthorized) { _, isAuthorized in
             if !isAuthorized {
                 onSignOut()
             }
@@ -98,7 +98,7 @@ private struct MainHomeTab: View {
                 )
             }
 
-            if model.isLoadingContext || model.isUpdatingRole || model.isCreatingWorkspace {
+            if model.isLoadingContext || model.isUpdatingRole || model.isCreatingWorkspace || model.isManagingWorkspaceMembers {
                 ProgressView()
             }
 
@@ -107,12 +107,19 @@ private struct MainHomeTab: View {
                 .foregroundColor(.secondary)
                 .accessibilityIdentifier("main.home.workspaceCount")
 
+            if !model.workspaceInvitations.isEmpty {
+                InvitationInboxSection(model: model)
+            }
+
             if model.workspaces.isEmpty {
                 Text("Пока нет рабочих пространств")
                     .foregroundColor(.secondary)
             } else {
                 ForEach(model.workspaces) { workspace in
-                    WorkspaceCard(workspace: workspace)
+                    WorkspaceCard(
+                        model: model,
+                        workspace: workspace
+                    )
                 }
             }
 
@@ -298,23 +305,250 @@ private struct PlaceholderAvatar: View {
     }
 }
 
+/// Секция inbox pending invitations текущего пользователя.
+private struct InvitationInboxSection: View {
+    /// Общая модель главного экрана.
+    @ObservedObject var model: MainSessionModel
+
+    /// Отрисовывает inbox с кнопками accept/decline.
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Ожидают решения")
+                .font(.headline)
+            ForEach(model.workspaceInvitations) { invitation in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(invitation.workspaceName)
+                        .font(.headline)
+                    Text("\(permissionRoleTitle(invitation.permissionRole)) · \(workspaceStatusTitle(invitation.workspaceStatus))")
+                        .foregroundColor(.secondary)
+                    if let invitedByDisplayName = invitation.invitedByDisplayName {
+                        Text("Пригласил: \(invitedByDisplayName)")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 8) {
+                        Button {
+                            model.acceptWorkspaceInvitation(invitation.membershipId)
+                        } label: {
+                            Text("Принять")
+                                .accessibilityIdentifier("main.workspace.invitation.accept.\(invitation.membershipId).label")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(model.isManagingWorkspaceMembers)
+                        .accessibilityIdentifier("main.workspace.invitation.accept.\(invitation.membershipId)")
+
+                        Button {
+                            model.declineWorkspaceInvitation(invitation.membershipId)
+                        } label: {
+                            Text("Отклонить")
+                                .accessibilityIdentifier("main.workspace.invitation.decline.\(invitation.membershipId).label")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(model.isManagingWorkspaceMembers)
+                        .accessibilityIdentifier("main.workspace.invitation.decline.\(invitation.membershipId)")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .accessibilityIdentifier("main.workspace.invitation.card.\(invitation.membershipId)")
+            }
+        }
+        .accessibilityIdentifier("main.workspace.invitations")
+    }
+}
+
 /// Карточка рабочего пространства на главной вкладке.
 private struct WorkspaceCard: View {
+    /// Общая модель главного экрана.
+    @ObservedObject var model: MainSessionModel
+
     /// Данные рабочего пространства.
     let workspace: MainWorkspaceItem
 
-    /// Отрисовывает карточку рабочего пространства.
+    /// Локальное поле invitee identifier для формы внутри workspace.
+    @State private var inviteeIdentifier: String = ""
+
+    /// Локально выбранная permission role для нового invitation.
+    @State private var selectedInviteRole: String = ""
+
+    /// Отрисовывает карточку рабочего пространства с roster и invite form.
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(workspace.name)
                 .font(.headline)
             Text("\(workspace.slug) · \(permissionRoleTitle(workspace.permissionRole)) · \(workspaceStatusTitle(workspace.status))")
                 .foregroundColor(.secondary)
+
+            if !workspace.memberships.isEmpty {
+                Divider()
+                Text("Команда")
+                    .font(.subheadline.bold())
+                    .accessibilityIdentifier("main.workspace.team.\(workspace.id)")
+                ForEach(workspace.memberships) { membership in
+                    WorkspaceMembershipRow(
+                        model: model,
+                        workspaceId: workspace.id,
+                        membership: membership
+                    )
+                }
+            }
+
+            if workspace.canManageMembers && !workspace.assignablePermissionRoles.isEmpty {
+                Divider()
+                Text("Пригласить участника")
+                    .font(.subheadline.bold())
+                TextField("Логин или username", text: $inviteeIdentifier)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("main.workspace.invitee.\(workspace.id)")
+                PermissionRoleSelector(
+                    roles: workspace.assignablePermissionRoles,
+                    selectedRole: $selectedInviteRole,
+                    isEnabled: !model.isManagingWorkspaceMembers,
+                    tagPrefix: "main.workspace.invite.role.\(workspace.id)."
+                )
+                Button("Отправить приглашение") {
+                    model.createWorkspaceInvitation(
+                        workspaceId: workspace.id,
+                        inviteeIdentifier: inviteeIdentifier,
+                        permissionRole: resolvedInviteRole
+                    )
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.isManagingWorkspaceMembers || inviteeIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 || resolvedInviteRole.isEmpty)
+                .accessibilityIdentifier("main.workspace.invite.\(workspace.id)")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("main.workspace.card.\(workspace.id)")
+        .onAppear {
+            if selectedInviteRole.isEmpty {
+                selectedInviteRole = workspace.assignablePermissionRoles.first ?? ""
+            }
+        }
+    }
+
+    /// Возвращает актуально выбранную роль для invite form.
+    private var resolvedInviteRole: String {
+        if selectedInviteRole.isEmpty {
+            return workspace.assignablePermissionRoles.first ?? ""
+        }
+        return selectedInviteRole
+    }
+}
+
+/// Строка одного участника или pending invitation внутри workspace.
+private struct WorkspaceMembershipRow: View {
+    /// Общая модель главного экрана.
+    @ObservedObject var model: MainSessionModel
+
+    /// Идентификатор рабочего пространства.
+    let workspaceId: String
+
+    /// Membership запись, которую нужно отрисовать.
+    let membership: MainWorkspaceMembershipItem
+
+    /// Локально выбранная permission role для membership update.
+    @State private var selectedRole: String = ""
+
+    /// Отрисовывает membership строку с возможной сменой role.
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(membership.displayName)
+                .font(.body.bold())
+            Text(statusLine)
+                .foregroundColor(.secondary)
+            if let invitedByDisplayName = membership.invitedByDisplayName, membership.status == "invited" {
+                Text("Пригласил: \(invitedByDisplayName)")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            if membership.canEditRole && !membership.assignablePermissionRoles.isEmpty {
+                PermissionRoleSelector(
+                    roles: membership.assignablePermissionRoles,
+                    selectedRole: $selectedRole,
+                    isEnabled: !model.isManagingWorkspaceMembers,
+                    tagPrefix: "main.workspace.membership.role.\(membership.membershipId)."
+                ) { role in
+                    model.updateWorkspaceMembershipRole(
+                        workspaceId: workspaceId,
+                        membershipId: membership.membershipId,
+                        permissionRole: role
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onAppear {
+            if selectedRole.isEmpty {
+                selectedRole = membership.permissionRole
+            }
+        }
+    }
+
+    /// Формирует вторую строку с role/status/username.
+    private var statusLine: String {
+        var parts: [String] = [
+            permissionRoleTitle(membership.permissionRole),
+            workspaceMembershipStatusTitle(membership.status)
+        ]
+        if let username = membership.username, !username.isEmpty {
+            parts.append("@\(username)")
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// Группа кнопок выбора permission role.
+private struct PermissionRoleSelector: View {
+    /// Доступные роли для выбора.
+    let roles: [String]
+
+    /// Текущая выбранная роль.
+    @Binding var selectedRole: String
+
+    /// Показывает, что выбор role разрешен.
+    let isEnabled: Bool
+
+    /// Префикс accessibility identifiers кнопок.
+    let tagPrefix: String
+
+    /// Необязательный колбэк мгновенного применения выбранной роли.
+    var onSelectRole: ((String) -> Void)? = nil
+
+    /// Отрисовывает набор role buttons.
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(roles, id: \.self) { role in
+                if selectedRole == role {
+                    roleButton(for: role)
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    roleButton(for: role)
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    /// Создает кнопку для конкретной permission role, чтобы не дублировать label/action между стилями.
+    private func roleButton(for role: String) -> some View {
+        Button {
+            selectedRole = role
+            onSelectRole?(role)
+        } label: {
+            Text(permissionRoleTitle(role))
+                .accessibilityIdentifier("\(tagPrefix)\(role).label")
+        }
+        .disabled(!isEnabled)
+        .accessibilityIdentifier("\(tagPrefix)\(role)")
     }
 }
 
@@ -413,6 +647,18 @@ private func workspaceStatusTitle(_ status: String) -> String {
     switch status {
     case "active":
         return "Активно"
+    default:
+        return status
+    }
+}
+
+/// Переводит код состояния membership в подпись для интерфейса.
+private func workspaceMembershipStatusTitle(_ status: String) -> String {
+    switch status {
+    case "active":
+        return "Активен"
+    case "invited":
+        return "Ожидает подтверждения"
     default:
         return status
     }

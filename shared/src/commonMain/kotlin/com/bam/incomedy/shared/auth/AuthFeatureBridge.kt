@@ -1,8 +1,8 @@
 package com.bam.incomedy.shared.auth
 
-import com.bam.incomedy.feature.auth.domain.AuthProviderType
-import com.bam.incomedy.feature.auth.domain.AuthSession
-import com.bam.incomedy.feature.auth.domain.AuthorizedUser
+import com.bam.incomedy.domain.auth.AuthProviderType
+import com.bam.incomedy.domain.auth.AuthSession
+import com.bam.incomedy.domain.auth.AuthorizedUser
 import com.bam.incomedy.feature.auth.mvi.AuthEffect
 import com.bam.incomedy.feature.auth.mvi.AuthIntent
 import com.bam.incomedy.feature.auth.mvi.AuthState

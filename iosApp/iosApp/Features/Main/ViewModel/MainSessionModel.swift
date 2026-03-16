@@ -34,6 +34,9 @@ final class MainSessionModel: ObservableObject {
     /// Хранит список доступных рабочих пространств.
     @Published var workspaces: [MainWorkspaceItem] = []
 
+    /// Хранит pending invitations текущего пользователя.
+    @Published var workspaceInvitations: [MainWorkspaceInvitationItem] = []
+
     /// Показывает, что загружается контекст главного экрана.
     @Published var isLoadingContext: Bool = false
 
@@ -42,6 +45,9 @@ final class MainSessionModel: ObservableObject {
 
     /// Показывает, что сейчас создается рабочее пространство.
     @Published var isCreatingWorkspace: Bool = false
+
+    /// Показывает, что сейчас выполняется membership mutation внутри workspace.
+    @Published var isManagingWorkspaceMembers: Bool = false
 
     /// Хранит текст последней ошибки экрана.
     @Published var errorMessage: String?
@@ -123,9 +129,107 @@ final class MainSessionModel: ObservableObject {
                     name: normalizedName,
                     slug: slugValue,
                     status: "active",
-                    permissionRole: "owner"
+                    permissionRole: "owner",
+                    canManageMembers: true,
+                    assignablePermissionRoles: ["manager", "checker", "host"],
+                    memberships: [
+                        MainWorkspaceMembershipItem(
+                            membershipId: "membership-\(slugValue)",
+                            userId: "user-1",
+                            displayName: displayName,
+                            username: username,
+                            permissionRole: "owner",
+                            status: "active",
+                            invitedByDisplayName: nil,
+                            isCurrentUser: true,
+                            canEditRole: false,
+                            assignablePermissionRoles: []
+                        )
+                    ]
                 )
             )
+        }
+    }
+
+    /// Создает invitation существующему пользователю внутри workspace.
+    ///
+    /// - Parameters:
+    ///   - workspaceId: Идентификатор рабочего пространства.
+    ///   - inviteeIdentifier: Логин или username целевого пользователя.
+    ///   - permissionRole: Назначаемая permission role.
+    func createWorkspaceInvitation(
+        workspaceId: String,
+        inviteeIdentifier: String,
+        permissionRole: String
+    ) {
+        let normalizedIdentifier = inviteeIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let bridge {
+            bridge.createWorkspaceInvitation(
+                workspaceId: workspaceId,
+                inviteeIdentifier: normalizedIdentifier,
+                permissionRole: permissionRole
+            )
+        } else {
+            guard let index = workspaces.firstIndex(where: { $0.id == workspaceId }) else { return }
+            let invitedMembership = MainWorkspaceMembershipItem(
+                membershipId: "invite-\(workspaceId)-\(normalizedIdentifier)",
+                userId: "user-invited",
+                displayName: normalizedIdentifier,
+                username: normalizedIdentifier,
+                permissionRole: permissionRole,
+                status: "invited",
+                invitedByDisplayName: displayName,
+                isCurrentUser: false,
+                canEditRole: true,
+                assignablePermissionRoles: workspaces[index].assignablePermissionRoles
+            )
+            workspaces[index].memberships.append(invitedMembership)
+        }
+    }
+
+    /// Принимает pending invitation текущего пользователя.
+    ///
+    /// - Parameter membershipId: Идентификатор invitation записи.
+    func acceptWorkspaceInvitation(_ membershipId: String) {
+        if let bridge {
+            bridge.acceptWorkspaceInvitation(membershipId: membershipId)
+        } else {
+            workspaceInvitations.removeAll { $0.membershipId == membershipId }
+        }
+    }
+
+    /// Отклоняет pending invitation текущего пользователя.
+    ///
+    /// - Parameter membershipId: Идентификатор invitation записи.
+    func declineWorkspaceInvitation(_ membershipId: String) {
+        if let bridge {
+            bridge.declineWorkspaceInvitation(membershipId: membershipId)
+        } else {
+            workspaceInvitations.removeAll { $0.membershipId == membershipId }
+        }
+    }
+
+    /// Меняет permission role membership внутри workspace.
+    ///
+    /// - Parameters:
+    ///   - workspaceId: Идентификатор рабочего пространства.
+    ///   - membershipId: Идентификатор membership записи.
+    ///   - permissionRole: Новая permission role.
+    func updateWorkspaceMembershipRole(
+        workspaceId: String,
+        membershipId: String,
+        permissionRole: String
+    ) {
+        if let bridge {
+            bridge.updateWorkspaceMembershipRole(
+                workspaceId: workspaceId,
+                membershipId: membershipId,
+                permissionRole: permissionRole
+            )
+        } else {
+            guard let workspaceIndex = workspaces.firstIndex(where: { $0.id == workspaceId }) else { return }
+            guard let membershipIndex = workspaces[workspaceIndex].memberships.firstIndex(where: { $0.membershipId == membershipId }) else { return }
+            workspaces[workspaceIndex].memberships[membershipIndex].permissionRole = permissionRole
         }
     }
 
@@ -170,12 +274,40 @@ final class MainSessionModel: ObservableObject {
                 name: $0.name,
                 slug: $0.slug,
                 status: $0.status,
-                permissionRole: $0.permissionRole
+                permissionRole: $0.permissionRole,
+                canManageMembers: $0.canManageMembers,
+                assignablePermissionRoles: $0.assignablePermissionRoles,
+                memberships: $0.memberships.map {
+                    MainWorkspaceMembershipItem(
+                        membershipId: $0.membershipId,
+                        userId: $0.userId,
+                        displayName: $0.displayName,
+                        username: $0.username,
+                        permissionRole: $0.permissionRole,
+                        status: $0.status,
+                        invitedByDisplayName: $0.invitedByDisplayName,
+                        isCurrentUser: $0.isCurrentUser,
+                        canEditRole: $0.canEditRole,
+                        assignablePermissionRoles: $0.assignablePermissionRoles
+                    )
+                }
+            )
+        }
+        workspaceInvitations = snapshot.workspaceInvitations.map {
+            MainWorkspaceInvitationItem(
+                membershipId: $0.membershipId,
+                workspaceId: $0.workspaceId,
+                workspaceName: $0.workspaceName,
+                workspaceSlug: $0.workspaceSlug,
+                workspaceStatus: $0.workspaceStatus,
+                permissionRole: $0.permissionRole,
+                invitedByDisplayName: $0.invitedByDisplayName
             )
         }
         isLoadingContext = snapshot.isLoadingContext
         isUpdatingRole = snapshot.isUpdatingRole
         isCreatingWorkspace = snapshot.isCreatingWorkspace
+        isManagingWorkspaceMembers = snapshot.isManagingWorkspaceMembers
         errorMessage = snapshot.errorMessage
     }
 
@@ -193,9 +325,11 @@ final class MainSessionModel: ObservableObject {
         activeRoleKey = fixture.activeRoleKey
         linkedProviderKeys = fixture.linkedProviderKeys
         workspaces = fixture.workspaces
+        workspaceInvitations = fixture.workspaceInvitations
         isLoadingContext = fixture.isLoadingContext
         isUpdatingRole = fixture.isUpdatingRole
         isCreatingWorkspace = fixture.isCreatingWorkspace
+        isManagingWorkspaceMembers = fixture.isManagingWorkspaceMembers
         errorMessage = fixture.errorMessage
     }
 
@@ -250,6 +384,9 @@ struct MainSessionFixture {
     /// Рабочие пространства, видимые на главной вкладке.
     let workspaces: [MainWorkspaceItem]
 
+    /// Pending invitations текущего пользователя.
+    let workspaceInvitations: [MainWorkspaceInvitationItem]
+
     /// Показывает индикатор загрузки контекста.
     let isLoadingContext: Bool
 
@@ -258,6 +395,9 @@ struct MainSessionFixture {
 
     /// Показывает, что выполняется создание рабочего пространства.
     let isCreatingWorkspace: Bool
+
+    /// Показывает, что выполняется membership mutation внутри workspace.
+    let isManagingWorkspaceMembers: Bool
 
     /// Последняя ошибка экрана.
     let errorMessage: String?
@@ -279,12 +419,52 @@ struct MainSessionFixture {
                 name: "Moscow Cellar",
                 slug: "moscow-cellar",
                 status: "active",
-                permissionRole: "owner"
+                permissionRole: "owner",
+                canManageMembers: true,
+                assignablePermissionRoles: ["manager", "checker", "host"],
+                memberships: [
+                    MainWorkspaceMembershipItem(
+                        membershipId: "wm-1",
+                        userId: "user-1",
+                        displayName: "Тестовый Пользователь",
+                        username: "test_user",
+                        permissionRole: "owner",
+                        status: "active",
+                        invitedByDisplayName: nil,
+                        isCurrentUser: true,
+                        canEditRole: false,
+                        assignablePermissionRoles: []
+                    ),
+                    MainWorkspaceMembershipItem(
+                        membershipId: "wm-2",
+                        userId: "user-2",
+                        displayName: "Сценический Чекер",
+                        username: "checker_user",
+                        permissionRole: "checker",
+                        status: "active",
+                        invitedByDisplayName: nil,
+                        isCurrentUser: false,
+                        canEditRole: true,
+                        assignablePermissionRoles: ["manager", "checker", "host"]
+                    )
+                ]
+            )
+        ],
+        workspaceInvitations: [
+            MainWorkspaceInvitationItem(
+                membershipId: "invite-1",
+                workspaceId: "ws-2",
+                workspaceName: "Late Night Standup",
+                workspaceSlug: "late-night-standup",
+                workspaceStatus: "active",
+                permissionRole: "checker",
+                invitedByDisplayName: "Владелец Площадки"
             )
         ],
         isLoadingContext: false,
         isUpdatingRole: false,
         isCreatingWorkspace: false,
+        isManagingWorkspaceMembers: false,
         errorMessage: nil
     )
 }
@@ -305,6 +485,78 @@ struct MainWorkspaceItem: Identifiable {
 
     /// Роль доступа пользователя в рабочем пространстве.
     let permissionRole: String
+
+    /// Показывает, может ли viewer управлять командой workspace.
+    let canManageMembers: Bool
+
+    /// Роли, которые viewer может назначать в invite flow.
+    let assignablePermissionRoles: [String]
+
+    /// Active и pending membership записи workspace.
+    var memberships: [MainWorkspaceMembershipItem]
+}
+
+/// Модель membership записи внутри workspace для SwiftUI-слоя.
+struct MainWorkspaceMembershipItem: Identifiable {
+    /// Идентификатор membership/invitation записи.
+    let membershipId: String
+
+    /// Идентификатор пользователя.
+    let userId: String
+
+    /// Отображаемое имя участника.
+    let displayName: String
+
+    /// Username участника.
+    let username: String?
+
+    /// Permission role внутри workspace.
+    var permissionRole: String
+
+    /// Состояние membership.
+    let status: String
+
+    /// Имя инициатора invite.
+    let invitedByDisplayName: String?
+
+    /// Показывает, что membership принадлежит текущему пользователю.
+    let isCurrentUser: Bool
+
+    /// Показывает, что role этой записи можно менять.
+    let canEditRole: Bool
+
+    /// Роли, которые можно назначить этой записи.
+    let assignablePermissionRoles: [String]
+
+    /// Использует membership id как stable `Identifiable` id.
+    var id: String { membershipId }
+}
+
+/// Pending invitation текущего пользователя для SwiftUI-слоя.
+struct MainWorkspaceInvitationItem: Identifiable {
+    /// Идентификатор invitation записи.
+    let membershipId: String
+
+    /// Идентификатор рабочего пространства.
+    let workspaceId: String
+
+    /// Название рабочего пространства.
+    let workspaceName: String
+
+    /// Публичный slug рабочего пространства.
+    let workspaceSlug: String
+
+    /// Статус рабочего пространства.
+    let workspaceStatus: String
+
+    /// Роль, которая предлагается пользователю.
+    let permissionRole: String
+
+    /// Имя инициатора invitation.
+    let invitedByDisplayName: String?
+
+    /// Использует membership id как stable `Identifiable` id.
+    var id: String { membershipId }
 }
 
 /// Вспомогательное Keychain-хранилище, которое удаляет access token при выходе.
