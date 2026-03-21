@@ -2,6 +2,7 @@ package com.bam.incomedy.data.ticketing.backend
 
 import com.bam.incomedy.domain.ticketing.InventoryUnit
 import com.bam.incomedy.domain.ticketing.SeatHold
+import com.bam.incomedy.domain.ticketing.TicketOrder
 import com.bam.incomedy.domain.ticketing.TicketingService
 
 /**
@@ -43,6 +44,19 @@ class BackendTicketingService(
             accessToken = accessToken,
             eventId = eventId,
             inventoryRef = inventoryRef,
+        )
+    }
+
+    /** Создает checkout order через backend API. */
+    override suspend fun createTicketOrder(
+        accessToken: String,
+        eventId: String,
+        holdIds: List<String>,
+    ): Result<TicketOrder> {
+        return ticketingBackendApi.createTicketOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = holdIds,
         )
     }
 

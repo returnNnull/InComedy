@@ -53,6 +53,48 @@ data class StoredSeatHold(
 )
 
 /**
+ * Зафиксированная позиция ticket order-а.
+ *
+ * @property orderId Идентификатор заказа-владельца.
+ * @property inventoryUnitId Идентификатор inventory unit.
+ * @property inventoryRef Стабильная ссылка inventory unit.
+ * @property label Человекочитаемая подпись позиции.
+ * @property priceMinor Цена позиции в minor units.
+ * @property currency Валюта позиции.
+ */
+data class StoredTicketOrderLine(
+    val orderId: String,
+    val inventoryUnitId: String,
+    val inventoryRef: String,
+    val label: String,
+    val priceMinor: Int,
+    val currency: String,
+)
+
+/**
+ * Сохраненный checkout order, собранный из активных hold-ов пользователя.
+ *
+ * @property id Идентификатор заказа.
+ * @property eventId Идентификатор события.
+ * @property userId Идентификатор пользователя-владельца.
+ * @property status Текущий статус checkout order-а.
+ * @property currency Валюта заказа.
+ * @property totalMinor Итоговая сумма в minor units.
+ * @property checkoutExpiresAt Момент автоматического истечения checkout lock-а.
+ * @property lines Зафиксированные позиции заказа.
+ */
+data class StoredTicketOrder(
+    val id: String,
+    val eventId: String,
+    val userId: String,
+    val status: String,
+    val currency: String,
+    val totalMinor: Int,
+    val checkoutExpiresAt: OffsetDateTime,
+    val lines: List<StoredTicketOrderLine>,
+)
+
+/**
  * Сохраненная inventory unit с опциональным активным hold-ом.
  *
  * @property id Идентификатор inventory unit.
@@ -125,6 +167,15 @@ interface TicketingRepository {
         now: OffsetDateTime,
     ): StoredSeatHold
 
+    /** Создает checkout order и переводит связанные inventory unit-ы в pending payment. */
+    fun createTicketOrder(
+        eventId: String,
+        holdIds: List<String>,
+        userId: String,
+        checkoutExpiresAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): StoredTicketOrder
+
     /** Освобождает hold, если он принадлежит текущему пользователю и еще активен. */
     fun releaseSeatHold(
         holdId: String,
@@ -161,3 +212,34 @@ class TicketingSeatHoldInactivePersistenceException(
     val holdId: String,
     val currentStatus: String,
 ) : IllegalStateException("Seat hold is no longer active")
+
+/** Сигнализирует, что checkout order содержит hold чужого пользователя. */
+class TicketingCheckoutHoldPermissionDeniedPersistenceException(
+    val holdId: String,
+    val userId: String,
+) : IllegalStateException("Checkout hold belongs to another user")
+
+/** Сигнализирует, что checkout order содержит hold другого события. */
+class TicketingCheckoutHoldEventMismatchPersistenceException(
+    val holdId: String,
+    val holdEventId: String,
+    val requestedEventId: String,
+) : IllegalStateException("Checkout hold belongs to another event")
+
+/** Сигнализирует, что checkout order нельзя собрать из-за состояния hold-а или inventory unit. */
+class TicketingCheckoutConflictPersistenceException(
+    val holdId: String,
+    val reasonCode: String,
+) : IllegalStateException("Checkout order cannot be created from the requested hold")
+
+/** Сигнализирует, что выбранная inventory unit не имеет фиксированной цены для checkout-а. */
+class TicketingCheckoutPriceMissingPersistenceException(
+    val inventoryRef: String,
+) : IllegalStateException("Inventory unit does not have a sellable price")
+
+/** Сигнализирует, что checkout order не может смешивать разные валюты. */
+class TicketingCheckoutCurrencyMismatchPersistenceException(
+    val holdId: String,
+    val expectedCurrency: String,
+    val actualCurrency: String,
+) : IllegalStateException("Checkout order currency mismatch")

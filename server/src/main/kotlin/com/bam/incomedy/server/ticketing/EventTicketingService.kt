@@ -18,8 +18,14 @@ import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredInventoryUnitBlueprint
 import com.bam.incomedy.server.db.StoredOrganizerEvent
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketOrder
 import com.bam.incomedy.server.db.TicketingInventoryConflictPersistenceException
 import com.bam.incomedy.server.db.TicketingInventoryUnitNotFoundPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutConflictPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutCurrencyMismatchPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutHoldEventMismatchPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutHoldPermissionDeniedPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutPriceMissingPersistenceException
 import com.bam.incomedy.server.db.TicketingRepository
 import com.bam.incomedy.server.db.TicketingSeatHoldInactivePersistenceException
 import com.bam.incomedy.server.db.TicketingSeatHoldNotFoundPersistenceException
@@ -35,7 +41,7 @@ import java.time.format.DateTimeFormatter
  * Ticketing foundation orchestration поверх organizer events и derived inventory.
  *
  * Сервис проверяет visibility/sales policy, пересобирает inventory из frozen snapshot-а и
- * прокидывает hold transitions в persistence без введения order/payment логики.
+ * прокидывает hold transitions и provider-agnostic checkout order foundation в persistence.
  */
 class EventTicketingService(
     private val workspaceRepository: WorkspaceRepository,
@@ -43,6 +49,7 @@ class EventTicketingService(
     private val ticketingRepository: TicketingRepository,
     private val nowProvider: () -> OffsetDateTime = { OffsetDateTime.now() },
     private val holdTtl: Duration = Duration.ofMinutes(10),
+    private val checkoutTtl: Duration = Duration.ofMinutes(10),
 ) {
     /** Возвращает публичный derived inventory только для опубликованного public-события. */
     fun listPublicInventory(eventId: String): List<StoredInventoryUnit> {
@@ -125,6 +132,63 @@ class EventTicketingService(
         } catch (error: TicketingInventoryConflictPersistenceException) {
             throw TicketingConflictException(
                 "Inventory unit недоступна для hold-а в текущем состоянии: ${error.currentStatus}",
+            )
+        }
+    }
+
+    /** Создает checkout order из активных hold-ов текущего пользователя. */
+    fun createTicketOrder(
+        actorUserId: String,
+        eventId: String,
+        holdIds: List<String>,
+    ): StoredTicketOrder {
+        if (holdIds.isEmpty()) {
+            throw TicketingValidationException("Для checkout нужен хотя бы один hold")
+        }
+        if (holdIds.size != holdIds.distinct().size) {
+            throw TicketingValidationException("Hold id не должен повторяться в одном checkout request")
+        }
+        val event = loadProtectedTicketingEvent(
+            actorUserId = actorUserId,
+            eventId = eventId,
+        )
+        if (event.salesStatus != EventSalesStatus.OPEN.wireName) {
+            throw TicketingConflictException("Открытые продажи требуются для создания checkout order-а")
+        }
+        val now = nowProvider()
+        ensureInventorySynchronized(
+            event = event,
+            now = now,
+        )
+        return try {
+            ticketingRepository.createTicketOrder(
+                eventId = event.id,
+                holdIds = holdIds,
+                userId = actorUserId,
+                checkoutExpiresAt = now.plus(checkoutTtl),
+                now = now,
+            )
+        } catch (error: TicketingSeatHoldNotFoundPersistenceException) {
+            throw TicketingSeatHoldNotFoundException(error.holdId)
+        } catch (_: TicketingCheckoutHoldPermissionDeniedPersistenceException) {
+            throw TicketingSeatHoldForbiddenException("checkout_hold_forbidden")
+        } catch (_: TicketingCheckoutHoldEventMismatchPersistenceException) {
+            throw TicketingValidationException("Все hold-ы должны принадлежать выбранному событию")
+        } catch (error: TicketingCheckoutConflictPersistenceException) {
+            throw TicketingConflictException(
+                when (error.reasonCode) {
+                    "hold_inactive" -> "Checkout order можно собрать только из активных hold-ов"
+                    "hold_expired" -> "Один из hold-ов уже истек"
+                    else -> "Checkout order нельзя собрать из выбранных hold-ов"
+                },
+            )
+        } catch (error: TicketingCheckoutPriceMissingPersistenceException) {
+            throw TicketingValidationException(
+                "У одной из inventory unit нет зафиксированной цены: ${error.inventoryRef}",
+            )
+        } catch (error: TicketingCheckoutCurrencyMismatchPersistenceException) {
+            throw TicketingValidationException(
+                "Checkout order не поддерживает смешанные валюты: ${error.expectedCurrency} и ${error.actualCurrency}",
             )
         }
     }

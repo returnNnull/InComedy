@@ -37,6 +37,11 @@ class PostgresTicketingRepository(
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
+                expireOverdueOrders(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
                 expireOverdueHolds(
                     connection = connection,
                     eventId = eventId,
@@ -75,6 +80,11 @@ class PostgresTicketingRepository(
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
+                expireOverdueOrders(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
                 expireOverdueHolds(
                     connection = connection,
                     eventId = eventId,
@@ -106,6 +116,16 @@ class PostgresTicketingRepository(
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
+                expireOverdueOrders(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
+                expireOverdueHolds(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
                 val lockedUnit = loadInventoryUnit(
                     connection = connection,
                     eventId = eventId,
@@ -182,6 +202,199 @@ class PostgresTicketingRepository(
                 ) ?: error("Persisted hold must be readable right after insert")
                 connection.commit()
                 return hold
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /**
+     * Создает checkout order, потребляя активные hold-ы и переводя inventory в pending payment.
+     *
+     * Локирование идет через inventory rows, чтобы checkout creation не расходился по порядку
+     * блокировок с create/release/expiry flows hold-ов.
+     */
+    override fun createTicketOrder(
+        eventId: String,
+        holdIds: List<String>,
+        userId: String,
+        checkoutExpiresAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): StoredTicketOrder {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                expireOverdueOrders(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
+                expireOverdueHolds(
+                    connection = connection,
+                    eventId = eventId,
+                    now = now,
+                )
+                val checkoutRows = loadCheckoutHoldRows(
+                    connection = connection,
+                    holdIds = holdIds,
+                )
+                val missingHoldIds = holdIds.toSet() - checkoutRows.map(CheckoutLockedHoldRow::holdId).toSet()
+                if (missingHoldIds.isNotEmpty()) {
+                    throw TicketingSeatHoldNotFoundPersistenceException(missingHoldIds.first())
+                }
+
+                val orderId = UUID.randomUUID().toString()
+                var orderCurrency: String? = null
+                val orderLines = mutableListOf<StoredTicketOrderLine>()
+                checkoutRows.forEach { row ->
+                    if (row.userId != userId) {
+                        throw TicketingCheckoutHoldPermissionDeniedPersistenceException(
+                            holdId = row.holdId,
+                            userId = userId,
+                        )
+                    }
+                    if (row.eventId != eventId) {
+                        throw TicketingCheckoutHoldEventMismatchPersistenceException(
+                            holdId = row.holdId,
+                            holdEventId = row.eventId,
+                            requestedEventId = eventId,
+                        )
+                    }
+                    if (row.holdStatus != "active") {
+                        throw TicketingCheckoutConflictPersistenceException(
+                            holdId = row.holdId,
+                            reasonCode = "hold_inactive",
+                        )
+                    }
+                    if (!row.holdExpiresAt.isAfter(now)) {
+                        expireHold(
+                            connection = connection,
+                            inventoryUnitId = row.inventoryUnitId,
+                            holdId = row.holdId,
+                        )
+                        throw TicketingCheckoutConflictPersistenceException(
+                            holdId = row.holdId,
+                            reasonCode = "hold_expired",
+                        )
+                    }
+                    if (row.inventoryStatus != "held" || row.activeHoldId != row.holdId) {
+                        throw TicketingCheckoutConflictPersistenceException(
+                            holdId = row.holdId,
+                            reasonCode = "inventory_not_held",
+                        )
+                    }
+                    val priceMinor = row.priceMinor
+                        ?: throw TicketingCheckoutPriceMissingPersistenceException(row.inventoryRef)
+                    val currentCurrency = row.currency
+                    val expectedCurrency = orderCurrency
+                    if (expectedCurrency == null) {
+                        orderCurrency = currentCurrency
+                    } else if (expectedCurrency != currentCurrency) {
+                        throw TicketingCheckoutCurrencyMismatchPersistenceException(
+                            holdId = row.holdId,
+                            expectedCurrency = expectedCurrency,
+                            actualCurrency = currentCurrency,
+                        )
+                    }
+                    orderLines += StoredTicketOrderLine(
+                        orderId = orderId,
+                        inventoryUnitId = row.inventoryUnitId,
+                        inventoryRef = row.inventoryRef,
+                        label = row.label,
+                        priceMinor = priceMinor,
+                        currency = currentCurrency,
+                    )
+                }
+
+                val currency = orderCurrency ?: error("Checkout order currency must be resolved from at least one hold")
+                val totalMinor = orderLines.sumOf(StoredTicketOrderLine::priceMinor)
+                connection.prepareStatement(
+                    """
+                    INSERT INTO ticket_orders (
+                        id,
+                        event_id,
+                        user_id,
+                        status,
+                        currency,
+                        total_minor,
+                        checkout_expires_at,
+                        created_at,
+                        updated_at
+                    ) VALUES (?, ?, ?, 'awaiting_payment', ?, ?, ?, NOW(), NOW())
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setObject(1, UUID.fromString(orderId))
+                    statement.setObject(2, UUID.fromString(eventId))
+                    statement.setObject(3, UUID.fromString(userId))
+                    statement.setString(4, currency)
+                    statement.setInt(5, totalMinor)
+                    statement.setObject(6, checkoutExpiresAt)
+                    statement.executeUpdate()
+                }
+                connection.prepareStatement(
+                    """
+                    INSERT INTO ticket_order_lines (
+                        order_id,
+                        inventory_unit_id,
+                        inventory_ref,
+                        label,
+                        price_minor,
+                        currency,
+                        created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+                    """.trimIndent(),
+                ).use { statement ->
+                    orderLines.forEach { line ->
+                        statement.setObject(1, UUID.fromString(line.orderId))
+                        statement.setObject(2, UUID.fromString(line.inventoryUnitId))
+                        statement.setString(3, line.inventoryRef)
+                        statement.setString(4, line.label)
+                        statement.setInt(5, line.priceMinor)
+                        statement.setString(6, line.currency)
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+                connection.prepareStatement(
+                    """
+                    UPDATE seat_holds
+                    SET
+                        status = 'consumed',
+                        updated_at = NOW()
+                    WHERE id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    checkoutRows.forEach { row ->
+                        statement.setObject(1, UUID.fromString(row.holdId))
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+                connection.prepareStatement(
+                    """
+                    UPDATE ticket_inventory_units
+                    SET
+                        active_hold_id = NULL,
+                        status = 'pending_payment',
+                        updated_at = NOW()
+                    WHERE id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    checkoutRows.forEach { row ->
+                        statement.setObject(1, UUID.fromString(row.inventoryUnitId))
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+                val order = loadTicketOrder(
+                    connection = connection,
+                    orderId = orderId,
+                ) ?: error("Persisted ticket order must be readable right after insert")
+                connection.commit()
+                return order
             } catch (error: Throwable) {
                 connection.rollback()
                 throw error
@@ -320,6 +533,81 @@ class PostgresTicketingRepository(
         }
     }
 
+    /** Истекает pending checkout order-ы события и возвращает их inventory unit-ы в base status. */
+    private fun expireOverdueOrders(
+        connection: Connection,
+        eventId: String,
+        now: OffsetDateTime,
+    ) {
+        val expiredRows = connection.prepareStatement(
+            """
+            SELECT
+                o.id AS order_id,
+                l.inventory_unit_id
+            FROM ticket_orders o
+            JOIN ticket_order_lines l
+              ON l.order_id = o.id
+            JOIN ticket_inventory_units i
+              ON i.id = l.inventory_unit_id
+            WHERE o.event_id = ?
+              AND o.status = 'awaiting_payment'
+              AND o.checkout_expires_at <= ?
+            ORDER BY o.id, l.inventory_unit_id
+            FOR UPDATE OF i
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(eventId))
+            statement.setObject(2, now)
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            result.getObject("order_id").toString() to
+                                result.getObject("inventory_unit_id").toString(),
+                        )
+                    }
+                }
+            }
+        }
+        if (expiredRows.isEmpty()) {
+            return
+        }
+        expiredRows
+            .groupBy(
+                keySelector = Pair<String, String>::first,
+                valueTransform = Pair<String, String>::second,
+            )
+            .forEach { (orderId, inventoryUnitIds) ->
+                connection.prepareStatement(
+                    """
+                    UPDATE ticket_orders
+                    SET
+                        status = 'expired',
+                        updated_at = NOW()
+                    WHERE id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setObject(1, UUID.fromString(orderId))
+                    statement.executeUpdate()
+                }
+                connection.prepareStatement(
+                    """
+                    UPDATE ticket_inventory_units
+                    SET
+                        status = base_status,
+                        updated_at = NOW()
+                    WHERE id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    inventoryUnitIds.forEach { inventoryUnitId ->
+                        statement.setObject(1, UUID.fromString(inventoryUnitId))
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+            }
+    }
+
     /** Считывает persisted sync marker derived inventory конкретного события. */
     private fun loadInventorySyncState(
         connection: Connection,
@@ -431,6 +719,7 @@ class PostgresTicketingRepository(
 
         val nextStatus = when {
             existing.activeHold != null -> "held"
+            existing.status == "pending_payment" -> "pending_payment"
             existing.status == "sold" -> "sold"
             else -> blueprint.baseStatus
         }
@@ -467,6 +756,81 @@ class PostgresTicketingRepository(
         }
     }
 
+    /** Загружает checkout order со всеми его позициями. */
+    private fun loadTicketOrder(
+        connection: Connection,
+        orderId: String,
+    ): StoredTicketOrder? {
+        return connection.prepareStatement(
+            """
+            SELECT
+                id,
+                event_id,
+                user_id,
+                status,
+                currency,
+                total_minor,
+                checkout_expires_at
+            FROM ticket_orders
+            WHERE id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(orderId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                StoredTicketOrder(
+                    id = result.getObject("id").toString(),
+                    eventId = result.getObject("event_id").toString(),
+                    userId = result.getObject("user_id").toString(),
+                    status = result.getString("status"),
+                    currency = result.getString("currency"),
+                    totalMinor = result.getInt("total_minor"),
+                    checkoutExpiresAt = result.getObject("checkout_expires_at", OffsetDateTime::class.java),
+                    lines = loadTicketOrderLines(connection, orderId),
+                )
+            }
+        }
+    }
+
+    /** Загружает зафиксированные позиции checkout order-а. */
+    private fun loadTicketOrderLines(
+        connection: Connection,
+        orderId: String,
+    ): List<StoredTicketOrderLine> {
+        return connection.prepareStatement(
+            """
+            SELECT
+                order_id,
+                inventory_unit_id,
+                inventory_ref,
+                label,
+                price_minor,
+                currency
+            FROM ticket_order_lines
+            WHERE order_id = ?
+            ORDER BY inventory_ref
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(orderId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            StoredTicketOrderLine(
+                                orderId = result.getObject("order_id").toString(),
+                                inventoryUnitId = result.getObject("inventory_unit_id").toString(),
+                                inventoryRef = result.getString("inventory_ref"),
+                                label = result.getString("label"),
+                                priceMinor = result.getInt("price_minor"),
+                                currency = result.getString("currency"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     /** Истекает hold и возвращает inventory unit к ее базовой доступности. */
     private fun expireHold(
         connection: Connection,
@@ -497,6 +861,63 @@ class PostgresTicketingRepository(
         ).use { statement ->
             statement.setObject(1, UUID.fromString(inventoryUnitId))
             statement.executeUpdate()
+        }
+    }
+
+    /** Загружает hold-ы для checkout, сериализуя их через inventory row locks. */
+    private fun loadCheckoutHoldRows(
+        connection: Connection,
+        holdIds: List<String>,
+    ): List<CheckoutLockedHoldRow> {
+        val placeholders = holdIds.joinToString(", ") { "?" }
+        return connection.prepareStatement(
+            """
+            SELECT
+                h.id AS hold_id,
+                h.event_id,
+                h.inventory_unit_id,
+                h.user_id,
+                h.expires_at,
+                h.status AS hold_status,
+                i.inventory_ref,
+                i.label,
+                i.price_minor,
+                i.currency,
+                i.status AS inventory_status,
+                i.active_hold_id
+            FROM seat_holds h
+            JOIN ticket_inventory_units i
+              ON i.id = h.inventory_unit_id
+            WHERE h.id IN ($placeholders)
+            ORDER BY i.id
+            FOR UPDATE OF i
+            """.trimIndent(),
+        ).use { statement ->
+            holdIds.forEachIndexed { index, holdId ->
+                statement.setObject(index + 1, UUID.fromString(holdId))
+            }
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            CheckoutLockedHoldRow(
+                                holdId = result.getObject("hold_id").toString(),
+                                eventId = result.getObject("event_id").toString(),
+                                inventoryUnitId = result.getObject("inventory_unit_id").toString(),
+                                userId = result.getObject("user_id").toString(),
+                                holdExpiresAt = result.getObject("expires_at", OffsetDateTime::class.java),
+                                holdStatus = result.getString("hold_status"),
+                                inventoryRef = result.getString("inventory_ref"),
+                                label = result.getString("label"),
+                                priceMinor = result.getObject("price_minor") as Int?,
+                                currency = result.getString("currency"),
+                                inventoryStatus = result.getString("inventory_status"),
+                                activeHoldId = result.getString("active_hold_id"),
+                            ),
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -718,4 +1139,35 @@ private data class LockedSeatHoldRow(
     val userId: String,
     val expiresAt: OffsetDateTime,
     val status: String,
+)
+
+/**
+ * Lock-carrier для checkout creation, содержащий и hold, и текущий inventory snapshot unit-а.
+ *
+ * @property holdId Идентификатор hold-а.
+ * @property eventId Идентификатор события hold-а.
+ * @property inventoryUnitId Идентификатор inventory unit.
+ * @property userId Идентификатор владельца hold-а.
+ * @property holdExpiresAt Момент истечения hold-а.
+ * @property holdStatus Текущий статус hold-а.
+ * @property inventoryRef Стабильная ссылка inventory unit.
+ * @property label Человекочитаемая подпись inventory unit.
+ * @property priceMinor Текущая цена inventory unit.
+ * @property currency Валюта inventory unit.
+ * @property inventoryStatus Текущее состояние inventory unit.
+ * @property activeHoldId Идентификатор активного hold-а, если он еще привязан к unit.
+ */
+private data class CheckoutLockedHoldRow(
+    val holdId: String,
+    val eventId: String,
+    val inventoryUnitId: String,
+    val userId: String,
+    val holdExpiresAt: OffsetDateTime,
+    val holdStatus: String,
+    val inventoryRef: String,
+    val label: String,
+    val priceMinor: Int?,
+    val currency: String,
+    val inventoryStatus: String,
+    val activeHoldId: String?,
 )

@@ -350,6 +350,184 @@ class TicketingRoutesTest {
         assertTrue(secondResponse.bodyAsText().contains("conflict"))
     }
 
+    /** Проверяет успешное создание checkout order и diagnostics для нового route-а. */
+    @Test
+    fun `audience user can create checkout order from active holds`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val seatHoldId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val tableHoldId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "table:table-1:seat:1",
+        )
+
+        val orderResponse = client.post("/api/v1/events/$eventId/orders") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"hold_ids":["$seatHoldId","$tableHoldId"]}""")
+        }
+
+        assertEquals(HttpStatusCode.Created, orderResponse.status)
+        val orderBody = orderResponse.bodyAsText()
+        assertTrue(orderBody.contains(""""status":"awaiting_payment""""))
+        assertTrue(orderBody.contains(""""total_minor":5100"""))
+        assertTrue(orderBody.contains(""""inventory_ref":"seat:seat-a-2""""))
+        assertTrue(orderBody.contains(""""inventory_ref":"table:table-1:seat:1""""))
+
+        val inventoryResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, inventoryResponse.status)
+        val inventoryBody = inventoryResponse.bodyAsText()
+        assertTrue(inventoryBody.contains(""""inventory_ref":"seat:seat-a-2""""))
+        assertTrue(inventoryBody.contains(""""status":"pending_payment""""))
+        assertTrue(inventoryBody.contains(""""active_hold_id":null"""))
+
+        val requestId = assertNotNull(orderResponse.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.order.create.success",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("2", event.metadata["lineCount"])
+        assertEquals("5100", event.metadata["totalMinor"])
+        assertEquals("awaiting_payment", event.metadata["status"])
+    }
+
+    /** Проверяет, что пользователь не может создать checkout order из чужого hold-а. */
+    @Test
+    fun `different user cannot create order from чужой hold`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+            putSecondAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val firstAccessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val secondAccessToken = tokenService.issue(
+            userId = SECOND_AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = firstAccessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+
+        val response = client.post("/api/v1/events/$eventId/orders") {
+            header(HttpHeaders.Authorization, "Bearer $secondAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"hold_ids":["$holdId"]}""")
+        }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        assertTrue(response.bodyAsText().contains("forbidden"))
+    }
+
+    /** Проверяет, что истекший pending order автоматически освобождает inventory. */
+    @Test
+    fun `expired checkout order releases inventory back to availability`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val currentTime = mutableStateOf(NOW)
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { currentTime.value },
+            checkoutTtl = Duration.ofMinutes(1),
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderResponse = client.post("/api/v1/events/$eventId/orders") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"hold_ids":["$holdId"]}""")
+        }
+        assertEquals(HttpStatusCode.Created, orderResponse.status)
+
+        currentTime.value = NOW.plusMinutes(2)
+
+        val inventoryResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, inventoryResponse.status)
+        val inventoryBody = inventoryResponse.bodyAsText()
+        assertTrue(inventoryBody.contains(""""inventory_ref":"seat:seat-a-2""""))
+        assertTrue(inventoryBody.contains(""""status":"available""""))
+    }
+
     /** Проверяет, что просроченный hold освобождает inventory unit для нового reserve. */
     @Test
     fun `expired hold no longer blocks inventory`() = testApplication {
@@ -637,6 +815,7 @@ class TicketingRoutesTest {
         diagnosticsStore: InMemoryDiagnosticsStore? = null,
         nowProvider: () -> OffsetDateTime,
         holdTtl: Duration = Duration.ofMinutes(10),
+        checkoutTtl: Duration = Duration.ofMinutes(10),
     ) {
         environment { config = MapApplicationConfig() }
         application {
@@ -657,9 +836,28 @@ class TicketingRoutesTest {
                     diagnosticsStore = diagnosticsStore,
                     nowProvider = nowProvider,
                     holdTtl = holdTtl,
+                    checkoutTtl = checkoutTtl,
                 )
             }
         }
+    }
+
+    /** Создает hold через HTTP route и возвращает его id для последующего checkout flow. */
+    private suspend fun ApplicationTestBuilder.createHold(
+        accessToken: String,
+        eventId: String,
+        inventoryRef: String,
+    ): String {
+        val response = client.post("/api/v1/events/$eventId/holds") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"inventory_ref":"$inventoryRef"}""")
+        }
+        assertEquals(HttpStatusCode.Created, response.status)
+        return Regex(""""id":"([^"]+)"""").find(response.bodyAsText())
+            ?.groupValues
+            ?.get(1)
+            ?: error("Hold id not found in response")
     }
 
     /** Создает тестовое событие с snapshot seat/zone/table inventory и event-local overrides. */

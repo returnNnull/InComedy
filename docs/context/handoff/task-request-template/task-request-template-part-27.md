@@ -65,3 +65,65 @@
 
 - Add public event detail and audience mobile UI surfaces on top of the new catalog route.
 - Continue with checkout/order capture, QR issuance, and check-in after the public discovery entry point.
+
+## Formalized P0 Request (Checkout Order Foundation)
+
+## Why This Step
+
+- Public catalog and inventory entry points now exist, but the audience flow still stops at temporary holds and cannot transition into a stable checkout entity.
+- The product backlog keeps `ticket checkout` inside `P0`, while the tooling stack still lists PSP providers as candidates rather than confirmed production integrations.
+- The next bounded step should therefore introduce a provider-agnostic internal `TicketOrder` foundation that safely converts active holds into a checkout-ready order without pretending that YooKassa/CloudPayments are already rollout-ready.
+
+## Scope
+
+- Add a backend ticket-order entity that groups one or more active seat holds of the current user for one event.
+- Add a protected backend route for creating a checkout order from active hold ids.
+- Persist order lines, total amount, and checkout expiration so pending orders do not lock inventory forever.
+- Extend ticketing persistence so inventory units can remain blocked during checkout and automatically recover after order expiration.
+- Extend shared `domain/data:ticketing` contracts so future clients can call the create-order API cleanly.
+- Add structured logging and sanitized diagnostics for the checkout-order route.
+- Add regression coverage for:
+  - successful order creation from active holds
+  - rejection of чужих/неактивных hold-ов
+  - release of inventory after pending order expiration
+  - migration coverage for new ticket-order tables
+
+## Explicitly Out Of Scope
+
+- real PSP integration or provider-specific checkout URLs
+- payment confirmation webhooks
+- QR issuance and check-in
+- refunds and cancellations
+- audience mobile UI
+
+## Constraints
+
+- `docs/context/*` remains the source of truth and must be updated in the same change.
+- The slice must stay provider-agnostic because the payments provider is still only a candidate in `tooling-stack.md`.
+- Inventory must not become permanently blocked if checkout is abandoned.
+- New backend flow code and diagnostics hooks must keep Russian comments and sanitized low-cardinality metadata.
+
+## Acceptance Signals
+
+- Authenticated audience can create a stable checkout order from active holds of one event.
+- Pending checkout orders block the same inventory from new holds until they expire.
+- Expired pending orders release inventory back to its base availability automatically.
+- Documentation, API contract, governance memory, and tests reflect the new checkout foundation and clearly note that PSP integration is still pending.
+
+## Implementation Outcome
+
+## Delivered
+
+- Added provider-agnostic `TicketOrder` models and shared `createTicketOrder` contract in `domain/data:ticketing`.
+- Added protected backend route `POST /api/v1/events/{eventId}/orders` with bounded payload validation, rate limiting, structured logging, and sanitized diagnostics.
+- Added persistence for `ticket_orders` and `ticket_order_lines`, plus `held -> pending_payment` inventory transition and automatic release to base availability after expired pending checkout.
+- Added regression coverage for successful order creation, rejection of чужих/неактивных hold-ов, pending-order expiry recovery, and migration verification for the new order tables.
+
+## Verification
+
+- `./gradlew :domain:ticketing:allTests :data:ticketing:compileKotlinMetadata :shared:compileKotlinMetadata :composeApp:compileDebugKotlin :server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.ticketing.TicketingRoutesTest'`
+
+## Remaining Follow-Up
+
+- Decide the active PSP path and implement checkout handoff plus payment-confirmation/webhook processing on top of `TicketOrder`.
+- Add QR issuance and check-in only after the paid order lifecycle is introduced.

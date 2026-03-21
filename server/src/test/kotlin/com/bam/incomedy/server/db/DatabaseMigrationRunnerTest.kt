@@ -6,8 +6,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Проверяет, что Flyway-пакет поднимает текущую серверную схему и корректно обновляет legacy-базу.
+ */
 class DatabaseMigrationRunnerTest {
 
+    /** Подтверждает, что clean schema получает все актуальные таблицы ticketing/order foundation. */
     @Test
     fun `migrate creates current schema on clean database`() {
         postgresDataSource().use { dataSource ->
@@ -32,11 +36,14 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "ticket_inventory_units"))
                 assertTrue(tableExists(connection, "ticket_inventory_sync_state"))
                 assertTrue(tableExists(connection, "seat_holds"))
-                assertEquals(9, appliedMigrationCount(connection))
+                assertTrue(tableExists(connection, "ticket_orders"))
+                assertTrue(tableExists(connection, "ticket_order_lines"))
+                assertEquals(10, appliedMigrationCount(connection))
             }
         }
     }
 
+    /** Проверяет, что legacy bootstrap безопасно доезжает до актуальной схемы без потери user data. */
     @Test
     fun `migrate upgrades legacy schema without losing existing user data`() {
         postgresDataSource().use { dataSource ->
@@ -107,6 +114,7 @@ class DatabaseMigrationRunnerTest {
         }
     }
 
+    /** Создает изолированную in-memory PostgreSQL-compatible БД для миграционных тестов. */
     private fun postgresDataSource(): HikariDataSource {
         val config = HikariConfig().apply {
             jdbcUrl = "jdbc:h2:mem:${System.nanoTime()};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1"
@@ -119,6 +127,7 @@ class DatabaseMigrationRunnerTest {
         return HikariDataSource(config)
     }
 
+    /** Проверяет существование таблицы в тестовой схеме `PUBLIC`. */
     private fun tableExists(connection: java.sql.Connection, tableName: String): Boolean {
         connection.prepareStatement(
             """
@@ -137,6 +146,7 @@ class DatabaseMigrationRunnerTest {
         }
     }
 
+    /** Возвращает число успешно примененных versioned Flyway migration-ов. */
     private fun appliedMigrationCount(connection: java.sql.Connection): Int {
         connection.prepareStatement(
             """
@@ -152,6 +162,7 @@ class DatabaseMigrationRunnerTest {
         }
     }
 
+    /** Считывает display name у legacy-пользователя после миграции. */
     private fun userDisplayName(connection: java.sql.Connection): String {
         connection.prepareStatement(
             """
@@ -167,6 +178,7 @@ class DatabaseMigrationRunnerTest {
         }
     }
 
+    /** Возвращает провайдера связанной identity для legacy-пользователя. */
     private fun linkedProvider(connection: java.sql.Connection): String {
         connection.prepareStatement(
             """
@@ -182,6 +194,7 @@ class DatabaseMigrationRunnerTest {
         }
     }
 
+    /** Возвращает роль, назначенную legacy-пользователю после миграции. */
     private fun assignedRole(connection: java.sql.Connection): String {
         connection.prepareStatement(
             """
@@ -197,6 +210,7 @@ class DatabaseMigrationRunnerTest {
         }
     }
 
+    /** Возвращает активную роль legacy-пользователя после миграции. */
     private fun activeRole(connection: java.sql.Connection): String {
         connection.prepareStatement(
             """

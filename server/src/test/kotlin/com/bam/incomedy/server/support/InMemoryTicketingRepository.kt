@@ -3,6 +3,13 @@ package com.bam.incomedy.server.support
 import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredInventoryUnitBlueprint
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketOrder
+import com.bam.incomedy.server.db.StoredTicketOrderLine
+import com.bam.incomedy.server.db.TicketingCheckoutConflictPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutCurrencyMismatchPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutHoldEventMismatchPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutHoldPermissionDeniedPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutPriceMissingPersistenceException
 import com.bam.incomedy.server.db.TicketingInventoryConflictPersistenceException
 import com.bam.incomedy.server.db.TicketingInventoryUnitNotFoundPersistenceException
 import com.bam.incomedy.server.db.TicketingRepository
@@ -28,6 +35,9 @@ class InMemoryTicketingRepository : TicketingRepository {
     /** Hold-ы по их id. */
     private val holdsById = linkedMapOf<String, MutableSeatHoldRecord>()
 
+    /** Checkout order-ы по их id. */
+    private val ordersById = linkedMapOf<String, MutableTicketOrderRecord>()
+
     /** Счетчик inventory sync invocation-ов для route/service regression тестов. */
     var synchronizeInventoryCallCount: Int = 0
         private set
@@ -46,6 +56,10 @@ class InMemoryTicketingRepository : TicketingRepository {
         now: OffsetDateTime,
     ): List<StoredInventoryUnit> {
         synchronizeInventoryCallCount += 1
+        expireOverdueOrders(
+            eventId = eventId,
+            now = now,
+        )
         expireOverdueHolds(
             eventId = eventId,
             now = now,
@@ -81,6 +95,7 @@ class InMemoryTicketingRepository : TicketingRepository {
                 existing.baseStatus = blueprint.baseStatus
                 existing.status = when {
                     existing.activeHoldId != null -> "held"
+                    existing.status == "pending_payment" -> "pending_payment"
                     existing.status == "sold" -> "sold"
                     else -> blueprint.baseStatus
                 }
@@ -94,6 +109,10 @@ class InMemoryTicketingRepository : TicketingRepository {
         eventId: String,
         now: OffsetDateTime,
     ): List<StoredInventoryUnit> {
+        expireOverdueOrders(
+            eventId = eventId,
+            now = now,
+        )
         expireOverdueHolds(
             eventId = eventId,
             now = now,
@@ -108,6 +127,14 @@ class InMemoryTicketingRepository : TicketingRepository {
         expiresAt: OffsetDateTime,
         now: OffsetDateTime,
     ): StoredSeatHold {
+        expireOverdueOrders(
+            eventId = eventId,
+            now = now,
+        )
+        expireOverdueHolds(
+            eventId = eventId,
+            now = now,
+        )
         val eventInventory = inventoryByEventId[eventId]
         val inventoryRecord = eventInventory?.get(inventoryRef)
             ?: throw TicketingInventoryUnitNotFoundPersistenceException(
@@ -142,6 +169,122 @@ class InMemoryTicketingRepository : TicketingRepository {
         inventoryRecord.activeHoldId = hold.id
         inventoryRecord.status = "held"
         return hold.toStored()
+    }
+
+    override fun createTicketOrder(
+        eventId: String,
+        holdIds: List<String>,
+        userId: String,
+        checkoutExpiresAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): StoredTicketOrder {
+        expireOverdueOrders(
+            eventId = eventId,
+            now = now,
+        )
+        expireOverdueHolds(
+            eventId = eventId,
+            now = now,
+        )
+        val holdRecords = holdIds.map { holdId ->
+            holdsById[holdId] ?: throw TicketingSeatHoldNotFoundPersistenceException(holdId)
+        }
+        val orderId = UUID.randomUUID().toString()
+        var orderCurrency: String? = null
+        val orderLines = mutableListOf<StoredTicketOrderLine>()
+        holdRecords.forEach { hold ->
+            if (hold.userId != userId) {
+                throw TicketingCheckoutHoldPermissionDeniedPersistenceException(
+                    holdId = hold.id,
+                    userId = userId,
+                )
+            }
+            if (hold.eventId != eventId) {
+                throw TicketingCheckoutHoldEventMismatchPersistenceException(
+                    holdId = hold.id,
+                    holdEventId = hold.eventId,
+                    requestedEventId = eventId,
+                )
+            }
+            if (hold.status != "active") {
+                throw TicketingCheckoutConflictPersistenceException(
+                    holdId = hold.id,
+                    reasonCode = "hold_inactive",
+                )
+            }
+            if (!hold.expiresAt.isAfter(now)) {
+                val inventoryRecord = inventoryByEventId[hold.eventId]
+                    ?.values
+                    ?.firstOrNull { it.id == hold.inventoryUnitId }
+                    ?: throw TicketingInventoryUnitNotFoundPersistenceException(
+                        eventId = hold.eventId,
+                        inventoryRef = hold.inventoryRef,
+                    )
+                expireHold(
+                    inventoryRecord = inventoryRecord,
+                    hold = hold,
+                )
+                throw TicketingCheckoutConflictPersistenceException(
+                    holdId = hold.id,
+                    reasonCode = "hold_expired",
+                )
+            }
+            val inventoryRecord = inventoryByEventId[hold.eventId]
+                ?.values
+                ?.firstOrNull { it.id == hold.inventoryUnitId }
+                ?: throw TicketingInventoryUnitNotFoundPersistenceException(
+                    eventId = hold.eventId,
+                    inventoryRef = hold.inventoryRef,
+                )
+            if (inventoryRecord.status != "held" || inventoryRecord.activeHoldId != hold.id) {
+                throw TicketingCheckoutConflictPersistenceException(
+                    holdId = hold.id,
+                    reasonCode = "inventory_not_held",
+                )
+            }
+            val priceMinor = inventoryRecord.priceMinor
+                ?: throw TicketingCheckoutPriceMissingPersistenceException(inventoryRecord.inventoryRef)
+            val currentCurrency = inventoryRecord.currency
+            val expectedCurrency = orderCurrency
+            if (expectedCurrency == null) {
+                orderCurrency = currentCurrency
+            } else if (expectedCurrency != currentCurrency) {
+                throw TicketingCheckoutCurrencyMismatchPersistenceException(
+                    holdId = hold.id,
+                    expectedCurrency = expectedCurrency,
+                    actualCurrency = currentCurrency,
+                )
+            }
+            orderLines += StoredTicketOrderLine(
+                orderId = orderId,
+                inventoryUnitId = inventoryRecord.id,
+                inventoryRef = inventoryRecord.inventoryRef,
+                label = inventoryRecord.label,
+                priceMinor = priceMinor,
+                currency = currentCurrency,
+            )
+        }
+        val order = MutableTicketOrderRecord(
+            id = orderId,
+            eventId = eventId,
+            userId = userId,
+            status = "awaiting_payment",
+            currency = orderCurrency ?: error("Checkout order currency must be resolved"),
+            totalMinor = orderLines.sumOf(StoredTicketOrderLine::priceMinor),
+            checkoutExpiresAt = checkoutExpiresAt,
+            lines = orderLines.toMutableList(),
+        )
+        ordersById[order.id] = order
+        holdRecords.forEach { hold ->
+            hold.status = "consumed"
+            val inventoryRecord = inventoryByEventId[hold.eventId]
+                ?.values
+                ?.firstOrNull { it.id == hold.inventoryUnitId }
+                ?: return@forEach
+            inventoryRecord.activeHoldId = null
+            inventoryRecord.status = "pending_payment"
+        }
+        return order.toStored()
     }
 
     override fun releaseSeatHold(
@@ -202,6 +345,29 @@ class InMemoryTicketingRepository : TicketingRepository {
                 )
             }
         }
+    }
+
+    /** Истекает pending checkout order-ы конкретного события и освобождает их inventory. */
+    private fun expireOverdueOrders(
+        eventId: String,
+        now: OffsetDateTime,
+    ) {
+        ordersById.values
+            .filter { order ->
+                order.eventId == eventId &&
+                    order.status == "awaiting_payment" &&
+                    !order.checkoutExpiresAt.isAfter(now)
+            }
+            .forEach { order ->
+                order.status = "expired"
+                order.lines.forEach { line ->
+                    val inventoryRecord = inventoryByEventId[eventId]
+                        ?.values
+                        ?.firstOrNull { it.id == line.inventoryUnitId }
+                        ?: return@forEach
+                    inventoryRecord.status = inventoryRecord.baseStatus
+                }
+            }
     }
 
     /** Переводит hold в expired и возвращает inventory unit к base status. */
@@ -283,6 +449,32 @@ class InMemoryTicketingRepository : TicketingRepository {
                 userId = userId,
                 expiresAt = expiresAt,
                 status = status,
+            )
+        }
+    }
+
+    /** Mutable checkout order record. */
+    private data class MutableTicketOrderRecord(
+        val id: String,
+        val eventId: String,
+        val userId: String,
+        var status: String,
+        val currency: String,
+        val totalMinor: Int,
+        val checkoutExpiresAt: OffsetDateTime,
+        val lines: MutableList<StoredTicketOrderLine>,
+    ) {
+        /** Преобразует mutable order в stored model. */
+        fun toStored(): StoredTicketOrder {
+            return StoredTicketOrder(
+                id = id,
+                eventId = eventId,
+                userId = userId,
+                status = status,
+                currency = currency,
+                totalMinor = totalMinor,
+                checkoutExpiresAt = checkoutExpiresAt,
+                lines = lines.toList(),
             )
         }
     }

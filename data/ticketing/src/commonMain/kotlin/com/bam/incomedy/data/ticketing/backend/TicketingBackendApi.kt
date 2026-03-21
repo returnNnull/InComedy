@@ -11,6 +11,9 @@ import com.bam.incomedy.domain.ticketing.InventoryType
 import com.bam.incomedy.domain.ticketing.InventoryUnit
 import com.bam.incomedy.domain.ticketing.SeatHold
 import com.bam.incomedy.domain.ticketing.SeatHoldStatus
+import com.bam.incomedy.domain.ticketing.TicketOrder
+import com.bam.incomedy.domain.ticketing.TicketOrderLine
+import com.bam.incomedy.domain.ticketing.TicketOrderStatus
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -76,6 +79,23 @@ class TicketingBackendApi(
         }
     }
 
+    /** Создает checkout order из активных hold-ов текущего пользователя. */
+    suspend fun createTicketOrder(
+        accessToken: String,
+        eventId: String,
+        holdIds: List<String>,
+    ): Result<TicketOrder> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/events/$eventId/orders") {
+                bearer(accessToken)
+                contentType(ContentType.Application.Json)
+                setBody(CreateTicketOrderRequest(holdIds = holdIds))
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<TicketOrderPayload>().toDomain()
+        }
+    }
+
     /** Освобождает hold по его идентификатору. */
     suspend fun releaseSeatHold(
         accessToken: String,
@@ -102,6 +122,13 @@ private data class InventoryListResponse(
 private data class CreateSeatHoldRequest(
     @SerialName("inventory_ref")
     val inventoryRef: String,
+)
+
+/** DTO запроса создания checkout order-а. */
+@Serializable
+private data class CreateTicketOrderRequest(
+    @SerialName("hold_ids")
+    val holdIds: List<String>,
 )
 
 /** DTO inventory unit. */
@@ -179,6 +206,58 @@ private data class SeatHoldPayload(
             inventoryRef = inventoryRef,
             expiresAtIso = expiresAt,
             status = requireNotNull(SeatHoldStatus.fromWireName(status)),
+        )
+    }
+}
+
+/** DTO checkout order-а. */
+@Serializable
+private data class TicketOrderPayload(
+    val id: String,
+    @SerialName("event_id")
+    val eventId: String,
+    val status: String,
+    val currency: String,
+    @SerialName("total_minor")
+    val totalMinor: Int,
+    @SerialName("checkout_expires_at")
+    val checkoutExpiresAt: String,
+    val lines: List<TicketOrderLinePayload>,
+) {
+    /** Маппит transport DTO заказа в доменную checkout-модель. */
+    fun toDomain(): TicketOrder {
+        return TicketOrder(
+            id = id,
+            eventId = eventId,
+            status = requireNotNull(TicketOrderStatus.fromWireName(status)),
+            currency = currency,
+            totalMinor = totalMinor,
+            checkoutExpiresAtIso = checkoutExpiresAt,
+            lines = lines.map(TicketOrderLinePayload::toDomain),
+        )
+    }
+}
+
+/** DTO позиции checkout order-а. */
+@Serializable
+private data class TicketOrderLinePayload(
+    @SerialName("inventory_unit_id")
+    val inventoryUnitId: String,
+    @SerialName("inventory_ref")
+    val inventoryRef: String,
+    val label: String,
+    @SerialName("price_minor")
+    val priceMinor: Int,
+    val currency: String,
+) {
+    /** Маппит transport DTO позиции в доменную модель. */
+    fun toDomain(): TicketOrderLine {
+        return TicketOrderLine(
+            inventoryUnitId = inventoryUnitId,
+            inventoryRef = inventoryRef,
+            label = label,
+            priceMinor = priceMinor,
+            currency = currency,
         )
     }
 }

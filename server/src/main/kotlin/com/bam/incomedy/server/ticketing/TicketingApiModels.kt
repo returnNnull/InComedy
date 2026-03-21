@@ -2,12 +2,14 @@ package com.bam.incomedy.server.ticketing
 
 import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketOrder
+import com.bam.incomedy.server.db.StoredTicketOrderLine
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.format.DateTimeFormatter
 
-/** Строгий JSON parser ticketing foundation payload-ов. */
+/** Строгий JSON parser ticketing foundation и checkout order payload-ов. */
 internal val ticketingJson: Json = Json { ignoreUnknownKeys = false }
 
 /** DTO списка inventory units. */
@@ -25,6 +27,18 @@ data class CreateSeatHoldRequest(
     /** Возвращает каноническую inventory ref для backend validation. */
     fun toInventoryRef(): String {
         return inventoryRef.trim()
+    }
+}
+
+/** DTO запроса создания checkout order-а из активных hold-ов. */
+@Serializable
+data class CreateTicketOrderRequest(
+    @SerialName("hold_ids")
+    val holdIds: List<String>,
+) {
+    /** Возвращает канонический и очищенный список hold id для backend validation. */
+    fun toHoldIds(): List<String> {
+        return holdIds.map(String::trim).filter(String::isNotBlank)
     }
 }
 
@@ -114,6 +128,62 @@ data class SeatHoldResponse(
                 inventoryRef = storedHold.inventoryRef,
                 expiresAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(storedHold.expiresAt),
                 status = storedHold.status,
+            )
+        }
+    }
+}
+
+/** DTO checkout order-а. */
+@Serializable
+data class TicketOrderResponse(
+    val id: String,
+    @SerialName("event_id")
+    val eventId: String,
+    val status: String,
+    val currency: String,
+    @SerialName("total_minor")
+    val totalMinor: Int,
+    @SerialName("checkout_expires_at")
+    val checkoutExpiresAt: String,
+    val lines: List<TicketOrderLineResponse>,
+) {
+    companion object {
+        /** Маппит stored checkout order в API response. */
+        fun fromStored(storedOrder: StoredTicketOrder): TicketOrderResponse {
+            return TicketOrderResponse(
+                id = storedOrder.id,
+                eventId = storedOrder.eventId,
+                status = storedOrder.status,
+                currency = storedOrder.currency,
+                totalMinor = storedOrder.totalMinor,
+                checkoutExpiresAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(storedOrder.checkoutExpiresAt),
+                lines = storedOrder.lines.map(TicketOrderLineResponse::fromStored),
+            )
+        }
+    }
+}
+
+/** DTO позиции checkout order-а. */
+@Serializable
+data class TicketOrderLineResponse(
+    @SerialName("inventory_unit_id")
+    val inventoryUnitId: String,
+    @SerialName("inventory_ref")
+    val inventoryRef: String,
+    val label: String,
+    @SerialName("price_minor")
+    val priceMinor: Int,
+    val currency: String,
+) {
+    companion object {
+        /** Маппит stored order line в API response. */
+        fun fromStored(storedLine: StoredTicketOrderLine): TicketOrderLineResponse {
+            return TicketOrderLineResponse(
+                inventoryUnitId = storedLine.inventoryUnitId,
+                inventoryRef = storedLine.inventoryRef,
+                label = storedLine.label,
+                priceMinor = storedLine.priceMinor,
+                currency = storedLine.currency,
             )
         }
     }

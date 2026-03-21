@@ -21,7 +21,7 @@
 - Venue/hall-template backend changes must cover route behavior, layout contract validation, and migration-path verification for the organizer venue slice.
 - Event/EventHallSnapshot backend changes must cover route behavior, lifecycle transition validation, detail/update override validation, snapshot freeze invariants, and migration-path verification for the organizer event slice.
 - Public event discovery backend changes must cover audience-safe summary shaping, `city/date/price` filtering, and request-id-correlated diagnostics for the anonymous route.
-- Ticketing inventory/hold backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, expiry/release semantics, stale-sync avoidance on unchanged reads, and migration-path verification for the ticketing foundation slice.
+- Ticketing inventory/hold/order backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, checkout-order creation from active hold-ов, expiry/release semantics for both hold-ов and pending order-ов, stale-sync avoidance on unchanged reads, and migration-path verification for the ticketing foundation slice.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 - Mobile UI changes in active product flows must have executable platform UI coverage where in-repo infrastructure exists.
 - Auth/session boundary refactors must execute `:domain:auth:allTests`, `:domain:session:allTests`, `:core:backend:allTests`, `:data:auth:allTests`, `:data:session:allTests`, `:shared:allTests`, `:composeApp:testDebugUnitTest`, and `:composeApp:compileDebugKotlin` before completion.
@@ -57,13 +57,14 @@
 - Venue foundation automation now also includes `:feature:venue:allTests`, `:server:test --tests 'com.bam.incomedy.server.venues.VenueRoutesTest' --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest'`, `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`, and the targeted venue XCUITest run for the new iOS tab.
 - Event lifecycle/override automation now also includes `:domain:event:jvmTest`, `:feature:event:allTests`, `:composeApp:testDebugUnitTest`, `:composeApp:compileDebugKotlin`, `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.events.EventRoutesTest'`, `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`, and the targeted event XCUITest run for the organizer event tab.
 - Ticketing foundation automation now also includes `:domain:ticketing:allTests`, `:data:ticketing:compileKotlinMetadata`, `:shared:compileKotlinMetadata`, `:composeApp:compileDebugKotlin`, `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.ticketing.TicketingRoutesTest'`, and `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`.
-- `TicketingRoutesTest` now also covers anonymous public inventory access, request-id-correlated diagnostics for the public route, and sanitization of active hold metadata in anonymous inventory responses.
+- `TicketingRoutesTest` now also covers anonymous public inventory access, request-id-correlated diagnostics for the public route, sanitization of active hold metadata in anonymous inventory responses, successful checkout-order creation, rejection of чужих/неактивных hold-ов, and inventory recovery after pending order expiration.
 
 ## High-Risk Scenario Set
 
 - Double-booking race on seat/inventory transitions.
 - Duplicate webhook delivery.
 - Expired seat hold release.
+- Abandoned checkout order expiration.
 - Refund after check-in.
 - Role escalation / unauthorized finance access.
 - Live lineup reorder conflict.

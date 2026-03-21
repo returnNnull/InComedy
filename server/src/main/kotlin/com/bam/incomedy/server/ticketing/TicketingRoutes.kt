@@ -31,8 +31,9 @@ import java.util.UUID
 /**
  * Ticketing foundation routes.
  *
- * Поверхность уже покрывает public inventory read и защищенные hold create/release, но не тянет
- * вперед checkout, orders, QR issuance или check-in.
+ * Поверхность уже покрывает public inventory read, защищенные hold create/release и provider-
+ * agnostic checkout order foundation, но пока не включает PSP handoff, payment confirmation,
+ * QR issuance или check-in.
  */
 object TicketingRoutes {
     /** Структурированный logger ticketing foundation surface. */
@@ -40,6 +41,9 @@ object TicketingRoutes {
 
     /** Максимальный размер request тела создания hold-а. */
     private const val MAX_CREATE_HOLD_REQUEST_BYTES = 4 * 1024
+
+    /** Максимальный размер request тела создания checkout order-а. */
+    private const val MAX_CREATE_ORDER_REQUEST_BYTES = 8 * 1024
 
     /** Peer-based лимит публичного чтения inventory, чтобы анонимный catalog surface не стал log sink-ом. */
     private const val PUBLIC_INVENTORY_PEER_LIMIT = 240
@@ -56,6 +60,7 @@ object TicketingRoutes {
         diagnosticsStore: DiagnosticsStore? = null,
         nowProvider: () -> OffsetDateTime = { OffsetDateTime.now() },
         holdTtl: Duration = Duration.ofMinutes(10),
+        checkoutTtl: Duration = Duration.ofMinutes(10),
     ) {
         val ticketingService = EventTicketingService(
             workspaceRepository = workspaceRepository,
@@ -63,6 +68,7 @@ object TicketingRoutes {
             ticketingRepository = ticketingRepository,
             nowProvider = nowProvider,
             holdTtl = holdTtl,
+            checkoutTtl = checkoutTtl,
         )
 
         route.route("/api/v1") {
@@ -283,6 +289,102 @@ object TicketingRoutes {
                             metadata = mapOf("holdStatus" to hold.status),
                         )
                         call.respond(HttpStatusCode.Created, SeatHoldResponse.fromStored(hold))
+                    } catch (error: Throwable) {
+                        call.respondTicketingScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
+                post("/events/{eventId}/orders") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "ticketing_order_create:${principal.user.id}", limit = 30, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.order.create.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@post
+                    }
+
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.order.create.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@post
+                    }
+
+                    val request = call.receiveJsonBodyLimited<CreateTicketOrderRequest>(
+                        json = ticketingJson,
+                        maxBytes = MAX_CREATE_ORDER_REQUEST_BYTES,
+                    ).getOrElse { error ->
+                        call.respondTicketingRequestError(
+                            error = error,
+                            payloadTooLargeStage = "ticketing.order.create.payload_too_large",
+                            invalidPayloadStage = "ticketing.order.create.invalid_payload",
+                            payloadTooLargeMessage = "Request body is too large",
+                            invalidPayloadMessage = "Invalid checkout order request",
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                        return@post
+                    }
+
+                    val holdIds = request.toHoldIds()
+                    if (holdIds.isEmpty()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.order.create.empty_holds",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "At least one hold id is required"))
+                        return@post
+                    }
+                    if (holdIds.any { holdId -> !holdId.isUuid() }) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.order.create.invalid_hold_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid hold id"))
+                        return@post
+                    }
+
+                    try {
+                        val order = ticketingService.createTicketOrder(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                            holdIds = holdIds,
+                        )
+                        logger.info(
+                            "ticketing.order.create.success requestId={} userId={} eventId={} orderId={} lineCount={} totalMinor={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            eventId,
+                            order.id,
+                            order.lines.size,
+                            order.totalMinor,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.order.create.success",
+                            status = HttpStatusCode.Created.value,
+                            metadata = mapOf(
+                                "lineCount" to order.lines.size.toString(),
+                                "totalMinor" to order.totalMinor.toString(),
+                                "status" to order.status,
+                            ),
+                        )
+                        call.respond(HttpStatusCode.Created, TicketOrderResponse.fromStored(order))
                     } catch (error: Throwable) {
                         call.respondTicketingScopeError(
                             error = error,

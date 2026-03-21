@@ -3,8 +3,8 @@ package com.bam.incomedy.domain.ticketing
 /**
  * Контракт ticketing foundation slice-а.
  *
- * Сервис задает минимальную клиентскую поверхность для чтения инвентаря события и управления
- * короткоживущими hold-ами, не заходя пока в checkout, order capture и check-in.
+ * Сервис задает минимальную клиентскую поверхность для чтения инвентаря события, управления
+ * короткоживущими hold-ами и создания provider-agnostic checkout order foundation.
  */
 interface TicketingService {
     /** Возвращает публичный инвентарь события без пользовательской персонализации hold-ов. */
@@ -24,6 +24,13 @@ interface TicketingService {
         eventId: String,
         inventoryRef: String,
     ): Result<SeatHold>
+
+    /** Создает checkout order из активных hold-ов текущего пользователя. */
+    suspend fun createTicketOrder(
+        accessToken: String,
+        eventId: String,
+        holdIds: List<String>,
+    ): Result<TicketOrder>
 
     /** Освобождает ранее созданный hold текущего пользователя. */
     suspend fun releaseSeatHold(
@@ -121,6 +128,7 @@ enum class InventoryStatus(
 ) {
     AVAILABLE("available"),
     HELD("held"),
+    PENDING_PAYMENT("pending_payment"),
     UNAVAILABLE("unavailable"),
     SOLD("sold"),
     ;
@@ -161,6 +169,7 @@ enum class SeatHoldStatus(
     val wireName: String,
 ) {
     ACTIVE("active"),
+    CONSUMED("consumed"),
     RELEASED("released"),
     EXPIRED("expired"),
     ;
