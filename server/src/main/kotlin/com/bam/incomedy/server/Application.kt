@@ -23,6 +23,7 @@ import com.bam.incomedy.server.observability.DiagnosticsRoutes
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.observability.isValidRequestId
 import com.bam.incomedy.server.organizer.WorkspaceRoutes
+import com.bam.incomedy.server.payments.yookassa.YooKassaCheckoutGateway
 import com.bam.incomedy.server.ticketing.TicketingRoutes
 import com.bam.incomedy.server.venues.VenueRoutes
 import com.bam.incomedy.server.security.AuthRateLimiter
@@ -74,6 +75,13 @@ fun Application.module() {
             userRepository = repository,
             tokenService = tokenService,
         )
+    }
+    val checkoutGateway = config.yooKassa?.let {
+        logger.info("payments.checkout.provider=yookassa")
+        YooKassaCheckoutGateway(it)
+    } ?: run {
+        logger.info("payments.checkout.provider=disabled")
+        null
     }
     val rateLimiter: AuthRateLimiter = config.redis?.let { redis ->
         runCatching {
@@ -203,6 +211,7 @@ fun Application.module() {
             workspaceRepository = repository,
             eventRepository = eventRepository,
             ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )

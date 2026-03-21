@@ -73,6 +73,12 @@ Optional:
 - `VK_ID_STATE_SECRET`
 - `VK_ID_STATE_TTL_SECONDS`
 - `IOS_ASSOCIATED_DOMAIN_APP_IDS`
+- `YOOKASSA_ENABLED`
+- `YOOKASSA_SHOP_ID`
+- `YOOKASSA_SECRET_KEY`
+- `YOOKASSA_RETURN_URL`
+- `YOOKASSA_API_BASE_URL`
+- `YOOKASSA_CAPTURE`
 - `JWT_ISSUER`
 - `JWT_ACCESS_TTL_SECONDS`
 - `JWT_REFRESH_TTL_SECONDS`
@@ -88,6 +94,12 @@ VK auth routes return `503` until both `VK_ID_CLIENT_ID` and `VK_ID_REDIRECT_URI
 When `VK_ID_ANDROID_CLIENT_ID` and `VK_ID_ANDROID_REDIRECT_URI` are also configured, `GET /api/v1/auth/vk/start` returns extra Android SDK launch metadata and `POST /api/v1/auth/vk/verify` accepts `client_source=android_sdk` so the backend can exchange the code against the dedicated Android VK client configuration.
 
 When `IOS_ASSOCIATED_DOMAIN_APP_IDS` is configured with comma-separated Apple app ids (`TEAMID.bundleId`), the backend also serves Apple App Site Association metadata for the VK callback URL.
+
+YooKassa exists in the repository only as an optional disabled-by-default candidate integration. Its presence in code, this README, or the env examples does not mean the product has approved YooKassa as the selected PSP. The backend enables `POST /api/v1/events/{eventId}/orders/{orderId}/checkout`, authenticated `GET /api/v1/orders/{orderId}` polling, and YooKassa-backed payment confirmation through `POST /api/v1/webhooks/payments` only when `YOOKASSA_ENABLED=true` and `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`, and `YOOKASSA_RETURN_URL` are configured. Without the flag or without the required variables the checkout-start route and webhook verification path remain disabled and return `503`.
+
+Configure the YooKassa webhook target in the provider cabinet to point at `POST /api/v1/webhooks/payments`. The server accepts webhook requests only from YooKassa-published source IP ranges and re-checks the current payment snapshot from YooKassa before applying local order/session transitions.
+
+Provider note: decisions that move an external provider into the active/default runtime path must be explicitly confirmed by the user. Earlier assistant suggestions, existing code, or sample configuration do not count as that confirmation. Implemented integrations may stay in the repository behind disabled-by-default flags until that confirmation exists.
 
 ## Security Defaults
 
@@ -140,6 +152,9 @@ VK auth diagnostics now record a safe `client_source` marker such as `browser_br
 - `POST /api/v1/me/active-role`
 - `GET /api/v1/workspaces`
 - `POST /api/v1/workspaces`
+- `GET /api/v1/orders/{orderId}`
+- `POST /api/v1/events/{eventId}/orders/{orderId}/checkout` when YooKassa checkout is enabled
+- `POST /api/v1/webhooks/payments` when YooKassa checkout is enabled
 - `GET /api/v1/diagnostics/events` when diagnostics are enabled
 
 ## Public Auth Bridges

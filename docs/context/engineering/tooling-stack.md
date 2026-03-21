@@ -28,7 +28,8 @@ Status labels:
 ## Candidate
 
 - Payments provider:
-  - YooKassa (primary RU-market candidate)
+  - No external PSP is currently approved as the selected checkout provider.
+  - YooKassa (implemented in codebase as a disabled-by-default candidate only; repository presence, config examples, and prior chat suggestions do not mean the provider was approved)
   - CloudPayments (fallback candidate)
 - Push notifications provider:
   - Firebase Cloud Messaging

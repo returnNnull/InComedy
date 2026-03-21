@@ -18,6 +18,8 @@ import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredInventoryUnitBlueprint
 import com.bam.incomedy.server.db.StoredOrganizerEvent
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketCheckoutSession
+import com.bam.incomedy.server.db.StoredTicketCheckoutState
 import com.bam.incomedy.server.db.StoredTicketOrder
 import com.bam.incomedy.server.db.TicketingInventoryConflictPersistenceException
 import com.bam.incomedy.server.db.TicketingInventoryUnitNotFoundPersistenceException
@@ -25,6 +27,7 @@ import com.bam.incomedy.server.db.TicketingCheckoutConflictPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutCurrencyMismatchPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutHoldEventMismatchPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutHoldPermissionDeniedPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutPaymentRecoveryRequiredPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutPriceMissingPersistenceException
 import com.bam.incomedy.server.db.TicketingRepository
 import com.bam.incomedy.server.db.TicketingSeatHoldInactivePersistenceException
@@ -47,6 +50,7 @@ class EventTicketingService(
     private val workspaceRepository: WorkspaceRepository,
     private val eventRepository: EventRepository,
     private val ticketingRepository: TicketingRepository,
+    private val checkoutGateway: TicketCheckoutGateway? = null,
     private val nowProvider: () -> OffsetDateTime = { OffsetDateTime.now() },
     private val holdTtl: Duration = Duration.ofMinutes(10),
     private val checkoutTtl: Duration = Duration.ofMinutes(10),
@@ -189,6 +193,139 @@ class EventTicketingService(
         } catch (error: TicketingCheckoutCurrencyMismatchPersistenceException) {
             throw TicketingValidationException(
                 "Checkout order не поддерживает смешанные валюты: ${error.expectedCurrency} и ${error.actualCurrency}",
+            )
+        }
+    }
+
+    /** Возвращает checkout order текущего пользователя с учетом авто-истечения pending lock-а. */
+    fun getTicketOrder(
+        actorUserId: String,
+        orderId: String,
+    ): StoredTicketOrder {
+        val order = ticketingRepository.findTicketOrder(
+            orderId = orderId,
+            now = nowProvider(),
+        ) ?: throw TicketingTicketOrderNotFoundException(orderId)
+        if (order.userId != actorUserId) {
+            throw TicketingTicketOrderNotFoundException(orderId)
+        }
+        return order
+    }
+
+    /** Стартует внешний checkout для ожидающего оплаты ticket order-а текущего пользователя. */
+    fun startTicketCheckout(
+        actorUserId: String,
+        eventId: String,
+        orderId: String,
+        requestId: String,
+    ): StoredTicketCheckoutSession {
+        val event = loadProtectedTicketingEvent(
+            actorUserId = actorUserId,
+            eventId = eventId,
+        )
+        val now = nowProvider()
+        val order = ticketingRepository.findTicketOrder(
+            orderId = orderId,
+            now = now,
+        ) ?: throw TicketingTicketOrderNotFoundException(orderId)
+        if (order.eventId != event.id || order.userId != actorUserId) {
+            throw TicketingTicketOrderNotFoundException(orderId)
+        }
+        when (order.status) {
+            "awaiting_payment" -> Unit
+            "expired" -> throw TicketingConflictException("Checkout order уже истек")
+            "paid" -> throw TicketingConflictException("Checkout order уже оплачен")
+            "canceled" -> throw TicketingConflictException("Checkout order уже отменен")
+            else -> throw TicketingConflictException("Checkout order недоступен в состоянии ${order.status}")
+        }
+        ticketingRepository.findTicketCheckoutSession(orderId)?.let { existing ->
+            return existing
+        }
+        val activeGateway = checkoutGateway
+            ?: throw TicketingCheckoutUnavailableException("checkout_unavailable")
+        val gatewayResponse = activeGateway.createCheckoutSession(
+            TicketCheckoutGatewayRequest(
+                orderId = order.id,
+                eventId = order.eventId,
+                currency = order.currency,
+                totalMinor = order.totalMinor,
+                description = "InComedy order ${order.id.take(8)}",
+                requestId = requestId,
+            ),
+        )
+        return ticketingRepository.createTicketCheckoutSession(
+            orderId = order.id,
+            provider = gatewayResponse.provider,
+            providerPaymentId = gatewayResponse.providerPaymentId,
+            providerStatus = gatewayResponse.providerStatus,
+            confirmationUrl = gatewayResponse.confirmationUrl,
+            returnUrl = gatewayResponse.returnUrl,
+            checkoutExpiresAt = order.checkoutExpiresAt,
+            now = now,
+        )
+    }
+
+    /**
+     * Обрабатывает payment webhook через актуальный provider snapshot, а не через сырой payload.
+     *
+     * Такой подход не доверяет входящему webhook без перепроверки: сначала сопоставляется локальная
+     * checkout session, затем из PSP считывается текущее состояние платежа, и только после этого
+     * применяются идемпотентные переходы order/session/inventory.
+     */
+    fun handleTicketCheckoutWebhook(
+        providerPaymentId: String,
+    ): TicketCheckoutWebhookOutcome {
+        val activeGateway = checkoutGateway
+            ?: throw TicketingCheckoutUnavailableException("checkout_unavailable")
+        val now = nowProvider()
+        val state = ticketingRepository.findTicketCheckoutStateByProviderPaymentId(
+            provider = activeGateway.provider,
+            providerPaymentId = providerPaymentId,
+            now = now,
+        ) ?: return TicketCheckoutWebhookOutcome.Ignored(reasonCode = "checkout_session_missing")
+        val payment = activeGateway.getPayment(providerPaymentId)
+        if (payment.orderId != state.order.id ||
+            payment.eventId != state.order.eventId ||
+            payment.totalMinor != state.order.totalMinor ||
+            payment.currency != state.order.currency
+        ) {
+            return TicketCheckoutWebhookOutcome.RecoveryRequired(
+                orderId = state.order.id,
+                reasonCode = "payment_mismatch",
+            )
+        }
+        return try {
+            when (payment.status) {
+                "succeeded" -> ticketingRepository.markTicketCheckoutSucceeded(
+                    provider = activeGateway.provider,
+                    providerPaymentId = providerPaymentId,
+                    providerStatus = payment.status,
+                    now = now,
+                )?.toAppliedOutcome(resultCode = "paid")
+                    ?: TicketCheckoutWebhookOutcome.Ignored(reasonCode = "checkout_session_missing")
+
+                "canceled" -> ticketingRepository.markTicketCheckoutCanceled(
+                    provider = activeGateway.provider,
+                    providerPaymentId = providerPaymentId,
+                    providerStatus = payment.status,
+                    now = now,
+                )?.toAppliedOutcome(resultCode = "canceled")
+                    ?: TicketCheckoutWebhookOutcome.Ignored(reasonCode = "checkout_session_missing")
+
+                "waiting_for_capture" -> ticketingRepository.markTicketCheckoutWaitingForCapture(
+                    provider = activeGateway.provider,
+                    providerPaymentId = providerPaymentId,
+                    providerStatus = payment.status,
+                    now = now,
+                )?.toAppliedOutcome(resultCode = "waiting_for_capture")
+                    ?: TicketCheckoutWebhookOutcome.Ignored(reasonCode = "checkout_session_missing")
+
+                else -> TicketCheckoutWebhookOutcome.Ignored(reasonCode = "provider_status_unsupported")
+            }
+        } catch (error: TicketingCheckoutPaymentRecoveryRequiredPersistenceException) {
+            TicketCheckoutWebhookOutcome.RecoveryRequired(
+                orderId = error.orderId,
+                reasonCode = error.reasonCode,
             )
         }
     }
@@ -391,10 +528,20 @@ class TicketingSeatHoldNotFoundException(
     val holdId: String,
 ) : IllegalStateException("Seat hold was not found")
 
+/** Сигнализирует, что checkout order не найден или недоступен текущему пользователю. */
+class TicketingTicketOrderNotFoundException(
+    val orderId: String,
+) : IllegalStateException("Ticket order was not found")
+
 /** Сигнализирует, что hold нельзя освободить из-за отсутствия прав. */
 class TicketingSeatHoldForbiddenException(
     val reasonCode: String,
 ) : IllegalStateException("Seat hold release is forbidden")
+
+/** Сигнализирует, что внешний checkout сейчас недоступен из-за отсутствия PSP-конфига. */
+class TicketingCheckoutUnavailableException(
+    val reasonCode: String,
+) : IllegalStateException("Ticket checkout is unavailable")
 
 /** Сигнализирует о бизнес-конфликте ticketing slice-а. */
 class TicketingConflictException(
@@ -411,3 +558,52 @@ class TicketingInventoryUnitNotFoundException(
     val eventId: String,
     val inventoryRef: String,
 ) : IllegalStateException("Inventory unit was not found")
+
+/**
+ * Результат синхронизации локального ticketing state-а с внешним payment webhook.
+ */
+sealed interface TicketCheckoutWebhookOutcome {
+    /**
+     * Webhook успешно применен к локальному order/session state.
+     *
+     * @property order Обновленный локальный order.
+     * @property session Обновленная checkout session.
+     * @property resultCode Низкокардинальный код успешного перехода.
+     */
+    data class Applied(
+        val order: StoredTicketOrder,
+        val session: StoredTicketCheckoutSession,
+        val resultCode: String,
+    ) : TicketCheckoutWebhookOutcome
+
+    /**
+     * Уведомление принято, но локальное состояние изменять не пришлось.
+     *
+     * @property reasonCode Низкокардинальная причина пропуска.
+     */
+    data class Ignored(
+        val reasonCode: String,
+    ) : TicketCheckoutWebhookOutcome
+
+    /**
+     * Автоматически применить успешный webhook небезопасно и нужен recovery flow/оператор.
+     *
+     * @property orderId Локальный order, если он был найден.
+     * @property reasonCode Низкокардинальная причина перехода в recovery.
+     */
+    data class RecoveryRequired(
+        val orderId: String?,
+        val reasonCode: String,
+    ) : TicketCheckoutWebhookOutcome
+}
+
+/** Преобразует объединенное checkout state в успешный webhook outcome. */
+private fun StoredTicketCheckoutState.toAppliedOutcome(
+    resultCode: String,
+): TicketCheckoutWebhookOutcome.Applied {
+    return TicketCheckoutWebhookOutcome.Applied(
+        order = order,
+        session = session,
+        resultCode = resultCode,
+    )
+}

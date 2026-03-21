@@ -11,6 +11,9 @@ import com.bam.incomedy.domain.ticketing.InventoryType
 import com.bam.incomedy.domain.ticketing.InventoryUnit
 import com.bam.incomedy.domain.ticketing.SeatHold
 import com.bam.incomedy.domain.ticketing.SeatHoldStatus
+import com.bam.incomedy.domain.ticketing.TicketCheckoutProvider
+import com.bam.incomedy.domain.ticketing.TicketCheckoutSession
+import com.bam.incomedy.domain.ticketing.TicketCheckoutSessionStatus
 import com.bam.incomedy.domain.ticketing.TicketOrder
 import com.bam.incomedy.domain.ticketing.TicketOrderLine
 import com.bam.incomedy.domain.ticketing.TicketOrderStatus
@@ -93,6 +96,35 @@ class TicketingBackendApi(
             }
             ensureBackendSuccess(response, parser)
             response.body<TicketOrderPayload>().toDomain()
+        }
+    }
+
+    /** Загружает текущий checkout order текущего пользователя. */
+    suspend fun getTicketOrder(
+        accessToken: String,
+        orderId: String,
+    ): Result<TicketOrder> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/orders/$orderId") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<TicketOrderPayload>().toDomain()
+        }
+    }
+
+    /** Стартует внешний checkout для существующего ticket order-а. */
+    suspend fun startTicketCheckout(
+        accessToken: String,
+        eventId: String,
+        orderId: String,
+    ): Result<TicketCheckoutSession> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/events/$eventId/orders/$orderId/checkout") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<TicketCheckoutSessionPayload>().toDomain()
         }
     }
 
@@ -234,6 +266,35 @@ private data class TicketOrderPayload(
             totalMinor = totalMinor,
             checkoutExpiresAtIso = checkoutExpiresAt,
             lines = lines.map(TicketOrderLinePayload::toDomain),
+        )
+    }
+}
+
+/** DTO checkout session-а для внешнего PSP handoff. */
+@Serializable
+private data class TicketCheckoutSessionPayload(
+    val id: String,
+    @SerialName("order_id")
+    val orderId: String,
+    @SerialName("event_id")
+    val eventId: String,
+    val provider: String,
+    val status: String,
+    @SerialName("confirmation_url")
+    val confirmationUrl: String,
+    @SerialName("checkout_expires_at")
+    val checkoutExpiresAt: String,
+) {
+    /** Маппит transport DTO checkout session в доменную модель. */
+    fun toDomain(): TicketCheckoutSession {
+        return TicketCheckoutSession(
+            id = id,
+            orderId = orderId,
+            eventId = eventId,
+            provider = requireNotNull(TicketCheckoutProvider.fromWireName(provider)),
+            status = requireNotNull(TicketCheckoutSessionStatus.fromWireName(status)),
+            confirmationUrl = confirmationUrl,
+            checkoutExpiresAtIso = checkoutExpiresAt,
         )
     }
 }

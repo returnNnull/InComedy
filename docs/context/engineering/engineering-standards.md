@@ -77,7 +77,10 @@ This document defines mandatory engineering rules for InComedy.
 
 ## Governance Memory
 
+- `docs/context/00-current-state.md` must stay as a compact bootstrap snapshot of the latest decision id, current `P0` focus, next step, latest relevant part files, and active cross-cutting constraints.
 - Each meaningful user task/session must leave a concise written trace in `docs/context/governance/session-log.md` (latest part file).
+- Decisions that move an external auth/payment/push/PSP provider into the active, default, or confirmed path must be explicitly confirmed by the user before docs/runtime are updated to treat that provider as adopted.
+- Assistant inference, previously implemented code, draft docs, or example env/config blocks do not count as user confirmation of an external provider choice.
 - Session-log entries must summarize the conversation/work path in compact analytical form, not as a raw transcript.
 - Minimum session-log shape remains:
   - `Context`
@@ -89,6 +92,7 @@ This document defines mandatory engineering rules for InComedy.
   - no secrets,
   - no raw tokens,
   - no unnecessary verbatim user transcript dumps.
+- Major tasks should be structured via `docs/context/handoff/task-request-template.md`, while delivered/formalized task history should accumulate in `docs/context/handoff/task-request-log.md`.
 
 ## Auth Session Security
 

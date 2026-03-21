@@ -2,6 +2,7 @@ package com.bam.incomedy.server.ticketing
 
 import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketCheckoutSession
 import com.bam.incomedy.server.db.StoredTicketOrder
 import com.bam.incomedy.server.db.StoredTicketOrderLine
 import kotlinx.serialization.SerialName
@@ -11,6 +12,9 @@ import java.time.format.DateTimeFormatter
 
 /** Строгий JSON parser ticketing foundation и checkout order payload-ов. */
 internal val ticketingJson: Json = Json { ignoreUnknownKeys = false }
+
+/** Lenient parser webhook-уведомлений YooKassa, где важен только минимальный envelope. */
+internal val yookassaWebhookJson: Json = Json { ignoreUnknownKeys = true }
 
 /** DTO списка inventory units. */
 @Serializable
@@ -163,6 +167,40 @@ data class TicketOrderResponse(
     }
 }
 
+/** DTO checkout session-а для внешнего PSP handoff. */
+@Serializable
+data class TicketCheckoutSessionResponse(
+    val id: String,
+    @SerialName("order_id")
+    val orderId: String,
+    @SerialName("event_id")
+    val eventId: String,
+    val provider: String,
+    val status: String,
+    @SerialName("confirmation_url")
+    val confirmationUrl: String,
+    @SerialName("checkout_expires_at")
+    val checkoutExpiresAt: String,
+) {
+    companion object {
+        /** Маппит stored checkout session в API response. */
+        fun fromStored(
+            storedSession: StoredTicketCheckoutSession,
+            eventId: String,
+        ): TicketCheckoutSessionResponse {
+            return TicketCheckoutSessionResponse(
+                id = storedSession.id,
+                orderId = storedSession.orderId,
+                eventId = eventId,
+                provider = storedSession.provider,
+                status = storedSession.status,
+                confirmationUrl = storedSession.confirmationUrl,
+                checkoutExpiresAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(storedSession.checkoutExpiresAt),
+            )
+        }
+    }
+}
+
 /** DTO позиции checkout order-а. */
 @Serializable
 data class TicketOrderLineResponse(
@@ -188,3 +226,23 @@ data class TicketOrderLineResponse(
         }
     }
 }
+
+/** Минимальный webhook envelope YooKassa, достаточный для безопасной server-side перепроверки. */
+@Serializable
+data class YooKassaWebhookRequest(
+    val type: String,
+    val event: String,
+    @SerialName("object")
+    val payment: YooKassaWebhookPaymentObject,
+) {
+    /** Возвращает очищенный provider payment id. */
+    fun providerPaymentId(): String {
+        return payment.id.trim()
+    }
+}
+
+/** Минимальный объект платежа YooKassa, из которого route берет только идентификатор платежа. */
+@Serializable
+data class YooKassaWebhookPaymentObject(
+    val id: String,
+)

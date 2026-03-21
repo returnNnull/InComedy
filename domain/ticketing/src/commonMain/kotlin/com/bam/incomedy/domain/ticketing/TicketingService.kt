@@ -32,6 +32,19 @@ interface TicketingService {
         holdIds: List<String>,
     ): Result<TicketOrder>
 
+    /** Возвращает текущий статус checkout order-а текущего пользователя. */
+    suspend fun getTicketOrder(
+        accessToken: String,
+        orderId: String,
+    ): Result<TicketOrder>
+
+    /** Стартует внешний checkout для уже созданного pending order-а текущего пользователя. */
+    suspend fun startTicketCheckout(
+        accessToken: String,
+        eventId: String,
+        orderId: String,
+    ): Result<TicketCheckoutSession>
+
     /** Освобождает ранее созданный hold текущего пользователя. */
     suspend fun releaseSeatHold(
         accessToken: String,

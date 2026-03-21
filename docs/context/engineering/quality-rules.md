@@ -6,6 +6,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - A task is complete only when code, tests, and relevant `docs/context/*` updates are included.
 - Every meaningful task must update `docs/context/governance/session-log.md` with a brief trace of the conversation/work path, not only the final code result.
+- If the task changes the latest decision, current `P0` focus, next step, or active cross-cutting constraints, `docs/context/00-current-state.md` must be updated in the same change.
 - CI checks for the changed scope must pass before merge.
 - Mandatory security review is part of DoD for every task, even if the change is not explicitly security-related.
 
@@ -77,11 +78,15 @@ This document defines mandatory delivery and quality controls for InComedy.
 ## Governance Traceability
 
 - The repository must preserve a short analyzable history of collaboration decisions, not just final artifacts.
+- `docs/context/00-current-state.md` is the mandatory bootstrap snapshot for new chats and must stay aligned with the latest decisions and active delivery focus.
+- External provider choices must not be promoted to confirmed/default runtime status without explicit user confirmation; until then they should stay documented as candidate or disabled-by-default implementations.
+- Existing code, sample config, or earlier assistant guidance must not be interpreted as evidence that the user approved a provider choice.
 - `docs/context/governance/session-log.md` is the mandatory place for a concise per-task/per-session summary of:
   - what the user asked for,
   - what changed during the discussion,
   - which decisions were taken,
   - what remains next.
+- `docs/context/handoff/task-request-template.md` should stay a reusable template only, while historical formalized requests and outcomes belong in `docs/context/handoff/task-request-log.md`.
 - This trace must be concise enough to scan quickly, but specific enough that a later chat can understand the work trajectory without replaying the full conversation.
 
 ## Security and Privacy

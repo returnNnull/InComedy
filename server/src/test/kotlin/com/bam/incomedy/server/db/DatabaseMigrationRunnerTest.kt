@@ -38,7 +38,8 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "seat_holds"))
                 assertTrue(tableExists(connection, "ticket_orders"))
                 assertTrue(tableExists(connection, "ticket_order_lines"))
-                assertEquals(10, appliedMigrationCount(connection))
+                assertTrue(tableExists(connection, "ticket_checkout_sessions"))
+                assertEquals(11, appliedMigrationCount(connection))
             }
         }
     }

@@ -5,6 +5,7 @@ package com.bam.incomedy.server.config
  *
  * @property database Настройки подключения к PostgreSQL.
  * @property jwt Настройки внутренних JWT-сессий.
+ * @property yooKassa Настройки активного PSP checkout-а, если интеграция включена.
  * @property redis Настройки Redis rate limiter-а, если он включен.
  */
 data class AppConfig(
@@ -12,6 +13,7 @@ data class AppConfig(
     val jwt: JwtConfig,
     val vkId: VkIdConfig?,
     val iosAssociatedDomains: IosAssociatedDomainsConfig?,
+    val yooKassa: YooKassaConfig?,
     val redis: RedisConfig?,
 ) {
     /** Загружает и валидирует runtime-конфиг приложения из environment variables. */
@@ -57,6 +59,7 @@ data class AppConfig(
                     fallbackStateSecret = env.require("JWT_SECRET"),
                 ),
                 iosAssociatedDomains = env.iosAssociatedDomainsConfig(),
+                yooKassa = env.yooKassaConfig(),
                 redis = redisConfig,
             )
         }
@@ -106,6 +109,34 @@ data class RedisConfig(
     val allowInsecure: Boolean,
 )
 
+/**
+ * Конфиг явно включенной YooKassa checkout-интеграции.
+ *
+ * @property shopId Идентификатор магазина YooKassa.
+ * @property secretKey Секретный ключ API YooKassa.
+ * @property returnUrl Merchant-controlled URL возврата пользователя после редиректа из PSP.
+ * @property apiBaseUrl Базовый URL REST API YooKassa.
+ * @property capture Признак автоматического capture платежа после авторизации.
+ */
+data class YooKassaConfig(
+    val shopId: String,
+    val secretKey: String,
+    val returnUrl: String,
+    val apiBaseUrl: String,
+    val capture: Boolean,
+)
+
+/**
+ * Конфиг интеграции с VK ID.
+ *
+ * @property clientId Browser/public client id.
+ * @property redirectUri Канонический redirect URI для browser flow.
+ * @property androidClientId Отдельный Android client id для SDK path, если он включен.
+ * @property androidRedirectUri Redirect URI Android SDK path.
+ * @property scope OAuth scope VK ID.
+ * @property stateSecret Секрет подписи server-side state.
+ * @property stateTtlSeconds TTL состояния VK auth flow.
+ */
 data class VkIdConfig(
     val clientId: String,
     val redirectUri: String,
@@ -116,6 +147,12 @@ data class VkIdConfig(
     val stateTtlSeconds: Long,
 )
 
+/**
+ * Конфиг Apple App Site Association для iOS auth-return surface.
+ *
+ * @property appIds Список разрешенных `TEAMID.bundleId`.
+ * @property paths Пути, включаемые в AASA-ответ.
+ */
 data class IosAssociatedDomainsConfig(
     val appIds: List<String>,
     val paths: List<String>,
@@ -173,6 +210,43 @@ private fun Map<String, String>.iosAssociatedDomainsConfig(): IosAssociatedDomai
             "/auth/vk/callback",
             "/auth/vk/callback/*",
         ),
+    )
+}
+
+/**
+ * Загружает optional YooKassa config только при явном `YOOKASSA_ENABLED=true`.
+ *
+ * Это позволяет держать реализацию PSP в кодовой базе, но не активировать ее молча по одному
+ * лишь присутствию env-переменных. Пока флаг не включен, сервер игнорирует частично заполненный
+ * YooKassa-конфиг и продолжает запускаться без checkout provider-а.
+ */
+private fun Map<String, String>.yooKassaConfig(): YooKassaConfig? {
+    val enabled = this["YOOKASSA_ENABLED"]?.toBooleanStrictOrNull() ?: false
+    if (!enabled) {
+        return null
+    }
+    val shopId = this["YOOKASSA_SHOP_ID"]?.trim()
+    val secretKey = this["YOOKASSA_SECRET_KEY"]?.trim()
+    val returnUrl = this["YOOKASSA_RETURN_URL"]?.trim()
+    require(!shopId.isNullOrBlank()) {
+        "Environment variable 'YOOKASSA_SHOP_ID' is required when YooKassa checkout is enabled"
+    }
+    require(!secretKey.isNullOrBlank()) {
+        "Environment variable 'YOOKASSA_SECRET_KEY' is required when YooKassa checkout is enabled"
+    }
+    require(!returnUrl.isNullOrBlank()) {
+        "Environment variable 'YOOKASSA_RETURN_URL' is required when YooKassa checkout is enabled"
+    }
+    val parsedReturnUrl = runCatching { java.net.URI(returnUrl) }.getOrNull()
+    require(parsedReturnUrl?.scheme in setOf("http", "https")) {
+        "Environment variable 'YOOKASSA_RETURN_URL' must be a valid http/https URL"
+    }
+    return YooKassaConfig(
+        shopId = shopId,
+        secretKey = secretKey,
+        returnUrl = returnUrl,
+        apiBaseUrl = this["YOOKASSA_API_BASE_URL"]?.trim().takeUnless { it.isNullOrBlank() } ?: "https://api.yookassa.ru/v3",
+        capture = this["YOOKASSA_CAPTURE"]?.toBooleanStrictOrNull() ?: true,
     )
 }
 

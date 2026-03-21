@@ -1,58 +1,64 @@
 # Project Context
 
-This folder stores product context and decisions so the team and assistant do not lose state between sessions.
+This folder stores the compact operational context for product, engineering, governance memory, and cross-chat continuity.
+
+## Quick Start
+
+- For every new chat/session, read `00-current-state.md` first.
+- Then follow the ordered onboarding path in `handoff/context-protocol.md`.
+- Treat `docs/context/*` as the primary source of truth for ongoing work.
+- Use `../standup-platform-ru/*` as the detailed target-state specification layer when a task needs deeper domain/product clarification.
 
 ## Structure
 
+- `00-current-state.md`: compact bootstrap snapshot for the latest decision id, current `P0` focus, next step, latest relevant part files, and active cross-cutting constraints.
 - `product/`: product scope, priorities, glossary, NFR, and risks.
-- `engineering/`: stack, architecture, quality rules, tests, and API contracts.
-- `governance/`: decisions and running session memory.
-- `handoff/`: cross-chat sync protocol and handoff template.
+- `engineering/`: stack, architecture, quality rules, tests, API contracts, and operational runbooks.
+- `governance/`: decisions, traceability, and rolling session memory.
+- `handoff/`: cross-chat sync protocol, chat bootstrap message, active task template, and historical task-request log.
 - `../standup-platform-ru/`: detailed Russian-language product and technical specification package for the current standup-event platform direction.
 
-## Files
+## Key Files
 
 - `product/product-brief.md`: stable product vision and core flows.
 - `product/backlog.md`: prioritized feature backlog.
 - `product/glossary.md`: domain terms and definitions.
 - `product/non-functional-requirements.md`: performance, reliability, security, and operability targets.
 - `product/risk-log.md`: current risks with mitigation and owners.
-- `../standup-platform-ru/README.md`: entry point to the full Russian product/technical handoff package.
-- `../standup-platform-ru/11-статус-реализации-на-2026-03-10.md`: current repo-to-spec alignment snapshot.
 - `engineering/tooling-stack.md`: approved and planned technology stack.
-- `engineering/engineering-standards.md`: mandatory architecture, MVI, and testing rules.
+- `engineering/engineering-standards.md`: mandatory architecture, MVI, governance-memory, and commenting rules.
 - `engineering/quality-rules.md`: DoD, quality gates, test minimums, and engineering constraints.
 - `engineering/architecture-overview.md`: high-level module and data-flow map.
 - `engineering/test-strategy.md`: test levels, ownership, and CI expectations.
-- `engineering/standards-rollout-plan.md`: phased adoption of standards.
-- `engineering/api-contracts/README.md`: API contract storage and versioning guide.
+- `engineering/server-diagnostics-runbook.md`: operator-only diagnostics retrieval and correlation workflow.
 - `governance/decisions-log.md`: decisions-log index with links to part files.
-- `governance/decisions-log/decisions-log-part-XX.md`: ADR-like decision entries.
 - `governance/session-log.md`: session-log index with links to part files.
-- `governance/session-log/session-log-part-XX.md`: short running notes after each significant work session.
+- `governance/decision-traceability.md`: split mapping from decisions to code and tests.
 - `governance/context-integrity-checklist.md`: pre-merge context consistency checks.
-- `governance/decision-traceability.md`: decision-traceability index.
-- `governance/decision-traceability/decision-traceability-part-XX.md`: split mapping from decisions to code and tests.
 - `handoff/context-protocol.md`: standard for reading, updating, and handing off context across chats.
 - `handoff/chat-handoff-template.md`: copy-paste message to bootstrap a new chat with full context sync.
-- `handoff/task-request-template.md`: structured task input template.
+- `handoff/task-request-template.md`: active reusable structure for new major tasks.
+- `handoff/task-request-log.md`: historical formalized requests and implementation outcomes.
+- `../standup-platform-ru/README.md`: entry point to the full Russian product/technical handoff package.
+- `../standup-platform-ru/11-статус-реализации-на-2026-03-10.md`: current repo-to-spec alignment snapshot.
 
 ## Update Rules
 
 - Keep files in the proper subfolder; avoid creating many unrelated files in one directory.
 - Product owner responsibility:
-  - keep priorities in `product/backlog.md` clear (P0/P1/P2),
-  - provide free-form task requests (assistant formalizes them into project templates/docs).
+  - keep priorities in `product/backlog.md` clear (`P0`/`P1`/`P2`),
+  - provide free-form task requests.
 - Assistant responsibility:
   - keep engineering/governance docs in sync with implementation changes,
   - maintain decisions/session/traceability records,
-  - convert free-form requests into `handoff/task-request-template.md` structure for major tasks,
+  - keep `00-current-state.md` aligned with the latest decision id, current `P0` focus, next step, and active cross-cutting constraints,
+  - use `handoff/task-request-template.md` to structure major tasks and record outcomes in `handoff/task-request-log.md`,
   - immediately communicate discovered security vulnerabilities and maintain remediation records in `product/risk-log.md`,
   - remind product owner to refresh priorities in `product/backlog.md` when context is stale.
 - Update `product/product-brief.md` only when strategy, roles, or core scope changes.
 - Add a new entry to the latest part referenced by `governance/decisions-log.md` for every architectural or product-level decision.
-- Keep `product/backlog.md` ordered by priority (P0/P1/P2).
-- After each major work block, append 3-7 lines to the latest part referenced by `governance/session-log.md`:
+- Keep `product/backlog.md` ordered by priority (`P0`/`P1`/`P2`).
+- After each major work block, append 3-7 analytical lines to the latest part referenced by `governance/session-log.md`:
   - what changed
   - why
   - next action
@@ -63,6 +69,7 @@ This folder stores product context and decisions so the team and assistant do no
 ## Operating Rule
 
 - For all future product and implementation tasks, treat files in `docs/context/` as the primary project context.
+- Start every new chat from `00-current-state.md`, then continue with the deeper read order from `handoff/context-protocol.md`.
 - When implementation requires detailed feature/domain clarification, use `docs/standup-platform-ru/` as the primary detailed specification layer and keep `docs/context/` as the compact memory/index layer.
 - When reconciling target-state specs with the current repository, check `../standup-platform-ru/11-статус-реализации-на-2026-03-10.md` first.
 - If new input conflicts with these docs, update the docs first, then proceed with implementation.

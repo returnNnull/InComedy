@@ -95,6 +95,42 @@ data class StoredTicketOrder(
 )
 
 /**
+ * Сохраненный checkout session для внешнего PSP handoff поверх `TicketOrder`.
+ *
+ * @property id Идентификатор checkout session.
+ * @property orderId Идентификатор ticket order-а.
+ * @property provider Активный PSP provider wire-name.
+ * @property status Текущее состояние checkout session.
+ * @property providerPaymentId Идентификатор платежа во внешнем провайдере.
+ * @property providerStatus Сырым wire-значением зафиксированный статус, возвращенный провайдером.
+ * @property confirmationUrl Redirect URL для клиента.
+ * @property returnUrl Merchant-controlled URL возврата из PSP.
+ * @property checkoutExpiresAt Момент истечения связанного order lock-а.
+ */
+data class StoredTicketCheckoutSession(
+    val id: String,
+    val orderId: String,
+    val provider: String,
+    val status: String,
+    val providerPaymentId: String,
+    val providerStatus: String,
+    val confirmationUrl: String,
+    val returnUrl: String,
+    val checkoutExpiresAt: OffsetDateTime,
+)
+
+/**
+ * Объединенное состояние checkout order-а и связанной PSP session.
+ *
+ * @property order Текущее состояние локального заказа.
+ * @property session Текущее состояние внешней checkout session.
+ */
+data class StoredTicketCheckoutState(
+    val order: StoredTicketOrder,
+    val session: StoredTicketCheckoutSession,
+)
+
+/**
  * Сохраненная inventory unit с опциональным активным hold-ом.
  *
  * @property id Идентификатор inventory unit.
@@ -176,6 +212,60 @@ interface TicketingRepository {
         now: OffsetDateTime,
     ): StoredTicketOrder
 
+    /** Загружает checkout order, предварительно expiring его при просрочке. */
+    fun findTicketOrder(
+        orderId: String,
+        now: OffsetDateTime,
+    ): StoredTicketOrder?
+
+    /** Возвращает активный checkout session для order-а, если он уже был создан. */
+    fun findTicketCheckoutSession(
+        orderId: String,
+    ): StoredTicketCheckoutSession?
+
+    /** Возвращает checkout state по внешнему provider payment id. */
+    fun findTicketCheckoutStateByProviderPaymentId(
+        provider: String,
+        providerPaymentId: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState?
+
+    /** Создает новый checkout session либо возвращает уже существующий idempotently по order-у. */
+    fun createTicketCheckoutSession(
+        orderId: String,
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        confirmationUrl: String,
+        returnUrl: String,
+        checkoutExpiresAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutSession
+
+    /** Переводит checkout session в `waiting_for_capture`, не завершая локальный order. */
+    fun markTicketCheckoutWaitingForCapture(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState?
+
+    /** Подтверждает платеж и atomically переводит order/inventory в финальное paid/sold состояние. */
+    fun markTicketCheckoutSucceeded(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState?
+
+    /** Фиксирует отмененный платеж и освобождает inventory, если order еще не завершен оплатой. */
+    fun markTicketCheckoutCanceled(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState?
+
     /** Освобождает hold, если он принадлежит текущему пользователю и еще активен. */
     fun releaseSeatHold(
         holdId: String,
@@ -243,3 +333,9 @@ class TicketingCheckoutCurrencyMismatchPersistenceException(
     val expectedCurrency: String,
     val actualCurrency: String,
 ) : IllegalStateException("Checkout order currency mismatch")
+
+/** Сигнализирует, что успешный provider payment требует ручного recovery вместо автозавершения. */
+class TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+    val orderId: String,
+    val reasonCode: String,
+) : IllegalStateException("Checkout payment requires recovery")

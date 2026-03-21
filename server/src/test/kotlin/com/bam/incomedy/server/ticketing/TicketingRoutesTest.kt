@@ -475,6 +475,637 @@ class TicketingRoutesTest {
         assertTrue(response.bodyAsText().contains("forbidden"))
     }
 
+    /** Проверяет успешный старт внешнего checkout session поверх pending order-а. */
+    @Test
+    fun `audience user can start checkout session for pending order`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+
+        val response = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""provider":"yookassa""""))
+        assertTrue(body.contains(""""status":"pending_redirect""""))
+        assertTrue(body.contains(""""confirmation_url":"https://pay.yookassa.test/confirmation/payment-1""""))
+        assertEquals(1, checkoutGateway.callCount)
+
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.checkout.start.success",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("yookassa", event.metadata["provider"])
+        assertEquals("pending_redirect", event.metadata["status"])
+    }
+
+    /** Проверяет, что повторный старт checkout-а переиспользует уже созданную session. */
+    @Test
+    fun `repeated checkout start reuses existing session`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+
+        val firstResponse = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        val secondResponse = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, firstResponse.status)
+        assertEquals(HttpStatusCode.OK, secondResponse.status)
+        val firstId = Regex(""""id":"([^"]+)"""").find(firstResponse.bodyAsText())?.groupValues?.get(1)
+        val secondId = Regex(""""id":"([^"]+)"""").find(secondResponse.bodyAsText())?.groupValues?.get(1)
+        assertEquals(firstId, secondId)
+        assertEquals(1, checkoutGateway.callCount)
+    }
+
+    /** Проверяет, что пользователь может прочитать собственный checkout order после PSP return/poll. */
+    @Test
+    fun `audience user can fetch own checkout order`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+
+        val response = client.get("/api/v1/orders/$orderId") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""id":"$orderId""""))
+        assertTrue(body.contains(""""status":"awaiting_payment""""))
+        assertTrue(body.contains(""""inventory_ref":"seat:seat-a-2""""))
+    }
+
+    /** Проверяет, что чужой checkout order не раскрывается другому пользователю. */
+    @Test
+    fun `different user cannot fetch чужой checkout order`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+            putSecondAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val firstAccessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val secondAccessToken = tokenService.issue(
+            userId = SECOND_AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = firstAccessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = firstAccessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+
+        val response = client.get("/api/v1/orders/$orderId") {
+            header(HttpHeaders.Authorization, "Bearer $secondAccessToken")
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertTrue(response.bodyAsText().contains("not_found"))
+    }
+
+    /** Проверяет, что `payment.succeeded` переводит order в `paid`, а inventory — в `sold`. */
+    @Test
+    fun `yookassa succeeded webhook marks order paid and inventory sold`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+        val checkoutResponse = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, checkoutResponse.status)
+        val paymentId = checkoutGateway.firstPaymentId()
+        checkoutGateway.updatePaymentStatus(
+            providerPaymentId = paymentId,
+            status = "succeeded",
+        )
+
+        val webhookResponse = client.post("/api/v1/webhooks/payments") {
+            header(HttpHeaders.XForwardedFor, "185.71.76.5")
+            contentType(ContentType.Application.Json)
+            setBody("""{"type":"notification","event":"payment.succeeded","object":{"id":"$paymentId"}}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, webhookResponse.status)
+
+        val orderResponse = client.get("/api/v1/orders/$orderId") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, orderResponse.status)
+        assertTrue(orderResponse.bodyAsText().contains(""""status":"paid""""))
+
+        val inventoryResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, inventoryResponse.status)
+        assertTrue(inventoryResponse.bodyAsText().contains(""""status":"sold""""))
+
+        val requestId = assertNotNull(webhookResponse.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.checkout.webhook.applied",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("payment.succeeded", event.metadata["event"])
+        assertEquals("paid", event.metadata["result"])
+    }
+
+    /** Проверяет, что повторный `payment.succeeded` безопасен и не ломает уже оплаченный order. */
+    @Test
+    fun `repeated succeeded webhook stays idempotent`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+        client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        val paymentId = checkoutGateway.firstPaymentId()
+        checkoutGateway.updatePaymentStatus(
+            providerPaymentId = paymentId,
+            status = "succeeded",
+        )
+
+        val firstWebhookResponse = client.post("/api/v1/webhooks/payments") {
+            header(HttpHeaders.XForwardedFor, "185.71.76.5")
+            contentType(ContentType.Application.Json)
+            setBody("""{"type":"notification","event":"payment.succeeded","object":{"id":"$paymentId"}}""")
+        }
+        val secondWebhookResponse = client.post("/api/v1/webhooks/payments") {
+            header(HttpHeaders.XForwardedFor, "185.71.76.5")
+            contentType(ContentType.Application.Json)
+            setBody("""{"type":"notification","event":"payment.succeeded","object":{"id":"$paymentId"}}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, firstWebhookResponse.status)
+        assertEquals(HttpStatusCode.OK, secondWebhookResponse.status)
+        val orderResponse = client.get("/api/v1/orders/$orderId") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, orderResponse.status)
+        assertTrue(orderResponse.bodyAsText().contains(""""status":"paid""""))
+    }
+
+    /** Проверяет, что `payment.canceled` отменяет order и возвращает inventory в продажу. */
+    @Test
+    fun `yookassa canceled webhook releases pending order inventory`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+        client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        val paymentId = checkoutGateway.firstPaymentId()
+        checkoutGateway.updatePaymentStatus(
+            providerPaymentId = paymentId,
+            status = "canceled",
+        )
+
+        val webhookResponse = client.post("/api/v1/webhooks/payments") {
+            header(HttpHeaders.XForwardedFor, "185.71.76.5")
+            contentType(ContentType.Application.Json)
+            setBody("""{"type":"notification","event":"payment.canceled","object":{"id":"$paymentId"}}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, webhookResponse.status)
+        val orderResponse = client.get("/api/v1/orders/$orderId") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, orderResponse.status)
+        assertTrue(orderResponse.bodyAsText().contains(""""status":"canceled""""))
+
+        val inventoryResponse = client.get("/api/v1/events/$eventId/inventory") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, inventoryResponse.status)
+        assertTrue(inventoryResponse.bodyAsText().contains(""""status":"available""""))
+    }
+
+    /** Проверяет, что webhook отклоняется, если source IP не входит в опубликованные YooKassa ranges. */
+    @Test
+    fun `payment webhook rejects unknown source ip`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val response = client.post("/api/v1/webhooks/payments") {
+            header(HttpHeaders.XForwardedFor, "203.0.113.10")
+            contentType(ContentType.Application.Json)
+            setBody("""{"type":"notification","event":"payment.succeeded","object":{"id":"payment-1"}}""")
+        }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        assertTrue(response.bodyAsText().contains("forbidden"))
+    }
+
+    /** Проверяет, что checkout route возвращает `503`, если PSP провайдер не сконфигурирован. */
+    @Test
+    fun `checkout start returns service unavailable when provider is disabled`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+
+        val response = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertTrue(response.bodyAsText().contains("checkout_unavailable"))
+    }
+
+    /** Проверяет, что истекший order нельзя отправить во внешний checkout. */
+    @Test
+    fun `expired order cannot start checkout`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val nowState = mutableStateOf(NOW)
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            nowProvider = { nowState.value },
+        )
+
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+        nowState.value = NOW.plusMinutes(11)
+
+        val response = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.Conflict, response.status)
+        assertTrue(response.bodyAsText().contains("conflict"))
+        assertEquals(0, checkoutGateway.callCount)
+    }
+
+    /** Проверяет, что пользователь не может стартовать checkout для чужого order-а. */
+    @Test
+    fun `different user cannot start checkout for чужой order`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+            putSecondAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val firstAccessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val secondAccessToken = tokenService.issue(
+            userId = SECOND_AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdId = createHold(
+            accessToken = firstAccessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = firstAccessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+
+        val response = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $secondAccessToken")
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertTrue(response.bodyAsText().contains("not_found"))
+        assertEquals(0, checkoutGateway.callCount)
+    }
+
     /** Проверяет, что истекший pending order автоматически освобождает inventory. */
     @Test
     fun `expired checkout order releases inventory back to availability`() = testApplication {
@@ -811,6 +1442,7 @@ class TicketingRoutesTest {
         userRepository: InMemoryUserRepository,
         eventRepository: InMemoryEventRepository,
         ticketingRepository: InMemoryTicketingRepository,
+        checkoutGateway: TicketCheckoutGateway? = null,
         tokenService: JwtSessionTokenService,
         diagnosticsStore: InMemoryDiagnosticsStore? = null,
         nowProvider: () -> OffsetDateTime,
@@ -832,6 +1464,7 @@ class TicketingRoutesTest {
                     workspaceRepository = userRepository,
                     eventRepository = eventRepository,
                     ticketingRepository = ticketingRepository,
+                    checkoutGateway = checkoutGateway,
                     rateLimiter = InMemoryAuthRateLimiter(),
                     diagnosticsStore = diagnosticsStore,
                     nowProvider = nowProvider,
@@ -858,6 +1491,25 @@ class TicketingRoutesTest {
             ?.groupValues
             ?.get(1)
             ?: error("Hold id not found in response")
+    }
+
+    /** Создает pending order через HTTP route и возвращает его id для checkout handoff тестов. */
+    private suspend fun ApplicationTestBuilder.createOrder(
+        accessToken: String,
+        eventId: String,
+        holdIds: List<String>,
+    ): String {
+        val holdIdsJson = holdIds.joinToString(separator = ",") { holdId -> "\"$holdId\"" }
+        val response = client.post("/api/v1/events/$eventId/orders") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"hold_ids":[$holdIdsJson]}""")
+        }
+        assertEquals(HttpStatusCode.Created, response.status)
+        return Regex(""""id":"([^"]+)"""").find(response.bodyAsText())
+            ?.groupValues
+            ?.get(1)
+            ?: error("Order id not found in response")
     }
 
     /** Создает тестовое событие с snapshot seat/zone/table inventory и event-local overrides. */
@@ -1013,6 +1665,61 @@ class TicketingRoutesTest {
     /** Создает mutable carrier времени. */
     private fun <T> mutableStateOf(value: T): MutableState<T> {
         return MutableState(value)
+    }
+
+    /** Фейковый checkout gateway для детерминированных route-тестов без live PSP. */
+    private class FakeTicketCheckoutGateway : TicketCheckoutGateway {
+        /** Число созданных внешних checkout session-ов. */
+        var callCount: Int = 0
+            private set
+
+        /** Актуальные внешние snapshot-ы платежей по `providerPaymentId`. */
+        private val paymentsById = linkedMapOf<String, TicketCheckoutGatewayPaymentSnapshot>()
+
+        override val provider: String = "yookassa"
+
+        /** Возвращает стабильный confirmation URL и инкрементирует счетчик вызовов. */
+        override fun createCheckoutSession(request: TicketCheckoutGatewayRequest): TicketCheckoutGatewayResponse {
+            callCount += 1
+            val providerPaymentId = "payment-$callCount"
+            paymentsById[providerPaymentId] = TicketCheckoutGatewayPaymentSnapshot(
+                provider = provider,
+                providerPaymentId = providerPaymentId,
+                status = "pending",
+                orderId = request.orderId,
+                eventId = request.eventId,
+                totalMinor = request.totalMinor,
+                currency = request.currency,
+            )
+            return TicketCheckoutGatewayResponse(
+                provider = provider,
+                providerPaymentId = providerPaymentId,
+                providerStatus = "pending",
+                confirmationUrl = "https://pay.yookassa.test/confirmation/$providerPaymentId",
+                returnUrl = "https://incomedy.test/payments/yookassa/return?order_id=${request.orderId}",
+            )
+        }
+
+        /** Возвращает сохраненный snapshot текущего внешнего платежа. */
+        override fun getPayment(providerPaymentId: String): TicketCheckoutGatewayPaymentSnapshot {
+            return paymentsById[providerPaymentId]
+                ?: error("Missing fake payment snapshot for $providerPaymentId")
+        }
+
+        /** Меняет текущий статус платежа в fake provider state. */
+        fun updatePaymentStatus(
+            providerPaymentId: String,
+            status: String,
+        ) {
+            val current = paymentsById[providerPaymentId]
+                ?: error("Missing fake payment snapshot for $providerPaymentId")
+            paymentsById[providerPaymentId] = current.copy(status = status)
+        }
+
+        /** Возвращает первый созданный provider payment id. */
+        fun firstPaymentId(): String {
+            return paymentsById.keys.first()
+        }
     }
 
     private companion object {

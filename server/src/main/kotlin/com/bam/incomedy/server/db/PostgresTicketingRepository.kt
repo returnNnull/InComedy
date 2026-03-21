@@ -404,6 +404,335 @@ class PostgresTicketingRepository(
         }
     }
 
+    /** Загружает order и при необходимости сначала expiring просроченный pending checkout. */
+    override fun findTicketOrder(
+        orderId: String,
+        now: OffsetDateTime,
+    ): StoredTicketOrder? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                var order = loadTicketOrder(
+                    connection = connection,
+                    orderId = orderId,
+                )
+                if (order != null &&
+                    order.status == "awaiting_payment" &&
+                    !order.checkoutExpiresAt.isAfter(now)
+                ) {
+                    expireOverdueOrders(
+                        connection = connection,
+                        eventId = order.eventId,
+                        now = now,
+                    )
+                    order = loadTicketOrder(
+                        connection = connection,
+                        orderId = orderId,
+                    )
+                }
+                connection.commit()
+                return order
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Возвращает уже созданный checkout session для order-а, если он существует. */
+    override fun findTicketCheckoutSession(
+        orderId: String,
+    ): StoredTicketCheckoutSession? {
+        dataSource.connection.use { connection ->
+            return loadTicketCheckoutSession(
+                connection = connection,
+                orderId = orderId,
+            )
+        }
+    }
+
+    /** Возвращает локальный checkout state по `provider_payment_id` для webhook/status verification. */
+    override fun findTicketCheckoutStateByProviderPaymentId(
+        provider: String,
+        providerPaymentId: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        dataSource.connection.use { connection ->
+            return loadTicketCheckoutStateByProviderPaymentId(
+                connection = connection,
+                provider = provider,
+                providerPaymentId = providerPaymentId,
+            )
+        }
+    }
+
+    /** Создает checkout session idempotently по `order_id`, чтобы повторный start не плодил записи. */
+    override fun createTicketCheckoutSession(
+        orderId: String,
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        confirmationUrl: String,
+        returnUrl: String,
+        checkoutExpiresAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutSession {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val order = loadTicketOrder(
+                    connection = connection,
+                    orderId = orderId,
+                )
+                if (order != null &&
+                    order.status == "awaiting_payment" &&
+                    !order.checkoutExpiresAt.isAfter(now)
+                ) {
+                    expireOverdueOrders(
+                        connection = connection,
+                        eventId = order.eventId,
+                        now = now,
+                    )
+                }
+                loadTicketCheckoutSession(
+                    connection = connection,
+                    orderId = orderId,
+                )?.let { existing ->
+                    connection.commit()
+                    return existing
+                }
+                val sessionId = UUID.randomUUID().toString()
+                connection.prepareStatement(
+                    """
+                    INSERT INTO ticket_checkout_sessions (
+                        id,
+                        order_id,
+                        provider,
+                        status,
+                        provider_payment_id,
+                        provider_status,
+                        confirmation_url,
+                        return_url,
+                        checkout_expires_at,
+                        created_at,
+                        updated_at
+                    ) VALUES (?, ?, ?, 'pending_redirect', ?, ?, ?, ?, ?, NOW(), NOW())
+                    ON CONFLICT (order_id) DO NOTHING
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setObject(1, UUID.fromString(sessionId))
+                    statement.setObject(2, UUID.fromString(orderId))
+                    statement.setString(3, provider)
+                    statement.setString(4, providerPaymentId)
+                    statement.setString(5, providerStatus)
+                    statement.setString(6, confirmationUrl)
+                    statement.setString(7, returnUrl)
+                    statement.setObject(8, checkoutExpiresAt)
+                    statement.executeUpdate()
+                }
+                val session = loadTicketCheckoutSession(
+                    connection = connection,
+                    orderId = orderId,
+                ) ?: error("Persisted checkout session must be readable right after insert")
+                connection.commit()
+                return session
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Переводит checkout session в `waiting_for_capture`, если local order еще ожидает оплату. */
+    override fun markTicketCheckoutWaitingForCapture(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val state = loadTicketCheckoutStateByProviderPaymentId(
+                    connection = connection,
+                    provider = provider,
+                    providerPaymentId = providerPaymentId,
+                ) ?: run {
+                    connection.commit()
+                    return null
+                }
+                val targetStatus = when {
+                    state.order.status == "awaiting_payment" &&
+                        state.session.status != "succeeded" &&
+                        state.session.status != "canceled" -> "waiting_for_capture"
+                    else -> state.session.status
+                }
+                updateTicketCheckoutSessionState(
+                    connection = connection,
+                    sessionId = state.session.id,
+                    status = targetStatus,
+                    providerStatus = providerStatus,
+                )
+                val updatedState = loadTicketCheckoutStateByProviderPaymentId(
+                    connection = connection,
+                    provider = provider,
+                    providerPaymentId = providerPaymentId,
+                )
+                connection.commit()
+                return updatedState
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Подтверждает финально успешный платеж и переводит inventory unit-ы в `sold`. */
+    override fun markTicketCheckoutSucceeded(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val state = loadTicketCheckoutStateByProviderPaymentId(
+                    connection = connection,
+                    provider = provider,
+                    providerPaymentId = providerPaymentId,
+                ) ?: run {
+                    connection.commit()
+                    return null
+                }
+                val lockedInventory = loadTicketOrderInventoryRows(
+                    connection = connection,
+                    orderId = state.order.id,
+                    lockForUpdate = true,
+                )
+                when (state.order.status) {
+                    "paid" -> Unit
+                    "canceled" -> throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                        orderId = state.order.id,
+                        reasonCode = "order_canceled",
+                    )
+
+                    "awaiting_payment" -> {
+                        if (lockedInventory.any { it.status in setOf("held", "sold") }) {
+                            throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                                orderId = state.order.id,
+                                reasonCode = "inventory_reassigned",
+                            )
+                        }
+                    }
+
+                    "expired" -> {
+                        if (lockedInventory.any { it.status in setOf("held", "pending_payment", "sold") }) {
+                            throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                                orderId = state.order.id,
+                                reasonCode = "inventory_reassigned",
+                            )
+                        }
+                    }
+
+                    else -> throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                        orderId = state.order.id,
+                        reasonCode = "order_state_invalid",
+                    )
+                }
+                updateTicketOrderStatus(
+                    connection = connection,
+                    orderId = state.order.id,
+                    status = "paid",
+                )
+                updateTicketCheckoutSessionState(
+                    connection = connection,
+                    sessionId = state.session.id,
+                    status = "succeeded",
+                    providerStatus = providerStatus,
+                )
+                markInventorySold(
+                    connection = connection,
+                    inventoryUnitIds = lockedInventory.map(LockedOrderInventoryRow::inventoryUnitId),
+                )
+                val updatedState = loadTicketCheckoutStateByProviderPaymentId(
+                    connection = connection,
+                    provider = provider,
+                    providerPaymentId = providerPaymentId,
+                )
+                connection.commit()
+                return updatedState
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Фиксирует отмененный платеж и освобождает inventory, если платеж еще не был подтвержден. */
+    override fun markTicketCheckoutCanceled(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val state = loadTicketCheckoutStateByProviderPaymentId(
+                    connection = connection,
+                    provider = provider,
+                    providerPaymentId = providerPaymentId,
+                ) ?: run {
+                    connection.commit()
+                    return null
+                }
+                val lockedInventory = loadTicketOrderInventoryRows(
+                    connection = connection,
+                    orderId = state.order.id,
+                    lockForUpdate = true,
+                )
+                if (state.order.status != "paid") {
+                    updateTicketOrderStatus(
+                        connection = connection,
+                        orderId = state.order.id,
+                        status = "canceled",
+                    )
+                    releasePendingPaymentInventory(
+                        connection = connection,
+                        inventoryUnitIds = lockedInventory.map(LockedOrderInventoryRow::inventoryUnitId),
+                    )
+                }
+                updateTicketCheckoutSessionState(
+                    connection = connection,
+                    sessionId = state.session.id,
+                    status = if (state.order.status == "paid") "succeeded" else "canceled",
+                    providerStatus = providerStatus,
+                )
+                val updatedState = loadTicketCheckoutStateByProviderPaymentId(
+                    connection = connection,
+                    provider = provider,
+                    providerPaymentId = providerPaymentId,
+                )
+                connection.commit()
+                return updatedState
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
     /**
      * Освобождает hold и восстанавливает inventory unit к ее базовой доступности.
      *
@@ -585,6 +914,18 @@ class PostgresTicketingRepository(
                         status = 'expired',
                         updated_at = NOW()
                     WHERE id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setObject(1, UUID.fromString(orderId))
+                    statement.executeUpdate()
+                }
+                connection.prepareStatement(
+                    """
+                    UPDATE ticket_checkout_sessions
+                    SET
+                        status = 'expired',
+                        updated_at = NOW()
+                    WHERE order_id = ?
                     """.trimIndent(),
                 ).use { statement ->
                     statement.setObject(1, UUID.fromString(orderId))
@@ -828,6 +1169,241 @@ class PostgresTicketingRepository(
                     }
                 }
             }
+        }
+    }
+
+    /** Загружает checkout session для конкретного order-а. */
+    private fun loadTicketCheckoutSession(
+        connection: Connection,
+        orderId: String,
+    ): StoredTicketCheckoutSession? {
+        return connection.prepareStatement(
+            """
+            SELECT
+                id,
+                order_id,
+                provider,
+                status,
+                provider_payment_id,
+                provider_status,
+                confirmation_url,
+                return_url,
+                checkout_expires_at
+            FROM ticket_checkout_sessions
+            WHERE order_id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(orderId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                StoredTicketCheckoutSession(
+                    id = result.getObject("id").toString(),
+                    orderId = result.getObject("order_id").toString(),
+                    provider = result.getString("provider"),
+                    status = result.getString("status"),
+                    providerPaymentId = result.getString("provider_payment_id"),
+                    providerStatus = result.getString("provider_status"),
+                    confirmationUrl = result.getString("confirmation_url"),
+                    returnUrl = result.getString("return_url"),
+                    checkoutExpiresAt = result.getObject("checkout_expires_at", OffsetDateTime::class.java),
+                )
+            }
+        }
+    }
+
+    /** Загружает checkout session по внешнему `provider_payment_id`. */
+    private fun loadTicketCheckoutSessionByProviderPaymentId(
+        connection: Connection,
+        provider: String,
+        providerPaymentId: String,
+    ): StoredTicketCheckoutSession? {
+        return connection.prepareStatement(
+            """
+            SELECT
+                id,
+                order_id,
+                provider,
+                status,
+                provider_payment_id,
+                provider_status,
+                confirmation_url,
+                return_url,
+                checkout_expires_at
+            FROM ticket_checkout_sessions
+            WHERE provider = ?
+              AND provider_payment_id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, provider)
+            statement.setString(2, providerPaymentId)
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                StoredTicketCheckoutSession(
+                    id = result.getObject("id").toString(),
+                    orderId = result.getObject("order_id").toString(),
+                    provider = result.getString("provider"),
+                    status = result.getString("status"),
+                    providerPaymentId = result.getString("provider_payment_id"),
+                    providerStatus = result.getString("provider_status"),
+                    confirmationUrl = result.getString("confirmation_url"),
+                    returnUrl = result.getString("return_url"),
+                    checkoutExpiresAt = result.getObject("checkout_expires_at", OffsetDateTime::class.java),
+                )
+            }
+        }
+    }
+
+    /** Собирает объединенное checkout state по внешнему `provider_payment_id`. */
+    private fun loadTicketCheckoutStateByProviderPaymentId(
+        connection: Connection,
+        provider: String,
+        providerPaymentId: String,
+    ): StoredTicketCheckoutState? {
+        val session = loadTicketCheckoutSessionByProviderPaymentId(
+            connection = connection,
+            provider = provider,
+            providerPaymentId = providerPaymentId,
+        ) ?: return null
+        val order = loadTicketOrder(
+            connection = connection,
+            orderId = session.orderId,
+        ) ?: return null
+        return StoredTicketCheckoutState(
+            order = order,
+            session = session,
+        )
+    }
+
+    /** Загружает текущие inventory row-ы order-а и при необходимости блокирует их для мутации. */
+    private fun loadTicketOrderInventoryRows(
+        connection: Connection,
+        orderId: String,
+        lockForUpdate: Boolean,
+    ): List<LockedOrderInventoryRow> {
+        val lockClause = if (lockForUpdate) " FOR UPDATE OF i" else ""
+        return connection.prepareStatement(
+            """
+            SELECT
+                i.id,
+                i.inventory_ref,
+                i.status,
+                i.base_status
+            FROM ticket_order_lines l
+            JOIN ticket_inventory_units i
+              ON i.id = l.inventory_unit_id
+            WHERE l.order_id = ?
+            ORDER BY i.id$lockClause
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(orderId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(
+                            LockedOrderInventoryRow(
+                                inventoryUnitId = result.getObject("id").toString(),
+                                inventoryRef = result.getString("inventory_ref"),
+                                status = result.getString("status"),
+                                baseStatus = result.getString("base_status"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Обновляет статус checkout order-а и его `updated_at`. */
+    private fun updateTicketOrderStatus(
+        connection: Connection,
+        orderId: String,
+        status: String,
+    ) {
+        connection.prepareStatement(
+            """
+            UPDATE ticket_orders
+            SET
+                status = ?,
+                updated_at = NOW()
+            WHERE id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, status)
+            statement.setObject(2, UUID.fromString(orderId))
+            statement.executeUpdate()
+        }
+    }
+
+    /** Обновляет статус checkout session и одновременно фиксирует последний provider status. */
+    private fun updateTicketCheckoutSessionState(
+        connection: Connection,
+        sessionId: String,
+        status: String,
+        providerStatus: String,
+    ) {
+        connection.prepareStatement(
+            """
+            UPDATE ticket_checkout_sessions
+            SET
+                status = ?,
+                provider_status = ?,
+                updated_at = NOW()
+            WHERE id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, status)
+            statement.setString(2, providerStatus)
+            statement.setObject(3, UUID.fromString(sessionId))
+            statement.executeUpdate()
+        }
+    }
+
+    /** Переводит все inventory unit-ы заказа в финальное `sold` состояние. */
+    private fun markInventorySold(
+        connection: Connection,
+        inventoryUnitIds: List<String>,
+    ) {
+        if (inventoryUnitIds.isEmpty()) return
+        connection.prepareStatement(
+            """
+            UPDATE ticket_inventory_units
+            SET
+                active_hold_id = NULL,
+                status = 'sold',
+                updated_at = NOW()
+            WHERE id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            inventoryUnitIds.forEach { inventoryUnitId ->
+                statement.setObject(1, UUID.fromString(inventoryUnitId))
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    /** Освобождает только те inventory unit-ы, которые все еще удерживаются локально как `pending_payment`. */
+    private fun releasePendingPaymentInventory(
+        connection: Connection,
+        inventoryUnitIds: List<String>,
+    ) {
+        if (inventoryUnitIds.isEmpty()) return
+        connection.prepareStatement(
+            """
+            UPDATE ticket_inventory_units
+            SET
+                active_hold_id = NULL,
+                status = base_status,
+                updated_at = NOW()
+            WHERE id = ?
+              AND status = 'pending_payment'
+            """.trimIndent(),
+        ).use { statement ->
+            inventoryUnitIds.forEach { inventoryUnitId ->
+                statement.setObject(1, UUID.fromString(inventoryUnitId))
+                statement.addBatch()
+            }
+            statement.executeBatch()
         }
     }
 
@@ -1170,4 +1746,19 @@ private data class CheckoutLockedHoldRow(
     val currency: String,
     val inventoryStatus: String,
     val activeHoldId: String?,
+)
+
+/**
+ * Lock-carrier для payment confirmation, содержащий текущее состояние inventory unit заказа.
+ *
+ * @property inventoryUnitId Идентификатор inventory unit.
+ * @property inventoryRef Стабильная ссылка inventory unit.
+ * @property status Текущее состояние inventory unit.
+ * @property baseStatus Базовая доступность unit-а вне hold/payment flow.
+ */
+private data class LockedOrderInventoryRow(
+    val inventoryUnitId: String,
+    val inventoryRef: String,
+    val status: String,
+    val baseStatus: String,
 )

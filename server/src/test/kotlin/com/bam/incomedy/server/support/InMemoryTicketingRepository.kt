@@ -3,12 +3,15 @@ package com.bam.incomedy.server.support
 import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredInventoryUnitBlueprint
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketCheckoutSession
+import com.bam.incomedy.server.db.StoredTicketCheckoutState
 import com.bam.incomedy.server.db.StoredTicketOrder
 import com.bam.incomedy.server.db.StoredTicketOrderLine
 import com.bam.incomedy.server.db.TicketingCheckoutConflictPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutCurrencyMismatchPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutHoldEventMismatchPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutHoldPermissionDeniedPersistenceException
+import com.bam.incomedy.server.db.TicketingCheckoutPaymentRecoveryRequiredPersistenceException
 import com.bam.incomedy.server.db.TicketingCheckoutPriceMissingPersistenceException
 import com.bam.incomedy.server.db.TicketingInventoryConflictPersistenceException
 import com.bam.incomedy.server.db.TicketingInventoryUnitNotFoundPersistenceException
@@ -37,6 +40,9 @@ class InMemoryTicketingRepository : TicketingRepository {
 
     /** Checkout order-ы по их id. */
     private val ordersById = linkedMapOf<String, MutableTicketOrderRecord>()
+
+    /** Checkout session-ы по их order id. */
+    private val checkoutSessionsByOrderId = linkedMapOf<String, MutableTicketCheckoutSessionRecord>()
 
     /** Счетчик inventory sync invocation-ов для route/service regression тестов. */
     var synchronizeInventoryCallCount: Int = 0
@@ -287,6 +293,184 @@ class InMemoryTicketingRepository : TicketingRepository {
         return order.toStored()
     }
 
+    override fun findTicketOrder(
+        orderId: String,
+        now: OffsetDateTime,
+    ): StoredTicketOrder? {
+        val order = ordersById[orderId] ?: return null
+        expireOverdueOrders(
+            eventId = order.eventId,
+            now = now,
+        )
+        return ordersById[orderId]?.toStored()
+    }
+
+    override fun findTicketCheckoutSession(
+        orderId: String,
+    ): StoredTicketCheckoutSession? {
+        return checkoutSessionsByOrderId[orderId]?.toStored()
+    }
+
+    override fun findTicketCheckoutStateByProviderPaymentId(
+        provider: String,
+        providerPaymentId: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        val session = checkoutSessionsByOrderId.values.firstOrNull { candidate ->
+            candidate.provider == provider && candidate.providerPaymentId == providerPaymentId
+        } ?: return null
+        val order = ordersById[session.orderId] ?: return null
+        return StoredTicketCheckoutState(
+            order = order.toStored(),
+            session = session.toStored(),
+        )
+    }
+
+    override fun createTicketCheckoutSession(
+        orderId: String,
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        confirmationUrl: String,
+        returnUrl: String,
+        checkoutExpiresAt: OffsetDateTime,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutSession {
+        val order = findTicketOrder(
+            orderId = orderId,
+            now = now,
+        ) ?: error("Checkout session requires existing order")
+        checkoutSessionsByOrderId[orderId]?.let { existing ->
+            return existing.toStored()
+        }
+        val session = MutableTicketCheckoutSessionRecord(
+            id = UUID.randomUUID().toString(),
+            orderId = orderId,
+            provider = provider,
+            status = if (order.status == "expired") "expired" else "pending_redirect",
+            providerPaymentId = providerPaymentId,
+            providerStatus = providerStatus,
+            confirmationUrl = confirmationUrl,
+            returnUrl = returnUrl,
+            checkoutExpiresAt = checkoutExpiresAt,
+        )
+        checkoutSessionsByOrderId[orderId] = session
+        return session.toStored()
+    }
+
+    override fun markTicketCheckoutWaitingForCapture(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        val session = checkoutSessionsByOrderId.values.firstOrNull { candidate ->
+            candidate.provider == provider && candidate.providerPaymentId == providerPaymentId
+        } ?: return null
+        val order = ordersById[session.orderId] ?: return null
+        if (order.status == "awaiting_payment" &&
+            session.status != "succeeded" &&
+            session.status != "canceled"
+        ) {
+            session.status = "waiting_for_capture"
+        }
+        session.providerStatus = providerStatus
+        return StoredTicketCheckoutState(
+            order = order.toStored(),
+            session = session.toStored(),
+        )
+    }
+
+    override fun markTicketCheckoutSucceeded(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        val session = checkoutSessionsByOrderId.values.firstOrNull { candidate ->
+            candidate.provider == provider && candidate.providerPaymentId == providerPaymentId
+        } ?: return null
+        val order = ordersById[session.orderId] ?: return null
+        val inventoryRecords = order.lines.map { line ->
+            inventoryByEventId[order.eventId]
+                ?.values
+                ?.firstOrNull { it.id == line.inventoryUnitId }
+                ?: error("Inventory unit ${line.inventoryUnitId} must exist for paid checkout")
+        }
+        when (order.status) {
+            "paid" -> Unit
+            "canceled" -> throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                orderId = order.id,
+                reasonCode = "order_canceled",
+            )
+
+            "awaiting_payment" -> {
+                if (inventoryRecords.any { it.status in setOf("held", "sold") }) {
+                    throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                        orderId = order.id,
+                        reasonCode = "inventory_reassigned",
+                    )
+                }
+            }
+
+            "expired" -> {
+                if (inventoryRecords.any { it.status in setOf("held", "pending_payment", "sold") }) {
+                    throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                        orderId = order.id,
+                        reasonCode = "inventory_reassigned",
+                    )
+                }
+            }
+
+            else -> throw TicketingCheckoutPaymentRecoveryRequiredPersistenceException(
+                orderId = order.id,
+                reasonCode = "order_state_invalid",
+            )
+        }
+        order.status = "paid"
+        session.status = "succeeded"
+        session.providerStatus = providerStatus
+        inventoryRecords.forEach { inventoryRecord ->
+            inventoryRecord.activeHoldId = null
+            inventoryRecord.status = "sold"
+        }
+        return StoredTicketCheckoutState(
+            order = order.toStored(),
+            session = session.toStored(),
+        )
+    }
+
+    override fun markTicketCheckoutCanceled(
+        provider: String,
+        providerPaymentId: String,
+        providerStatus: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckoutState? {
+        val session = checkoutSessionsByOrderId.values.firstOrNull { candidate ->
+            candidate.provider == provider && candidate.providerPaymentId == providerPaymentId
+        } ?: return null
+        val order = ordersById[session.orderId] ?: return null
+        if (order.status != "paid") {
+            order.status = "canceled"
+            order.lines.forEach { line ->
+                val inventoryRecord = inventoryByEventId[order.eventId]
+                    ?.values
+                    ?.firstOrNull { it.id == line.inventoryUnitId }
+                    ?: return@forEach
+                if (inventoryRecord.status == "pending_payment") {
+                    inventoryRecord.activeHoldId = null
+                    inventoryRecord.status = inventoryRecord.baseStatus
+                }
+            }
+        }
+        session.status = if (order.status == "paid") "succeeded" else "canceled"
+        session.providerStatus = providerStatus
+        return StoredTicketCheckoutState(
+            order = order.toStored(),
+            session = session.toStored(),
+        )
+    }
+
     override fun releaseSeatHold(
         holdId: String,
         userId: String,
@@ -360,6 +544,7 @@ class InMemoryTicketingRepository : TicketingRepository {
             }
             .forEach { order ->
                 order.status = "expired"
+                checkoutSessionsByOrderId[order.id]?.status = "expired"
                 order.lines.forEach { line ->
                     val inventoryRecord = inventoryByEventId[eventId]
                         ?.values
@@ -475,6 +660,34 @@ class InMemoryTicketingRepository : TicketingRepository {
                 totalMinor = totalMinor,
                 checkoutExpiresAt = checkoutExpiresAt,
                 lines = lines.toList(),
+            )
+        }
+    }
+
+    /** Mutable checkout session record. */
+    private data class MutableTicketCheckoutSessionRecord(
+        val id: String,
+        val orderId: String,
+        val provider: String,
+        var status: String,
+        val providerPaymentId: String,
+        var providerStatus: String,
+        val confirmationUrl: String,
+        val returnUrl: String,
+        val checkoutExpiresAt: OffsetDateTime,
+    ) {
+        /** Преобразует mutable checkout session в stored model. */
+        fun toStored(): StoredTicketCheckoutSession {
+            return StoredTicketCheckoutSession(
+                id = id,
+                orderId = orderId,
+                provider = provider,
+                status = status,
+                providerPaymentId = providerPaymentId,
+                providerStatus = providerStatus,
+                confirmationUrl = confirmationUrl,
+                returnUrl = returnUrl,
+                checkoutExpiresAt = checkoutExpiresAt,
             )
         }
     }
