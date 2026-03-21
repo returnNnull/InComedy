@@ -7,6 +7,7 @@ import com.bam.incomedy.server.db.StoredEventAvailabilityOverride
 import com.bam.incomedy.server.db.StoredEventPriceZone
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
+import com.bam.incomedy.server.db.WorkspacePermissionRole
 import com.bam.incomedy.server.observability.DiagnosticsQuery
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
@@ -852,6 +853,212 @@ class TicketingRoutesTest {
         assertTrue(orderResponse.bodyAsText().contains(""""status":"paid""""))
     }
 
+    /** Проверяет, что после подтвержденной оплаты пользователь видит выданный билет с QR payload. */
+    @Test
+    fun `audience user can list issued tickets after successful payment`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val qrPayload = completeSuccessfulTicketPayment(
+            accessToken = accessToken,
+            eventId = eventId,
+            checkoutGateway = checkoutGateway,
+            ticketingRepository = ticketingRepository,
+        )
+
+        val response = client.get("/api/v1/me/tickets") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""event_id":"$eventId""""))
+        assertTrue(body.contains(""""status":"issued""""))
+        assertTrue(body.contains(""""qr_payload":"$qrPayload""""))
+
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.ticket.list.success",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("1", event.metadata["count"])
+        assertEquals("0", event.metadata["checkedInCount"])
+    }
+
+    /** Проверяет, что checker может погасить билет, а повторный scan помечается как duplicate. */
+    @Test
+    fun `checker can scan issued ticket and repeated scan becomes duplicate`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+            putCheckerUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val audienceAccessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val checkerAccessToken = tokenService.issue(
+            userId = CHECKER_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+        grantWorkspaceAccess(
+            userRepository = userRepository,
+            inviteeUserId = CHECKER_ID,
+            inviteeIdentifier = "event_checker",
+            permissionRole = WorkspacePermissionRole.CHECKER,
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val qrPayload = completeSuccessfulTicketPayment(
+            accessToken = audienceAccessToken,
+            eventId = eventId,
+            checkoutGateway = checkoutGateway,
+            ticketingRepository = ticketingRepository,
+        )
+
+        val firstResponse = client.post("/api/v1/checkin/scan") {
+            header(HttpHeaders.Authorization, "Bearer $checkerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr_payload":"$qrPayload"}""")
+        }
+        val secondResponse = client.post("/api/v1/checkin/scan") {
+            header(HttpHeaders.Authorization, "Bearer $checkerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr_payload":"$qrPayload"}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, firstResponse.status)
+        val firstBody = firstResponse.bodyAsText()
+        assertTrue(firstBody.contains(""""result":"checked_in""""))
+        assertTrue(firstBody.contains(""""status":"checked_in""""))
+        assertTrue(!firstBody.contains(qrPayload))
+
+        assertEquals(HttpStatusCode.OK, secondResponse.status)
+        val secondBody = secondResponse.bodyAsText()
+        assertTrue(secondBody.contains(""""result":"duplicate""""))
+        assertTrue(secondBody.contains(""""status":"checked_in""""))
+        assertTrue(!secondBody.contains(qrPayload))
+
+        val requestId = assertNotNull(secondResponse.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.checkin.scan.success",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("duplicate", event.metadata["result"])
+        assertEquals("checked_in", event.metadata["status"])
+    }
+
+    /** Проверяет, что пользователь без staff-доступа не может выполнить check-in даже со своим QR. */
+    @Test
+    fun `audience user cannot scan ticket without checker access`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val checkoutGateway = FakeTicketCheckoutGateway()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            checkoutGateway = checkoutGateway,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val qrPayload = completeSuccessfulTicketPayment(
+            accessToken = accessToken,
+            eventId = eventId,
+            checkoutGateway = checkoutGateway,
+            ticketingRepository = ticketingRepository,
+        )
+
+        val response = client.post("/api/v1/checkin/scan") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr_payload":"$qrPayload"}""")
+        }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        assertTrue(response.bodyAsText().contains("forbidden"))
+
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.checkin.forbidden",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("ticket", event.metadata["resource"])
+        assertEquals("checkin_forbidden", event.metadata["reason"])
+    }
+
     /** Проверяет, что `payment.canceled` отменяет order и возвращает inventory в продажу. */
     @Test
     fun `yookassa canceled webhook releases pending order inventory`() = testApplication {
@@ -1512,6 +1719,66 @@ class TicketingRoutesTest {
             ?: error("Order id not found in response")
     }
 
+    /** Доводит checkout до статуса `paid` и возвращает QR payload выпущенного билета. */
+    private suspend fun ApplicationTestBuilder.completeSuccessfulTicketPayment(
+        accessToken: String,
+        eventId: String,
+        checkoutGateway: FakeTicketCheckoutGateway,
+        ticketingRepository: InMemoryTicketingRepository,
+    ): String {
+        val holdId = createHold(
+            accessToken = accessToken,
+            eventId = eventId,
+            inventoryRef = "seat:seat-a-2",
+        )
+        val orderId = createOrder(
+            accessToken = accessToken,
+            eventId = eventId,
+            holdIds = listOf(holdId),
+        )
+        val checkoutResponse = client.post("/api/v1/events/$eventId/orders/$orderId/checkout") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+        }
+        assertEquals(HttpStatusCode.OK, checkoutResponse.status)
+        val paymentId = checkoutGateway.firstPaymentId()
+        checkoutGateway.updatePaymentStatus(
+            providerPaymentId = paymentId,
+            status = "succeeded",
+        )
+        val webhookResponse = client.post("/api/v1/webhooks/payments") {
+            header(HttpHeaders.XForwardedFor, "185.71.76.5")
+            contentType(ContentType.Application.Json)
+            setBody("""{"type":"notification","event":"payment.succeeded","object":{"id":"$paymentId"}}""")
+        }
+        assertEquals(HttpStatusCode.OK, webhookResponse.status)
+        return ticketingRepository.listIssuedTickets(
+            userId = AUDIENCE_ID,
+            now = NOW,
+        ).single().qrPayload
+    }
+
+    /** Выдает пользователю staff membership внутри workspace события для check-in тестов. */
+    private fun grantWorkspaceAccess(
+        userRepository: InMemoryUserRepository,
+        inviteeUserId: String,
+        inviteeIdentifier: String,
+        permissionRole: WorkspacePermissionRole,
+    ) {
+        val workspace = userRepository.listWorkspaces(OWNER_ID).single()
+        val membership = userRepository.createWorkspaceInvitation(
+            workspaceId = workspace.id,
+            invitedByUserId = OWNER_ID,
+            inviteeIdentifier = inviteeIdentifier,
+            permissionRole = permissionRole,
+        )
+        val accepted = userRepository.respondToWorkspaceInvitation(
+            userId = inviteeUserId,
+            membershipId = membership.membershipId,
+            accept = true,
+        )
+        assertTrue(accepted)
+    }
+
     /** Создает тестовое событие с snapshot seat/zone/table inventory и event-local overrides. */
     private fun seedEvent(
         userRepository: InMemoryUserRepository,
@@ -1645,6 +1912,22 @@ class TicketingRoutesTest {
         )
     }
 
+    /** Добавляет checker-пользователя для staff check-in сценариев. */
+    private fun InMemoryUserRepository.putCheckerUser() {
+        putUser(
+            StoredUser(
+                id = CHECKER_ID,
+                displayName = "Event Checker",
+                username = "event_checker",
+                photoUrl = null,
+                sessionRevokedAt = null,
+                linkedProviders = setOf(AuthProvider.PASSWORD),
+                roles = setOf(UserRole.AUDIENCE),
+                activeRole = UserRole.AUDIENCE,
+            ),
+        )
+    }
+
     /** Создает JWT token service для ticketing route-тестов. */
     private fun tokenService(): JwtSessionTokenService {
         return JwtSessionTokenService(
@@ -1728,6 +2011,7 @@ class TicketingRoutesTest {
         const val OWNER_ID = "00000000-0000-0000-0000-000000000501"
         const val AUDIENCE_ID = "00000000-0000-0000-0000-000000000502"
         const val SECOND_AUDIENCE_ID = "00000000-0000-0000-0000-000000000503"
+        const val CHECKER_ID = "00000000-0000-0000-0000-000000000504"
         const val MISSING_EVENT_ID = "00000000-0000-0000-0000-0000000009e1"
         const val MISSING_HOLD_ID = "00000000-0000-0000-0000-0000000009e2"
     }

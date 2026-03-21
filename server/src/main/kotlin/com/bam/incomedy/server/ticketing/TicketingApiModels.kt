@@ -1,7 +1,9 @@
 package com.bam.incomedy.server.ticketing
 
 import com.bam.incomedy.server.db.StoredInventoryUnit
+import com.bam.incomedy.server.db.StoredIssuedTicket
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketCheckInResult
 import com.bam.incomedy.server.db.StoredTicketCheckoutSession
 import com.bam.incomedy.server.db.StoredTicketOrder
 import com.bam.incomedy.server.db.StoredTicketOrderLine
@@ -43,6 +45,18 @@ data class CreateTicketOrderRequest(
     /** Возвращает канонический и очищенный список hold id для backend validation. */
     fun toHoldIds(): List<String> {
         return holdIds.map(String::trim).filter(String::isNotBlank)
+    }
+}
+
+/** DTO запроса check-in по QR payload. */
+@Serializable
+data class CheckInTicketRequest(
+    @SerialName("qr_payload")
+    val qrPayload: String,
+) {
+    /** Возвращает очищенный QR payload для server-side валидации. */
+    fun toQrPayload(): String {
+        return qrPayload.trim()
     }
 }
 
@@ -162,6 +176,80 @@ data class TicketOrderResponse(
                 totalMinor = storedOrder.totalMinor,
                 checkoutExpiresAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(storedOrder.checkoutExpiresAt),
                 lines = storedOrder.lines.map(TicketOrderLineResponse::fromStored),
+            )
+        }
+    }
+}
+
+/** DTO списка выданных билетов. */
+@Serializable
+data class TicketListResponse(
+    val tickets: List<TicketResponse>,
+)
+
+/** DTO выданного билета. */
+@Serializable
+data class TicketResponse(
+    val id: String,
+    @SerialName("order_id")
+    val orderId: String,
+    @SerialName("event_id")
+    val eventId: String,
+    @SerialName("inventory_unit_id")
+    val inventoryUnitId: String,
+    @SerialName("inventory_ref")
+    val inventoryRef: String,
+    val label: String,
+    val status: String,
+    @SerialName("qr_payload")
+    val qrPayload: String? = null,
+    @SerialName("issued_at")
+    val issuedAt: String,
+    @SerialName("checked_in_at")
+    val checkedInAt: String? = null,
+    @SerialName("checked_in_by_user_id")
+    val checkedInByUserId: String? = null,
+) {
+    companion object {
+        /** Маппит stored билет в API response и при необходимости скрывает сам QR payload. */
+        fun fromStored(
+            storedTicket: StoredIssuedTicket,
+            includeQrPayload: Boolean = true,
+        ): TicketResponse {
+            return TicketResponse(
+                id = storedTicket.id,
+                orderId = storedTicket.orderId,
+                eventId = storedTicket.eventId,
+                inventoryUnitId = storedTicket.inventoryUnitId,
+                inventoryRef = storedTicket.inventoryRef,
+                label = storedTicket.label,
+                status = storedTicket.status,
+                qrPayload = storedTicket.qrPayload.takeIf { includeQrPayload },
+                issuedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(storedTicket.issuedAt),
+                checkedInAt = storedTicket.checkedInAt?.let(DateTimeFormatter.ISO_OFFSET_DATE_TIME::format),
+                checkedInByUserId = storedTicket.checkedInByUserId,
+            )
+        }
+    }
+}
+
+/** DTO результата сканирования билета на входе. */
+@Serializable
+data class TicketCheckInResponse(
+    val result: String,
+    val ticket: TicketResponse,
+) {
+    companion object {
+        /** Маппит stored результат прохода, не повторяя сам QR payload в ответе checker-у. */
+        fun fromStored(
+            storedResult: StoredTicketCheckInResult,
+        ): TicketCheckInResponse {
+            return TicketCheckInResponse(
+                result = storedResult.resultCode,
+                ticket = TicketResponse.fromStored(
+                    storedTicket = storedResult.ticket,
+                    includeQrPayload = false,
+                ),
             )
         }
     }

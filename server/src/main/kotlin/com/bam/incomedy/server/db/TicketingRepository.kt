@@ -131,6 +131,46 @@ data class StoredTicketCheckoutState(
 )
 
 /**
+ * Выданный билет поверх оплаченного заказа.
+ *
+ * @property id Идентификатор билета.
+ * @property orderId Идентификатор заказа-владельца.
+ * @property eventId Идентификатор события.
+ * @property inventoryUnitId Идентификатор inventory unit, из которой возник билет.
+ * @property inventoryRef Стабильная ссылка на место/слот.
+ * @property label Человекочитаемая подпись билета.
+ * @property status Текущее состояние билета.
+ * @property qrPayload Непрозрачная строка для QR-кода.
+ * @property issuedAt Момент выпуска билета.
+ * @property checkedInAt Момент прохода на входе, если он уже зафиксирован.
+ * @property checkedInByUserId Идентификатор сотрудника, который зафиксировал проход.
+ */
+data class StoredIssuedTicket(
+    val id: String,
+    val orderId: String,
+    val eventId: String,
+    val inventoryUnitId: String,
+    val inventoryRef: String,
+    val label: String,
+    val status: String,
+    val qrPayload: String,
+    val issuedAt: OffsetDateTime,
+    val checkedInAt: OffsetDateTime? = null,
+    val checkedInByUserId: String? = null,
+)
+
+/**
+ * Результат server-side обработки check-in.
+ *
+ * @property resultCode Низкокардинальный код результата (`checked_in` или `duplicate`).
+ * @property ticket Актуальное состояние билета после обработки.
+ */
+data class StoredTicketCheckInResult(
+    val resultCode: String,
+    val ticket: StoredIssuedTicket,
+)
+
+/**
  * Сохраненная inventory unit с опциональным активным hold-ом.
  *
  * @property id Идентификатор inventory unit.
@@ -218,6 +258,18 @@ interface TicketingRepository {
         now: OffsetDateTime,
     ): StoredTicketOrder?
 
+    /** Возвращает все билеты текущего пользователя, выпущенные по его оплаченным заказам. */
+    fun listIssuedTickets(
+        userId: String,
+        now: OffsetDateTime,
+    ): List<StoredIssuedTicket>
+
+    /** Ищет билет по QR payload для check-in flow. */
+    fun findIssuedTicketByQrPayload(
+        qrPayload: String,
+        now: OffsetDateTime,
+    ): StoredIssuedTicket?
+
     /** Возвращает активный checkout session для order-а, если он уже был создан. */
     fun findTicketCheckoutSession(
         orderId: String,
@@ -265,6 +317,13 @@ interface TicketingRepository {
         providerStatus: String,
         now: OffsetDateTime,
     ): StoredTicketCheckoutState?
+
+    /** Идемпотентно отмечает билет как использованный на входе. */
+    fun markIssuedTicketCheckedIn(
+        ticketId: String,
+        checkedInByUserId: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckInResult?
 
     /** Освобождает hold, если он принадлежит текущему пользователю и еще активен. */
     fun releaseSeatHold(

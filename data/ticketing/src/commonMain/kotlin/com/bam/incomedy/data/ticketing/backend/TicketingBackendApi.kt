@@ -9,8 +9,12 @@ import com.bam.incomedy.domain.ticketing.InventorySnapshotTargetType
 import com.bam.incomedy.domain.ticketing.InventoryStatus
 import com.bam.incomedy.domain.ticketing.InventoryType
 import com.bam.incomedy.domain.ticketing.InventoryUnit
+import com.bam.incomedy.domain.ticketing.IssuedTicket
+import com.bam.incomedy.domain.ticketing.IssuedTicketStatus
 import com.bam.incomedy.domain.ticketing.SeatHold
 import com.bam.incomedy.domain.ticketing.SeatHoldStatus
+import com.bam.incomedy.domain.ticketing.TicketCheckInResult
+import com.bam.incomedy.domain.ticketing.TicketCheckInResultCode
 import com.bam.incomedy.domain.ticketing.TicketCheckoutProvider
 import com.bam.incomedy.domain.ticketing.TicketCheckoutSession
 import com.bam.incomedy.domain.ticketing.TicketCheckoutSessionStatus
@@ -113,6 +117,19 @@ class TicketingBackendApi(
         }
     }
 
+    /** Загружает список билетов текущего пользователя. */
+    suspend fun listMyTickets(
+        accessToken: String,
+    ): Result<List<IssuedTicket>> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/me/tickets") {
+                bearer(accessToken)
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<TicketListResponse>().tickets.map(TicketPayload::toDomain)
+        }
+    }
+
     /** Стартует внешний checkout для существующего ticket order-а. */
     suspend fun startTicketCheckout(
         accessToken: String,
@@ -125,6 +142,22 @@ class TicketingBackendApi(
             }
             ensureBackendSuccess(response, parser)
             response.body<TicketCheckoutSessionPayload>().toDomain()
+        }
+    }
+
+    /** Проверяет билет на входе по QR payload. */
+    suspend fun scanTicket(
+        accessToken: String,
+        qrPayload: String,
+    ): Result<TicketCheckInResult> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/checkin/scan") {
+                bearer(accessToken)
+                contentType(ContentType.Application.Json)
+                setBody(CheckInTicketRequest(qrPayload = qrPayload))
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<TicketCheckInResponse>().toDomain()
         }
     }
 
@@ -149,6 +182,12 @@ private data class InventoryListResponse(
     val inventory: List<InventoryUnitPayload>,
 )
 
+/** DTO списка выданных билетов. */
+@Serializable
+private data class TicketListResponse(
+    val tickets: List<TicketPayload>,
+)
+
 /** DTO запроса создания hold-а. */
 @Serializable
 private data class CreateSeatHoldRequest(
@@ -161,6 +200,13 @@ private data class CreateSeatHoldRequest(
 private data class CreateTicketOrderRequest(
     @SerialName("hold_ids")
     val holdIds: List<String>,
+)
+
+/** DTO запроса проверки билета по QR payload. */
+@Serializable
+private data class CheckInTicketRequest(
+    @SerialName("qr_payload")
+    val qrPayload: String,
 )
 
 /** DTO inventory unit. */
@@ -295,6 +341,62 @@ private data class TicketCheckoutSessionPayload(
             status = requireNotNull(TicketCheckoutSessionStatus.fromWireName(status)),
             confirmationUrl = confirmationUrl,
             checkoutExpiresAtIso = checkoutExpiresAt,
+        )
+    }
+}
+
+/** DTO выданного билета. */
+@Serializable
+private data class TicketPayload(
+    val id: String,
+    @SerialName("order_id")
+    val orderId: String,
+    @SerialName("event_id")
+    val eventId: String,
+    @SerialName("inventory_unit_id")
+    val inventoryUnitId: String,
+    @SerialName("inventory_ref")
+    val inventoryRef: String,
+    val label: String,
+    val status: String,
+    @SerialName("qr_payload")
+    val qrPayload: String? = null,
+    @SerialName("issued_at")
+    val issuedAt: String,
+    @SerialName("checked_in_at")
+    val checkedInAt: String? = null,
+    @SerialName("checked_in_by_user_id")
+    val checkedInByUserId: String? = null,
+) {
+    /** Маппит transport DTO билета в доменную модель. */
+    fun toDomain(): IssuedTicket {
+        return IssuedTicket(
+            id = id,
+            orderId = orderId,
+            eventId = eventId,
+            inventoryUnitId = inventoryUnitId,
+            inventoryRef = inventoryRef,
+            label = label,
+            status = requireNotNull(IssuedTicketStatus.fromWireName(status)),
+            qrPayload = qrPayload,
+            issuedAtIso = issuedAt,
+            checkedInAtIso = checkedInAt,
+            checkedInByUserId = checkedInByUserId,
+        )
+    }
+}
+
+/** DTO ответа сканирования билета на входе. */
+@Serializable
+private data class TicketCheckInResponse(
+    val result: String,
+    val ticket: TicketPayload,
+) {
+    /** Маппит transport DTO результата сканирования в доменную модель. */
+    fun toDomain(): TicketCheckInResult {
+        return TicketCheckInResult(
+            resultCode = requireNotNull(TicketCheckInResultCode.fromWireName(result)),
+            ticket = ticket.toDomain(),
         )
     }
 }

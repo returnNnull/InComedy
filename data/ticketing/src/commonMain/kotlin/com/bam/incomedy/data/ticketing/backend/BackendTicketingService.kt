@@ -1,7 +1,9 @@
 package com.bam.incomedy.data.ticketing.backend
 
 import com.bam.incomedy.domain.ticketing.InventoryUnit
+import com.bam.incomedy.domain.ticketing.IssuedTicket
 import com.bam.incomedy.domain.ticketing.SeatHold
+import com.bam.incomedy.domain.ticketing.TicketCheckInResult
 import com.bam.incomedy.domain.ticketing.TicketCheckoutSession
 import com.bam.incomedy.domain.ticketing.TicketOrder
 import com.bam.incomedy.domain.ticketing.TicketingService
@@ -72,6 +74,15 @@ class BackendTicketingService(
         )
     }
 
+    /** Возвращает список билетов текущего пользователя через backend API. */
+    override suspend fun listMyTickets(
+        accessToken: String,
+    ): Result<List<IssuedTicket>> {
+        return ticketingBackendApi.listMyTickets(
+            accessToken = accessToken,
+        )
+    }
+
     /** Стартует внешний checkout через backend API. */
     override suspend fun startTicketCheckout(
         accessToken: String,
@@ -82,6 +93,17 @@ class BackendTicketingService(
             accessToken = accessToken,
             eventId = eventId,
             orderId = orderId,
+        )
+    }
+
+    /** Отправляет QR на серверную проверку для check-in сценария. */
+    override suspend fun scanTicket(
+        accessToken: String,
+        qrPayload: String,
+    ): Result<TicketCheckInResult> {
+        return ticketingBackendApi.scanTicket(
+            accessToken = accessToken,
+            qrPayload = qrPayload,
         )
     }
 

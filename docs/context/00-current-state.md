@@ -12,14 +12,14 @@ Use this file as the bootstrap entry point for every new chat/session before rea
 
 ## Current Snapshot
 
-- Latest accepted decision: `D-065`
+- Latest accepted decision: `D-066`
 - Latest decisions part: `governance/decisions-log/decisions-log-part-05.md`
 - Latest session-log part: `governance/session-log/session-log-part-17.md`
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-05.md`
 - Latest task-request log part: `handoff/task-request-template/task-request-template-part-28.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: audience ticketing path on top of public catalog, public inventory, and provider-agnostic checkout-order / paid-order lifecycle foundations, while the concrete external PSP remains unconfirmed
-- Current next bounded step: obtain explicit user confirmation before treating any external PSP as the selected checkout path; only after that continue provider-specific payment confirmation toward QR issuance and check-in
+- Current `P0` focus: audience ticketing path on top of public catalog, public inventory, provider-agnostic checkout-order lifecycle, and the delivered server-side provider-agnostic ticket issuance / QR / check-in foundation, while the concrete external PSP is intentionally deferred
+- Current next bounded step: wire the new ticket issuance / QR / checker check-in contracts into shared/mobile audience and staff surfaces (`My Tickets`, QR presentation, checker scan UX), while concrete external PSP selection and activation remain deferred until the final pre-publication stage
 
 ## Active Constraints
 

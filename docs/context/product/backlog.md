@@ -11,6 +11,7 @@ Current implementation sequence note (`2026-03-14`):
 - Reset the active MVP auth standard to login + password.
 - Keep provider-agnostic identity, roles, active-role context, and organizer workspace membership as the internal auth foundation.
 - Implement credential auth first, then VK ID as the external provider; phone OTP, Telegram, and Google are no longer part of the active MVP auth scope.
+- Keep the external PSP decision deferred until the final pre-publication stage; continue ticketing delivery through provider-agnostic order/ticket/check-in foundations first.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
 - Auth via standard login + password, with provider-agnostic extension points and VK ID as the external provider.
@@ -20,7 +21,7 @@ Current implementation sequence note (`2026-03-14`):
 - Event creation/editing/publication and sales lifecycle states.
 - Event discovery by city/date/price.
 - Seat/zone reservation with hold expiration and protected inventory transitions.
-- Ticket checkout via external PSP, QR ticket issuance, and check-in.
+- Ticket checkout foundation, QR ticket issuance, and check-in, with concrete external PSP activation deferred until final pre-publication tasks.
 - Comedian applications + organizer approve/reject/waitlist + lineup ordering.
 - Live stage status (`current performer`, `next up`) with real-time updates.
 - Basic donations to verified comedians with payout verification gate.

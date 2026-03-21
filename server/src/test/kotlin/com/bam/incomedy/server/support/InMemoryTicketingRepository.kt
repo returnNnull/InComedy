@@ -2,7 +2,9 @@ package com.bam.incomedy.server.support
 
 import com.bam.incomedy.server.db.StoredInventoryUnit
 import com.bam.incomedy.server.db.StoredInventoryUnitBlueprint
+import com.bam.incomedy.server.db.StoredIssuedTicket
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketCheckInResult
 import com.bam.incomedy.server.db.StoredTicketCheckoutSession
 import com.bam.incomedy.server.db.StoredTicketCheckoutState
 import com.bam.incomedy.server.db.StoredTicketOrder
@@ -43,6 +45,15 @@ class InMemoryTicketingRepository : TicketingRepository {
 
     /** Checkout session-ы по их order id. */
     private val checkoutSessionsByOrderId = linkedMapOf<String, MutableTicketCheckoutSessionRecord>()
+
+    /** Выданные билеты по их id. */
+    private val ticketsById = linkedMapOf<String, MutableIssuedTicketRecord>()
+
+    /** Индекс ticket ids по order id для идемпотентного выпуска билетов. */
+    private val ticketIdsByOrderId = linkedMapOf<String, MutableList<String>>()
+
+    /** Индекс QR payload -> ticket id для check-in сценария. */
+    private val ticketIdByQrPayload = linkedMapOf<String, String>()
 
     /** Счетчик inventory sync invocation-ов для route/service regression тестов. */
     var synchronizeInventoryCallCount: Int = 0
@@ -305,6 +316,37 @@ class InMemoryTicketingRepository : TicketingRepository {
         return ordersById[orderId]?.toStored()
     }
 
+    override fun listIssuedTickets(
+        userId: String,
+        now: OffsetDateTime,
+    ): List<StoredIssuedTicket> {
+        ordersById.values
+            .filter { order -> order.userId == userId && order.status == "paid" }
+            .forEach { order ->
+                issueTicketsForOrder(
+                    order = order,
+                    now = now,
+                )
+            }
+        return ticketsById.values
+            .filter { ticket ->
+                ordersById[ticket.orderId]?.userId == userId
+            }
+            .sortedWith(
+                compareByDescending<MutableIssuedTicketRecord> { it.issuedAt }
+                    .thenBy(MutableIssuedTicketRecord::inventoryRef),
+            )
+            .map(MutableIssuedTicketRecord::toStored)
+    }
+
+    override fun findIssuedTicketByQrPayload(
+        qrPayload: String,
+        now: OffsetDateTime,
+    ): StoredIssuedTicket? {
+        val ticketId = ticketIdByQrPayload[qrPayload] ?: return null
+        return ticketsById[ticketId]?.toStored()
+    }
+
     override fun findTicketCheckoutSession(
         orderId: String,
     ): StoredTicketCheckoutSession? {
@@ -434,6 +476,10 @@ class InMemoryTicketingRepository : TicketingRepository {
             inventoryRecord.activeHoldId = null
             inventoryRecord.status = "sold"
         }
+        issueTicketsForOrder(
+            order = order,
+            now = now,
+        )
         return StoredTicketCheckoutState(
             order = order.toStored(),
             session = session.toStored(),
@@ -469,6 +515,30 @@ class InMemoryTicketingRepository : TicketingRepository {
             order = order.toStored(),
             session = session.toStored(),
         )
+    }
+
+    override fun markIssuedTicketCheckedIn(
+        ticketId: String,
+        checkedInByUserId: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckInResult? {
+        val ticket = ticketsById[ticketId] ?: return null
+        return when (ticket.status) {
+            "issued" -> {
+                ticket.status = "checked_in"
+                ticket.checkedInAt = now
+                ticket.checkedInByUserId = checkedInByUserId
+                StoredTicketCheckInResult(
+                    resultCode = "checked_in",
+                    ticket = ticket.toStored(),
+                )
+            }
+
+            else -> StoredTicketCheckInResult(
+                resultCode = "duplicate",
+                ticket = ticket.toStored(),
+            )
+        }
     }
 
     override fun releaseSeatHold(
@@ -563,6 +633,39 @@ class InMemoryTicketingRepository : TicketingRepository {
         hold.status = "expired"
         inventoryRecord.activeHoldId = null
         inventoryRecord.status = inventoryRecord.baseStatus
+    }
+
+    /** Идемпотентно выпускает билеты для оплаченного заказа, не создавая дублей при повторной оплате/webhook. */
+    private fun issueTicketsForOrder(
+        order: MutableTicketOrderRecord,
+        now: OffsetDateTime,
+    ) {
+        if (order.status != "paid") return
+        val orderTicketIds = ticketIdsByOrderId.getOrPut(order.id) { mutableListOf() }
+        order.lines.forEach { line ->
+            val existingTicketId = orderTicketIds.firstOrNull { ticketId ->
+                ticketsById[ticketId]?.inventoryUnitId == line.inventoryUnitId
+            }
+            if (existingTicketId != null) {
+                return@forEach
+            }
+            val ticket = MutableIssuedTicketRecord(
+                id = UUID.randomUUID().toString(),
+                orderId = order.id,
+                eventId = order.eventId,
+                inventoryUnitId = line.inventoryUnitId,
+                inventoryRef = line.inventoryRef,
+                label = line.label,
+                status = "issued",
+                qrPayload = "incomedy.ticket.v1:${UUID.randomUUID()}",
+                issuedAt = now,
+                checkedInAt = null,
+                checkedInByUserId = null,
+            )
+            ticketsById[ticket.id] = ticket
+            orderTicketIds += ticket.id
+            ticketIdByQrPayload[ticket.qrPayload] = ticket.id
+        }
     }
 
     /** Собирает read-only inventory snapshot из mutable event-local state. */
@@ -688,6 +791,38 @@ class InMemoryTicketingRepository : TicketingRepository {
                 confirmationUrl = confirmationUrl,
                 returnUrl = returnUrl,
                 checkoutExpiresAt = checkoutExpiresAt,
+            )
+        }
+    }
+
+    /** Mutable issued ticket record. */
+    private data class MutableIssuedTicketRecord(
+        val id: String,
+        val orderId: String,
+        val eventId: String,
+        val inventoryUnitId: String,
+        val inventoryRef: String,
+        val label: String,
+        var status: String,
+        val qrPayload: String,
+        val issuedAt: OffsetDateTime,
+        var checkedInAt: OffsetDateTime?,
+        var checkedInByUserId: String?,
+    ) {
+        /** Преобразует mutable ticket в stored model. */
+        fun toStored(): StoredIssuedTicket {
+            return StoredIssuedTicket(
+                id = id,
+                orderId = orderId,
+                eventId = eventId,
+                inventoryUnitId = inventoryUnitId,
+                inventoryRef = inventoryRef,
+                label = label,
+                status = status,
+                qrPayload = qrPayload,
+                issuedAt = issuedAt,
+                checkedInAt = checkedInAt,
+                checkedInByUserId = checkedInByUserId,
             )
         }
     }

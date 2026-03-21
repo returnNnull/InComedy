@@ -38,12 +38,23 @@ interface TicketingService {
         orderId: String,
     ): Result<TicketOrder>
 
+    /** Возвращает список билетов текущего пользователя. */
+    suspend fun listMyTickets(
+        accessToken: String,
+    ): Result<List<IssuedTicket>>
+
     /** Стартует внешний checkout для уже созданного pending order-а текущего пользователя. */
     suspend fun startTicketCheckout(
         accessToken: String,
         eventId: String,
         orderId: String,
     ): Result<TicketCheckoutSession>
+
+    /** Проверяет билет по QR для owner/manager/checker flow. */
+    suspend fun scanTicket(
+        accessToken: String,
+        qrPayload: String,
+    ): Result<TicketCheckInResult>
 
     /** Освобождает ранее созданный hold текущего пользователя. */
     suspend fun releaseSeatHold(

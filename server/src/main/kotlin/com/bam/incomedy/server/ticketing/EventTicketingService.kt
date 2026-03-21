@@ -15,9 +15,11 @@ import com.bam.incomedy.server.db.StoredEventAvailabilityOverride
 import com.bam.incomedy.server.db.StoredEventPriceZone
 import com.bam.incomedy.server.db.StoredEventPricingAssignment
 import com.bam.incomedy.server.db.StoredInventoryUnit
+import com.bam.incomedy.server.db.StoredIssuedTicket
 import com.bam.incomedy.server.db.StoredInventoryUnitBlueprint
 import com.bam.incomedy.server.db.StoredOrganizerEvent
 import com.bam.incomedy.server.db.StoredSeatHold
+import com.bam.incomedy.server.db.StoredTicketCheckInResult
 import com.bam.incomedy.server.db.StoredTicketCheckoutSession
 import com.bam.incomedy.server.db.StoredTicketCheckoutState
 import com.bam.incomedy.server.db.StoredTicketOrder
@@ -212,6 +214,16 @@ class EventTicketingService(
         return order
     }
 
+    /** Возвращает выданные билеты текущего пользователя. */
+    fun listMyTickets(
+        actorUserId: String,
+    ): List<StoredIssuedTicket> {
+        return ticketingRepository.listIssuedTickets(
+            userId = actorUserId,
+            now = nowProvider(),
+        )
+    }
+
     /** Стартует внешний checkout для ожидающего оплаты ticket order-а текущего пользователя. */
     fun startTicketCheckout(
         actorUserId: String,
@@ -328,6 +340,37 @@ class EventTicketingService(
                 reasonCode = error.reasonCode,
             )
         }
+    }
+
+    /** Проверяет билет по QR и идемпотентно фиксирует проход для owner/manager/checker. */
+    fun scanTicket(
+        actorUserId: String,
+        qrPayload: String,
+    ): StoredTicketCheckInResult {
+        val ticket = ticketingRepository.findIssuedTicketByQrPayload(
+            qrPayload = qrPayload,
+            now = nowProvider(),
+        ) ?: throw TicketingIssuedTicketNotFoundException(qrPayload)
+        if (ticket.status == "canceled") {
+            throw TicketingConflictException("Билет недействителен")
+        }
+        val event = eventRepository.findEvent(ticket.eventId)
+            ?: throw TicketingEventNotFoundException(ticket.eventId)
+        val access = workspaceRepository.findWorkspaceAccess(
+            workspaceId = event.workspaceId,
+            userId = actorUserId,
+        ) ?: throw TicketingCheckInForbiddenException("checkin_forbidden")
+        if (access.permissionRole != WorkspacePermissionRole.OWNER &&
+            access.permissionRole != WorkspacePermissionRole.MANAGER &&
+            access.permissionRole != WorkspacePermissionRole.CHECKER
+        ) {
+            throw TicketingCheckInForbiddenException("checkin_forbidden")
+        }
+        return ticketingRepository.markIssuedTicketCheckedIn(
+            ticketId = ticket.id,
+            checkedInByUserId = actorUserId,
+            now = nowProvider(),
+        ) ?: throw TicketingIssuedTicketNotFoundException(ticket.id)
     }
 
     /**
@@ -533,10 +576,20 @@ class TicketingTicketOrderNotFoundException(
     val orderId: String,
 ) : IllegalStateException("Ticket order was not found")
 
+/** Сигнализирует, что выданный билет не найден. */
+class TicketingIssuedTicketNotFoundException(
+    val ticketKey: String,
+) : IllegalStateException("Issued ticket was not found")
+
 /** Сигнализирует, что hold нельзя освободить из-за отсутствия прав. */
 class TicketingSeatHoldForbiddenException(
     val reasonCode: String,
 ) : IllegalStateException("Seat hold release is forbidden")
+
+/** Сигнализирует, что текущий пользователь не может выполнять check-in для этого события. */
+class TicketingCheckInForbiddenException(
+    val reasonCode: String,
+) : IllegalStateException("Ticket check-in is forbidden")
 
 /** Сигнализирует, что внешний checkout сейчас недоступен из-за отсутствия PSP-конфига. */
 class TicketingCheckoutUnavailableException(

@@ -441,6 +441,47 @@ class PostgresTicketingRepository(
         }
     }
 
+    /** Возвращает билеты пользователя, при необходимости довыпуская их для старых `paid` заказов. */
+    override fun listIssuedTickets(
+        userId: String,
+        now: OffsetDateTime,
+    ): List<StoredIssuedTicket> {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                ensurePaidTicketsIssuedForUser(
+                    connection = connection,
+                    userId = userId,
+                    now = now,
+                )
+                val tickets = loadIssuedTicketsForUser(
+                    connection = connection,
+                    userId = userId,
+                )
+                connection.commit()
+                return tickets
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Ищет билет по непрозрачному QR payload. */
+    override fun findIssuedTicketByQrPayload(
+        qrPayload: String,
+        now: OffsetDateTime,
+    ): StoredIssuedTicket? {
+        dataSource.connection.use { connection ->
+            return loadIssuedTicketByQrPayload(
+                connection = connection,
+                qrPayload = qrPayload,
+            )
+        }
+    }
+
     /** Возвращает уже созданный checkout session для order-а, если он существует. */
     override fun findTicketCheckoutSession(
         orderId: String,
@@ -661,6 +702,11 @@ class PostgresTicketingRepository(
                     connection = connection,
                     inventoryUnitIds = lockedInventory.map(LockedOrderInventoryRow::inventoryUnitId),
                 )
+                issueTicketsForOrder(
+                    connection = connection,
+                    orderId = state.order.id,
+                    now = now,
+                )
                 val updatedState = loadTicketCheckoutStateByProviderPaymentId(
                     connection = connection,
                     provider = provider,
@@ -668,6 +714,65 @@ class PostgresTicketingRepository(
                 )
                 connection.commit()
                 return updatedState
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Идемпотентно отмечает билет использованным на входе. */
+    override fun markIssuedTicketCheckedIn(
+        ticketId: String,
+        checkedInByUserId: String,
+        now: OffsetDateTime,
+    ): StoredTicketCheckInResult? {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val ticket = loadIssuedTicketById(
+                    connection = connection,
+                    ticketId = ticketId,
+                    lockForUpdate = true,
+                ) ?: run {
+                    connection.commit()
+                    return null
+                }
+                if (ticket.status == "issued") {
+                    connection.prepareStatement(
+                        """
+                        UPDATE tickets
+                        SET
+                            status = 'checked_in',
+                            checked_in_at = ?,
+                            checked_in_by_user_id = ?,
+                            updated_at = NOW()
+                        WHERE id = ?
+                        """.trimIndent(),
+                    ).use { statement ->
+                        statement.setObject(1, now)
+                        statement.setObject(2, UUID.fromString(checkedInByUserId))
+                        statement.setObject(3, UUID.fromString(ticketId))
+                        statement.executeUpdate()
+                    }
+                    val updatedTicket = loadIssuedTicketById(
+                        connection = connection,
+                        ticketId = ticketId,
+                        lockForUpdate = false,
+                    ) ?: error("Checked-in ticket must remain readable")
+                    connection.commit()
+                    return StoredTicketCheckInResult(
+                        resultCode = "checked_in",
+                        ticket = updatedTicket,
+                    )
+                }
+                connection.commit()
+                return StoredTicketCheckInResult(
+                    resultCode = "duplicate",
+                    ticket = ticket,
+                )
             } catch (error: Throwable) {
                 connection.rollback()
                 throw error
@@ -1172,6 +1277,107 @@ class PostgresTicketingRepository(
         }
     }
 
+    /** Загружает все билеты текущего пользователя в порядке свежести выпуска. */
+    private fun loadIssuedTicketsForUser(
+        connection: Connection,
+        userId: String,
+    ): List<StoredIssuedTicket> {
+        return connection.prepareStatement(
+            """
+            SELECT
+                t.id,
+                t.order_id,
+                t.event_id,
+                t.inventory_unit_id,
+                t.inventory_ref,
+                t.label,
+                t.status,
+                t.qr_payload,
+                t.issued_at,
+                t.checked_in_at,
+                t.checked_in_by_user_id
+            FROM tickets t
+            JOIN ticket_orders o
+              ON o.id = t.order_id
+            WHERE o.user_id = ?
+            ORDER BY t.issued_at DESC, t.inventory_ref
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(userId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(result.toStoredIssuedTicket())
+                    }
+                }
+            }
+        }
+    }
+
+    /** Загружает билет по id и при необходимости блокирует строку для check-in мутации. */
+    private fun loadIssuedTicketById(
+        connection: Connection,
+        ticketId: String,
+        lockForUpdate: Boolean,
+    ): StoredIssuedTicket? {
+        val lockClause = if (lockForUpdate) " FOR UPDATE OF t" else ""
+        return connection.prepareStatement(
+            """
+            SELECT
+                t.id,
+                t.order_id,
+                t.event_id,
+                t.inventory_unit_id,
+                t.inventory_ref,
+                t.label,
+                t.status,
+                t.qr_payload,
+                t.issued_at,
+                t.checked_in_at,
+                t.checked_in_by_user_id
+            FROM tickets t
+            WHERE t.id = ?$lockClause
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(ticketId))
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                result.toStoredIssuedTicket()
+            }
+        }
+    }
+
+    /** Загружает билет по полному QR payload. */
+    private fun loadIssuedTicketByQrPayload(
+        connection: Connection,
+        qrPayload: String,
+    ): StoredIssuedTicket? {
+        return connection.prepareStatement(
+            """
+            SELECT
+                t.id,
+                t.order_id,
+                t.event_id,
+                t.inventory_unit_id,
+                t.inventory_ref,
+                t.label,
+                t.status,
+                t.qr_payload,
+                t.issued_at,
+                t.checked_in_at,
+                t.checked_in_by_user_id
+            FROM tickets t
+            WHERE t.qr_payload = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, qrPayload)
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                result.toStoredIssuedTicket()
+            }
+        }
+    }
+
     /** Загружает checkout session для конкретного order-а. */
     private fun loadTicketCheckoutSession(
         connection: Connection,
@@ -1379,6 +1585,86 @@ class PostgresTicketingRepository(
                 statement.addBatch()
             }
             statement.executeBatch()
+        }
+    }
+
+    /** Идемпотентно выпускает билеты для оплаченного заказа без дублей по одной inventory unit. */
+    private fun issueTicketsForOrder(
+        connection: Connection,
+        orderId: String,
+        now: OffsetDateTime,
+    ) {
+        val order = loadTicketOrder(
+            connection = connection,
+            orderId = orderId,
+        ) ?: return
+        if (order.status != "paid") return
+        connection.prepareStatement(
+            """
+            INSERT INTO tickets (
+                id,
+                order_id,
+                event_id,
+                inventory_unit_id,
+                inventory_ref,
+                label,
+                status,
+                qr_payload,
+                issued_at,
+                checked_in_at,
+                checked_in_by_user_id,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'issued', ?, ?, NULL, NULL, NOW(), NOW())
+            ON CONFLICT (order_id, inventory_unit_id) DO NOTHING
+            """.trimIndent(),
+        ).use { statement ->
+            order.lines.forEach { line ->
+                statement.setObject(1, UUID.randomUUID())
+                statement.setObject(2, UUID.fromString(order.id))
+                statement.setObject(3, UUID.fromString(order.eventId))
+                statement.setObject(4, UUID.fromString(line.inventoryUnitId))
+                statement.setString(5, line.inventoryRef)
+                statement.setString(6, line.label)
+                statement.setString(7, "incomedy.ticket.v1:${UUID.randomUUID()}")
+                statement.setObject(8, now)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    /** Довыпускает билеты для уже оплаченных заказов пользователя, которые появились до новой схемы. */
+    private fun ensurePaidTicketsIssuedForUser(
+        connection: Connection,
+        userId: String,
+        now: OffsetDateTime,
+    ) {
+        val paidOrderIds = connection.prepareStatement(
+            """
+            SELECT o.id
+            FROM ticket_orders o
+            WHERE o.user_id = ?
+              AND o.status = 'paid'
+            ORDER BY o.id
+            FOR UPDATE OF o
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setObject(1, UUID.fromString(userId))
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        add(result.getObject("id").toString())
+                    }
+                }
+            }
+        }
+        paidOrderIds.forEach { paidOrderId ->
+            issueTicketsForOrder(
+                connection = connection,
+                orderId = paidOrderId,
+                now = now,
+            )
         }
     }
 
@@ -1692,6 +1978,23 @@ class PostgresTicketingRepository(
             userId = getObject("user_id").toString(),
             expiresAt = getObject("expires_at", OffsetDateTime::class.java),
             status = getString("status"),
+        )
+    }
+
+    /** Маппит текущую строку query билета в stored model. */
+    private fun java.sql.ResultSet.toStoredIssuedTicket(): StoredIssuedTicket {
+        return StoredIssuedTicket(
+            id = getObject("id").toString(),
+            orderId = getObject("order_id").toString(),
+            eventId = getObject("event_id").toString(),
+            inventoryUnitId = getObject("inventory_unit_id").toString(),
+            inventoryRef = getString("inventory_ref"),
+            label = getString("label"),
+            status = getString("status"),
+            qrPayload = getString("qr_payload"),
+            issuedAt = getObject("issued_at", OffsetDateTime::class.java),
+            checkedInAt = getObject("checked_in_at", OffsetDateTime::class.java),
+            checkedInByUserId = getObject("checked_in_by_user_id")?.toString(),
         )
     }
 }

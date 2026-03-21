@@ -33,8 +33,8 @@ import java.util.UUID
  * Ticketing foundation routes.
  *
  * Поверхность уже покрывает public inventory read, order/status polling, защищенные hold
- * create/release, provider-agnostic checkout order foundation, PSP handoff и базовую webhook-
- * синхронизацию оплаты, но пока не включает ticket issuance, QR issuance или check-in.
+ * create/release, provider-agnostic checkout order foundation, билетную выдачу, checker-side
+ * check-in и базовую webhook-синхронизацию оплаты.
  */
 object TicketingRoutes {
     /** Структурированный logger ticketing foundation surface. */
@@ -45,6 +45,9 @@ object TicketingRoutes {
 
     /** Максимальный размер request тела создания checkout order-а. */
     private const val MAX_CREATE_ORDER_REQUEST_BYTES = 8 * 1024
+
+    /** Максимальный размер request тела check-in scan-а. */
+    private const val MAX_CHECKIN_SCAN_REQUEST_BYTES = 8 * 1024
 
     /** Максимальный размер входящего webhook body от PSP. */
     private const val MAX_PAYMENT_WEBHOOK_REQUEST_BYTES = 64 * 1024
@@ -323,6 +326,131 @@ object TicketingRoutes {
                 userRepository = sessionUserRepository,
                 rateLimiter = rateLimiter,
             ) {
+                get("/me/tickets") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "ticketing_ticket_list:${principal.user.id}", limit = 180, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.ticket.list.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@get
+                    }
+
+                    try {
+                        val tickets = ticketingService.listMyTickets(
+                            actorUserId = principal.user.id,
+                        )
+                        logger.info(
+                            "ticketing.ticket.list.success requestId={} userId={} count={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            tickets.size,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.ticket.list.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "count" to tickets.size.toString(),
+                                "checkedInCount" to tickets.count { it.status == "checked_in" }.toString(),
+                            ),
+                        )
+                        call.respond(
+                            HttpStatusCode.OK,
+                            TicketListResponse(
+                                tickets = tickets.map { storedTicket ->
+                                    TicketResponse.fromStored(
+                                        storedTicket = storedTicket,
+                                        includeQrPayload = true,
+                                    )
+                                },
+                            ),
+                        )
+                    } catch (error: Throwable) {
+                        call.respondTicketingScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
+                post("/checkin/scan") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "ticketing_checkin_scan:${principal.user.id}", limit = 240, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.checkin.scan.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@post
+                    }
+
+                    val request = call.receiveJsonBodyLimited<CheckInTicketRequest>(
+                        json = ticketingJson,
+                        maxBytes = MAX_CHECKIN_SCAN_REQUEST_BYTES,
+                    ).getOrElse { error ->
+                        call.respondTicketingRequestError(
+                            error = error,
+                            payloadTooLargeStage = "ticketing.checkin.scan.payload_too_large",
+                            invalidPayloadStage = "ticketing.checkin.scan.invalid_payload",
+                            payloadTooLargeMessage = "Request body is too large",
+                            invalidPayloadMessage = "Invalid ticket scan request",
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                        return@post
+                    }
+
+                    val qrPayload = request.toQrPayload()
+                    if (qrPayload.isBlank()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.checkin.scan.invalid_qr_payload",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid QR payload"))
+                        return@post
+                    }
+
+                    try {
+                        val result = ticketingService.scanTicket(
+                            actorUserId = principal.user.id,
+                            qrPayload = qrPayload,
+                        )
+                        logger.info(
+                            "ticketing.checkin.scan.success requestId={} userId={} ticketId={} eventId={} result={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            result.ticket.id,
+                            result.ticket.eventId,
+                            result.resultCode,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "ticketing.checkin.scan.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "result" to result.resultCode,
+                                "status" to result.ticket.status,
+                            ),
+                        )
+                        call.respond(
+                            HttpStatusCode.OK,
+                            TicketCheckInResponse.fromStored(result),
+                        )
+                    } catch (error: Throwable) {
+                        call.respondTicketingScopeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                    }
+                }
+
                 get("/events/{eventId}/inventory") {
                     val principal = call.requireSessionPrincipal()
                     if (!rateLimiter.allow(key = "ticketing_inventory:${principal.user.id}", limit = 180, windowMs = 60_000L)) {
@@ -805,6 +933,20 @@ object TicketingRoutes {
                 respond(HttpStatusCode.Forbidden, ErrorResponse("forbidden", "Ticketing action is forbidden"))
             }
 
+            is TicketingCheckInForbiddenException -> {
+                diagnosticsStore?.recordCall(
+                    call = this,
+                    stage = "ticketing.checkin.forbidden",
+                    status = HttpStatusCode.Forbidden.value,
+                    safeErrorCode = "forbidden",
+                    metadata = mapOf(
+                        "resource" to "ticket",
+                        "reason" to error.reasonCode,
+                    ),
+                )
+                respond(HttpStatusCode.Forbidden, ErrorResponse("forbidden", "Ticket check-in is forbidden"))
+            }
+
             is TicketingCheckoutUnavailableException -> {
                 diagnosticsStore?.recordCall(
                     call = this,
@@ -888,6 +1030,14 @@ object TicketingRoutes {
                 stage = "ticketing.order.not_found",
                 metadata = mapOf(
                     "resource" to "order",
+                    "reason" to "missing",
+                ),
+            )
+
+            is TicketingIssuedTicketNotFoundException -> TicketingNotFoundDiagnostics(
+                stage = "ticketing.ticket.not_found",
+                metadata = mapOf(
+                    "resource" to "ticket",
                     "reason" to "missing",
                 ),
             )
