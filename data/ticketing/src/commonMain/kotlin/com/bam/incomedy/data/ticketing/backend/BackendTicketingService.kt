@@ -13,6 +13,15 @@ import com.bam.incomedy.domain.ticketing.TicketingService
 class BackendTicketingService(
     private val ticketingBackendApi: TicketingBackendApi,
 ) : TicketingService {
+    /** Загружает публичный инвентарь события через backend API. */
+    override suspend fun listPublicInventory(
+        eventId: String,
+    ): Result<List<InventoryUnit>> {
+        return ticketingBackendApi.listPublicInventory(
+            eventId = eventId,
+        )
+    }
+
     /** Загружает текущий инвентарь события через backend API. */
     override suspend fun listInventory(
         accessToken: String,

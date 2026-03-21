@@ -7,6 +7,11 @@ package com.bam.incomedy.domain.ticketing
  * короткоживущими hold-ами, не заходя пока в checkout, order capture и check-in.
  */
 interface TicketingService {
+    /** Возвращает публичный инвентарь события без пользовательской персонализации hold-ов. */
+    suspend fun listPublicInventory(
+        eventId: String,
+    ): Result<List<InventoryUnit>>
+
     /** Возвращает текущий инвентарь события с учетом hold-ов текущего пользователя. */
     suspend fun listInventory(
         accessToken: String,

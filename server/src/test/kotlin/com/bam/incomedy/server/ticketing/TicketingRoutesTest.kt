@@ -42,6 +42,155 @@ import kotlin.test.assertTrue
  * Route-тесты ticketing foundation surface.
  */
 class TicketingRoutesTest {
+    /** Проверяет, что anonymous audience может читать inventory опубликованного public event-а. */
+    @Test
+    fun `anonymous user can list public event inventory`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+            visibility = "public",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService(),
+            nowProvider = { NOW },
+        )
+
+        val response = client.get("/api/v1/public/events/$eventId/inventory")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""inventory_ref":"seat:seat-a-1""""))
+        assertTrue(body.contains(""""active_hold_id":null"""))
+        assertTrue(body.contains(""""held_by_current_user":false"""))
+    }
+
+    /** Проверяет, что public inventory route пишет success diagnostics с requestId-корреляцией. */
+    @Test
+    fun `public inventory success records diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+            visibility = "public",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService(),
+            diagnosticsStore = diagnosticsStore,
+            nowProvider = { NOW },
+        )
+
+        val response = client.get("/api/v1/public/events/$eventId/inventory")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        val inventoryCount = """"inventory_ref":"""".toRegex().findAll(body).count()
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "ticketing.public_inventory.list.success",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals(inventoryCount.toString(), event.metadata["count"])
+        assertEquals("0", event.metadata["heldCount"])
+    }
+
+    /** Проверяет, что private event остается недоступным для anonymous public inventory route. */
+    @Test
+    fun `anonymous user cannot list private event inventory`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+            visibility = "private",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = InMemoryTicketingRepository(),
+            tokenService = tokenService(),
+            nowProvider = { NOW },
+        )
+
+        val response = client.get("/api/v1/public/events/$eventId/inventory")
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertTrue(response.bodyAsText().contains("not_found"))
+    }
+
+    /** Проверяет, что public inventory не раскрывает active hold id даже при существующем hold-е. */
+    @Test
+    fun `public inventory hides active hold ownership metadata`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply {
+            putOwnerUser()
+            putAudienceUser()
+        }
+        val eventRepository = InMemoryEventRepository()
+        val ticketingRepository = InMemoryTicketingRepository()
+        val tokenService = tokenService()
+        val accessToken = tokenService.issue(
+            userId = AUDIENCE_ID,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val eventId = seedEvent(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            salesStatus = "open",
+            visibility = "public",
+        )
+
+        configureTicketingRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            ticketingRepository = ticketingRepository,
+            tokenService = tokenService,
+            nowProvider = { NOW },
+        )
+
+        val holdResponse = client.post("/api/v1/events/$eventId/holds") {
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"inventory_ref":"seat:seat-a-2"}""")
+        }
+        assertEquals(HttpStatusCode.Created, holdResponse.status)
+
+        val response = client.get("/api/v1/public/events/$eventId/inventory")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains(""""inventory_ref":"seat:seat-a-2""""))
+        assertTrue(body.contains(""""status":"held""""))
+        assertTrue(body.contains(""""active_hold_id":null"""))
+        assertTrue(body.contains(""""hold_expires_at":null"""))
+        assertTrue(body.contains(""""held_by_current_user":false"""))
+    }
+
     /** Проверяет, что публичный опубликованный event inventory доступен аудитории и derived из snapshot-а. */
     @Test
     fun `audience user can list public event inventory`() = testApplication {

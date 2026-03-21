@@ -1813,7 +1813,7 @@ paths:
   /api/v1/events/{eventId}/inventory:
     get:
       tags: [Ticketing]
-      summary: List derived ticketing inventory for a published event
+      summary: List personalized derived ticketing inventory for an authenticated user
       operationId: getEventInventory
       parameters:
         - in: header
@@ -1851,6 +1851,51 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event inventory is not available or the event does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/public/events/{eventId}/inventory:
+    get:
+      tags: [Ticketing]
+      summary: List derived ticketing inventory for a published public event without session auth
+      operationId: getPublicEventInventory
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Published public event UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Derived public event inventory returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryListResponse"
+        "400":
+          description: Invalid event id
           content:
             application/json:
               schema:

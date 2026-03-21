@@ -26,14 +26,25 @@ import kotlinx.serialization.json.Json
 /**
  * HTTP-клиент ticketing foundation API.
  *
- * Клиент инкапсулирует DTO и backend contract для inventory list и hold create/release, чтобы
- * последующие checkout-итерации могли переиспользовать тот же transport слой.
+ * Клиент инкапсулирует DTO и backend contract для public/authenticated inventory list и hold
+ * create/release, чтобы последующие checkout-итерации могли переиспользовать тот же transport слой.
  */
 class TicketingBackendApi(
     private val baseUrl: String = BackendEnvironment.baseUrl,
     private val parser: Json = backendJson,
     private val httpClient: HttpClient = createBackendHttpClient(parser),
 ) {
+    /** Загружает публичный инвентарь события без персонализации hold-ов. */
+    suspend fun listPublicInventory(
+        eventId: String,
+    ): Result<List<InventoryUnit>> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/public/events/$eventId/inventory")
+            ensureBackendSuccess(response, parser)
+            response.body<InventoryListResponse>().inventory.map(InventoryUnitPayload::toDomain)
+        }
+    }
+
     /** Загружает текущий инвентарь события. */
     suspend fun listInventory(
         accessToken: String,
@@ -123,7 +134,7 @@ private data class InventoryUnitPayload(
     @SerialName("held_by_current_user")
     val heldByCurrentUser: Boolean = false,
 ) {
-    /** Маппит transport DTO в доменную inventory model. */
+    /** Маппит transport DTO в доменную inventory model независимо от способа авторизации клиента. */
     fun toDomain(): InventoryUnit {
         return InventoryUnit(
             id = id,

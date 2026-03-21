@@ -62,10 +62,10 @@ data class InventoryUnitResponse(
         /** Маппит stored inventory unit в response, скрывая чужие hold identifiers. */
         fun fromStored(
             storedUnit: StoredInventoryUnit,
-            currentUserId: String,
+            currentUserId: String?,
         ): InventoryUnitResponse {
             val activeHold = storedUnit.activeHold
-            val heldByCurrentUser = activeHold?.userId == currentUserId
+            val heldByCurrentUser = currentUserId != null && activeHold?.userId == currentUserId
             return InventoryUnitResponse(
                 id = storedUnit.id,
                 eventId = storedUnit.eventId,

@@ -9,7 +9,7 @@
   - Post-auth session context: `:data:session` + shared session orchestration для ролей, active role и organizer workspace/team management
   - Organizer venue context: `:feature:venue` + `:data:venue` для venue catalog, hall template builder form orchestration, и backend venue API adapters
   - Organizer event context: `:feature:event` + `:data:event` для event create/list/get/update/publish, sales open/pause/cancel orchestration, venue/template selection, `EventHallSnapshot`, и event-local override API adapters
-  - Ticketing foundation context: `:data:ticketing` + backend ticketing routes/repository для derived event inventory, event-versioned inventory sync, protected seat holds, и expiry/release semantics поверх frozen snapshot-а
+  - Ticketing foundation context: `:data:ticketing` + backend ticketing routes/repository для public/authenticated derived event inventory, event-versioned inventory sync, protected seat holds, и expiry/release semantics поверх frozen snapshot-а
   - Presentation: shared MVI ViewModels + platform-specific UI (Android Compose, iOS SwiftUI)
   - Domain: use cases and entities
   - Data: repositories, remote/local sources
@@ -53,7 +53,7 @@
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
   - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
   - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, and event-local price/availability overrides;
-  - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers so inventory GET does not perform a full reconcile on every unchanged read, and authenticated inventory list plus hold create/release/expiry routes serialized through inventory-first locking; public catalog access, checkout, `sold_out` automation, QR issuance, and check-in are still not implemented;
+  - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers so inventory GET does not perform a full reconcile on every unchanged read, a public audience inventory route for published public events, authenticated personalized inventory list, and hold create/release/expiry routes serialized through inventory-first locking; public event discovery/catalog, checkout, `sold_out` automation, QR issuance, and check-in are still not implemented;
   - current Android/iOS main flow now exposes organizer venue and event surfaces, including event lifecycle controls and override editing, but deeper organizer operational flows beyond workspaces, venues, and event foundations are still missing.
 - Planned next bounded contexts:
   - lineup,

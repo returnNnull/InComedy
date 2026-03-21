@@ -44,15 +44,33 @@ class EventTicketingService(
     private val nowProvider: () -> OffsetDateTime = { OffsetDateTime.now() },
     private val holdTtl: Duration = Duration.ofMinutes(10),
 ) {
+    /** Возвращает публичный derived inventory только для опубликованного public-события. */
+    fun listPublicInventory(eventId: String): List<StoredInventoryUnit> {
+        return listInventoryForEvent(
+            event = loadPublicTicketingEvent(eventId = eventId),
+        )
+    }
+
     /** Возвращает текущий derived inventory опубликованного события. */
     fun listInventory(
         actorUserId: String,
         eventId: String,
     ): List<StoredInventoryUnit> {
-        val event = loadTicketingEvent(
-            actorUserId = actorUserId,
-            eventId = eventId,
+        return listInventoryForEvent(
+            event = loadProtectedTicketingEvent(
+                actorUserId = actorUserId,
+                eventId = eventId,
+            ),
         )
+    }
+
+    /**
+     * Возвращает актуальный инвентарь события, выполняя derive/sync только при изменении
+     * organizer event revision или на первом bootstrap чтении.
+     */
+    private fun listInventoryForEvent(
+        event: StoredOrganizerEvent,
+    ): List<StoredInventoryUnit> {
         val now = nowProvider()
         return if (ticketingRepository.isInventorySynchronized(
                 eventId = event.id,
@@ -79,7 +97,7 @@ class EventTicketingService(
         eventId: String,
         inventoryRef: String,
     ): StoredSeatHold {
-        val event = loadTicketingEvent(
+        val event = loadProtectedTicketingEvent(
             actorUserId = actorUserId,
             eventId = eventId,
         )
@@ -156,9 +174,8 @@ class EventTicketingService(
         }
     }
 
-    /** Загружает опубликованное событие и проверяет, доступно ли оно текущему actor-у. */
-    private fun loadTicketingEvent(
-        actorUserId: String,
+    /** Загружает опубликованное public-событие для audience inventory surface. */
+    private fun loadPublicTicketingEvent(
         eventId: String,
     ): StoredOrganizerEvent {
         val event = eventRepository.findEvent(eventId)
@@ -168,9 +185,21 @@ class EventTicketingService(
         }
         val visibility = EventVisibility.fromWireName(event.visibility)
             ?: throw IllegalStateException("Unknown event visibility: ${event.visibility}")
-        if (visibility == EventVisibility.PUBLIC) {
-            return event
+        if (visibility != EventVisibility.PUBLIC) {
+            throw TicketingEventUnavailableException("inventory_unavailable")
         }
+        return event
+    }
+
+    /** Загружает опубликованное событие и проверяет, доступно ли оно текущему actor-у. */
+    private fun loadProtectedTicketingEvent(
+        actorUserId: String,
+        eventId: String,
+    ): StoredOrganizerEvent {
+        val event = loadPublicOrPublishedEvent(eventId = eventId)
+        val visibility = EventVisibility.fromWireName(event.visibility)
+            ?: throw IllegalStateException("Unknown event visibility: ${event.visibility}")
+        if (visibility == EventVisibility.PUBLIC) return event
         val access = workspaceRepository.findWorkspaceAccess(
             workspaceId = event.workspaceId,
             userId = actorUserId,
@@ -178,6 +207,16 @@ class EventTicketingService(
         if (access.permissionRole != WorkspacePermissionRole.OWNER &&
             access.permissionRole != WorkspacePermissionRole.MANAGER
         ) {
+            throw TicketingEventUnavailableException("inventory_unavailable")
+        }
+        return event
+    }
+
+    /** Загружает опубликованное событие без решения вопроса о приватном доступе. */
+    private fun loadPublicOrPublishedEvent(eventId: String): StoredOrganizerEvent {
+        val event = eventRepository.findEvent(eventId)
+            ?: throw TicketingEventNotFoundException(eventId)
+        if (event.status != EventStatus.PUBLISHED.wireName) {
             throw TicketingEventUnavailableException("inventory_unavailable")
         }
         return event

@@ -13,6 +13,7 @@ import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.observability.DiagnosticsStore
 import com.bam.incomedy.server.observability.recordCall
 import com.bam.incomedy.server.security.AuthRateLimiter
+import com.bam.incomedy.server.security.directPeerFingerprint
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
@@ -30,8 +31,8 @@ import java.util.UUID
 /**
  * Ticketing foundation routes.
  *
- * Поверхность ограничена inventory list и hold create/release, работает поверх session auth и не
- * тянет вперед checkout, orders, QR issuance или check-in.
+ * Поверхность уже покрывает public inventory read и защищенные hold create/release, но не тянет
+ * вперед checkout, orders, QR issuance или check-in.
  */
 object TicketingRoutes {
     /** Структурированный logger ticketing foundation surface. */
@@ -40,7 +41,10 @@ object TicketingRoutes {
     /** Максимальный размер request тела создания hold-а. */
     private const val MAX_CREATE_HOLD_REQUEST_BYTES = 4 * 1024
 
-    /** Регистрирует защищенные ticketing foundation routes. */
+    /** Peer-based лимит публичного чтения inventory, чтобы анонимный catalog surface не стал log sink-ом. */
+    private const val PUBLIC_INVENTORY_PEER_LIMIT = 240
+
+    /** Регистрирует public и protected ticketing foundation routes. */
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
@@ -62,6 +66,81 @@ object TicketingRoutes {
         )
 
         route.route("/api/v1") {
+            /**
+             * Публичная audience-поверхность чтения derived inventory.
+             *
+             * Route не выдает персонализированные hold-данные и оставляет create/release hold в
+             * защищенной session-only части ticketing surface.
+             */
+            get("/public/events/{eventId}/inventory") {
+                val directPeer = call.directPeerFingerprint()
+                if (!rateLimiter.allow(
+                        key = "ticketing_public_inventory_peer:$directPeer",
+                        limit = PUBLIC_INVENTORY_PEER_LIMIT,
+                        windowMs = 60_000L,
+                    )
+                ) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "ticketing.public_inventory.list.rate_limited",
+                        status = HttpStatusCode.TooManyRequests.value,
+                        safeErrorCode = "rate_limited",
+                        metadata = mapOf("scope" to "peer"),
+                    )
+                    call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                    return@get
+                }
+
+                val eventId = call.parameters["eventId"]
+                if (!eventId.isUuid()) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "ticketing.public_inventory.list.invalid_event_id",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                    return@get
+                }
+
+                try {
+                    val inventory = ticketingService.listPublicInventory(
+                        eventId = eventId.orEmpty(),
+                    )
+                    logger.info(
+                        "ticketing.public_inventory.list.success requestId={} eventId={} count={}",
+                        call.callId ?: "n/a",
+                        eventId,
+                        inventory.size,
+                    )
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "ticketing.public_inventory.list.success",
+                        status = HttpStatusCode.OK.value,
+                        metadata = mapOf(
+                            "count" to inventory.size.toString(),
+                            "heldCount" to inventory.count { it.status == "held" }.toString(),
+                        ),
+                    )
+                    call.respond(
+                        HttpStatusCode.OK,
+                        InventoryListResponse(
+                            inventory = inventory.map { unit ->
+                                InventoryUnitResponse.fromStored(
+                                    storedUnit = unit,
+                                    currentUserId = null,
+                                )
+                            },
+                        ),
+                    )
+                } catch (error: Throwable) {
+                    call.respondTicketingScopeError(
+                        error = error,
+                        diagnosticsStore = diagnosticsStore,
+                    )
+                }
+            }
+
             withSessionAuth(
                 tokenService = tokenService,
                 userRepository = sessionUserRepository,

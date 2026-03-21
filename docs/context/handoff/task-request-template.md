@@ -34,8 +34,9 @@ Use this index for new implementation and review tasks.
 23. `task-request-template/task-request-template-part-23.md` (new-chat baseline context sync and event override completion from 2026-03-17)
 24. `task-request-template/task-request-template-part-24.md` (event sales-state/cancel controls implementation outcome from 2026-03-17)
 25. `task-request-template/task-request-template-part-25.md` (ticketing review remediation follow-ups from 2026-03-17)
+26. `task-request-template/task-request-template-part-26.md` (new-chat context synchronization baseline refresh from 2026-03-17)
 
 ## Append Rule
 
-- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-25.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-26.md`, update this index, and continue appending there.
+- Append new formalized requests to the latest part file: `task-request-template/task-request-template-part-26.md`.
+- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-27.md`, update this index, and continue appending there.
