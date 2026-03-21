@@ -38,8 +38,9 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 26. `task-request-template/task-request-template-part-26.md` (new-chat context synchronization baseline refresh from 2026-03-17)
 27. `task-request-template/task-request-template-part-27.md` (public audience event discovery continuation and documentation-structure rework from 2026-03-21)
 28. `task-request-template/task-request-template-part-28.md` (external-provider governance correction and approval-semantics sync from 2026-03-21)
+29. `task-request-template/task-request-template-part-29.md` (shared/mobile ticket wallet and checker scan surfaces from 2026-03-22)
 
 ## Append Rule
 
-- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-28.md`.
-- If the latest part grows above ~8,000 characters, create `task-request-template/task-request-template-part-29.md`, update this index, and continue appending there.
+- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-29.md`.
+- If the latest part grows above ~8,000 characters, create the next sequential part file, update this index, and continue appending there.

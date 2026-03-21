@@ -8,6 +8,7 @@ import com.bam.incomedy.data.venue.di.venueDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.feature.event.EventViewModel
+import com.bam.incomedy.feature.ticketing.TicketingViewModel
 import com.bam.incomedy.feature.venue.VenueViewModel
 import com.bam.incomedy.shared.session.SessionViewModel
 import org.koin.core.KoinApplication
@@ -50,6 +51,12 @@ object InComedyKoin {
                     accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
                 )
             }
+            single {
+                TicketingViewModel(
+                    ticketingService = get(),
+                    accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
+                )
+            }
         },
     )
 
@@ -81,6 +88,12 @@ object InComedyKoin {
 
     /** Возвращает общую модель organizer events. */
     fun getEventViewModel(): EventViewModel {
+        init()
+        return requireNotNull(koinApp).koin.get()
+    }
+
+    /** Возвращает общую модель audience/staff ticketing feature. */
+    fun getTicketingViewModel(): TicketingViewModel {
         init()
         return requireNotNull(koinApp).koin.get()
     }

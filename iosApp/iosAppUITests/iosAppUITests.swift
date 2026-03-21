@@ -94,6 +94,51 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.buttons["event.update.save"].exists)
     }
 
+    /// Проверяет вкладку билетов, раскрытие QR и staff check-in форму.
+    func testTicketTabShowsWalletAndCheckInSurface() {
+        app.tabBars.buttons["Билеты"].tap()
+
+        let ticketRoot = app.descendants(matching: .any)
+            .matching(identifier: "ticketing.root")
+            .firstMatch
+        let ticketCount = app.descendants(matching: .any)
+            .matching(identifier: "ticketing.count")
+            .firstMatch
+        let qrToggleButton = app.descendants(matching: .any)
+            .matching(identifier: "ticketing.ticket.qr.toggle.ticket-1")
+            .firstMatch
+        let scanInput = app.descendants(matching: .any)
+            .matching(identifier: "ticketing.scan.input")
+            .firstMatch
+        let scanButton = app.descendants(matching: .any)
+            .matching(identifier: "ticketing.scan.button")
+            .firstMatch
+        let scanResultCode = app.descendants(matching: .any)
+            .matching(identifier: "ticketing.scan.resultCode")
+            .firstMatch
+
+        XCTAssertTrue(ticketRoot.waitForExistence(timeout: 2))
+        XCTAssertTrue(ticketCount.waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollUntilVisible(qrToggleButton))
+        qrToggleButton.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(identifier: "ticketing.ticket.qr.block.ticket-1")
+                .firstMatch
+                .waitForExistence(timeout: 2)
+        )
+
+        XCTAssertTrue(scrollUntilVisible(scanInput))
+        scanInput.tap()
+        scanInput.typeText("incomedy.ticket.v1:ticket-1")
+
+        XCTAssertTrue(scrollUntilVisible(scanButton))
+        scanButton.tap()
+
+        XCTAssertTrue(scrollUntilVisible(scanResultCode))
+        XCTAssertEqual(scanResultCode.label, "Билет подтвержден")
+    }
+
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.
     func testAccountTabSwitchesRoleAndSignsOut() {
         app.tabBars.buttons["Аккаунт"].tap()

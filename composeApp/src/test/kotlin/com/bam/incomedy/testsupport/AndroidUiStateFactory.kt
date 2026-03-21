@@ -8,6 +8,8 @@ import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.domain.event.EventVisibility
 import com.bam.incomedy.domain.event.OrganizerEvent
+import com.bam.incomedy.domain.ticketing.IssuedTicket
+import com.bam.incomedy.domain.ticketing.IssuedTicketStatus
 import com.bam.incomedy.domain.session.OrganizerWorkspace
 import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
 import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
@@ -21,6 +23,7 @@ import com.bam.incomedy.domain.venue.OrganizerVenue
 import com.bam.incomedy.domain.venue.VenueContact
 import com.bam.incomedy.feature.auth.mvi.AuthState
 import com.bam.incomedy.feature.event.EventState
+import com.bam.incomedy.feature.ticketing.TicketingState
 import com.bam.incomedy.feature.venue.VenueState
 import com.bam.incomedy.shared.session.SessionState
 
@@ -147,6 +150,38 @@ object AndroidUiStateFactory {
     }
 
     /**
+     * Возвращает состояние audience/staff ticketing feature для Android UI-тестов.
+     */
+    fun ticketingState(
+        tickets: List<IssuedTicket> = listOf(
+            issuedTicket(),
+            issuedTicket(
+                id = "ticket-2",
+                orderId = "order-2",
+                eventId = "event-2",
+                inventoryUnitId = "inventory-2",
+                inventoryRef = "table-b2-seat-3",
+                label = "Стол B2 · Место 3",
+                status = IssuedTicketStatus.CHECKED_IN,
+                qrPayload = "incomedy.ticket.v1:ticket-2",
+                issuedAtIso = "2026-04-02T18:00:00+03:00",
+                checkedInAtIso = "2026-04-02T18:59:00+03:00",
+                checkedInByUserId = "checker-1",
+            ),
+        ),
+        isLoading: Boolean = false,
+        isScanning: Boolean = false,
+        errorMessage: String? = null,
+    ): TicketingState {
+        return TicketingState(
+            tickets = tickets,
+            isLoading = isLoading,
+            isScanning = isScanning,
+            errorMessage = errorMessage,
+        )
+    }
+
+    /**
      * Возвращает профиль пользователя для тестовых auth/session состояний.
      */
     fun authorizedUser(
@@ -243,6 +278,37 @@ object AndroidUiStateFactory {
             workspaceStatus = workspaceStatus,
             permissionRole = permissionRole,
             invitedByDisplayName = invitedByDisplayName,
+        )
+    }
+
+    /**
+     * Возвращает тестовый билет для audience/staff ticketing сценариев.
+     */
+    fun issuedTicket(
+        id: String = "ticket-1",
+        orderId: String = "order-1",
+        eventId: String = "event-1",
+        inventoryUnitId: String = "inventory-1",
+        inventoryRef: String = "seat-a1",
+        label: String = "Ряд A · Место 1",
+        status: IssuedTicketStatus = IssuedTicketStatus.ISSUED,
+        qrPayload: String? = "incomedy.ticket.v1:ticket-1",
+        issuedAtIso: String = "2026-04-01T18:45:00+03:00",
+        checkedInAtIso: String? = null,
+        checkedInByUserId: String? = null,
+    ): IssuedTicket {
+        return IssuedTicket(
+            id = id,
+            orderId = orderId,
+            eventId = eventId,
+            inventoryUnitId = inventoryUnitId,
+            inventoryRef = inventoryRef,
+            label = label,
+            status = status,
+            qrPayload = qrPayload,
+            issuedAtIso = issuedAtIso,
+            checkedInAtIso = checkedInAtIso,
+            checkedInByUserId = checkedInByUserId,
         )
     }
 

@@ -15,6 +15,10 @@
 - `standup-platform-ru/`: detailed Russian-language product and technical specification package for the target platform.
 - `project-reference/`: static HTML handbook built from the repository and context docs for newcomer/reviewer orientation.
 
+## Derived Artifacts
+
+- `screen-graph/`: static HTML screen-flow map for design preparation, derived from `context/*` and `standup-platform-ru/*`.
+
 ## Working Rule
 
 - If `project-reference/*` conflicts with `context/*`, update `context/*` first.

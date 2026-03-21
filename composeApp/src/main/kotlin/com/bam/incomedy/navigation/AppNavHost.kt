@@ -19,6 +19,7 @@ import com.bam.incomedy.feature.main.navigation.mainGraph
 import com.bam.incomedy.feature.main.ui.MainScreen
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 import com.bam.incomedy.viewmodel.AndroidViewModelFactories
 
@@ -42,6 +43,9 @@ fun AppNavHost(
     val eventViewModel: EventAndroidViewModel = viewModel(
         factory = AndroidViewModelFactories.event(application),
     )
+    val ticketingViewModel: TicketingAndroidViewModel = viewModel(
+        factory = AndroidViewModelFactories.ticketing(application),
+    )
     val venueViewModel: VenueAndroidViewModel = viewModel(
         factory = AndroidViewModelFactories.venue(application),
     )
@@ -60,6 +64,7 @@ fun AppNavHost(
             MainScreen(
                 sessionViewModel = sessionViewModel,
                 eventViewModel = eventViewModel,
+                ticketingViewModel = ticketingViewModel,
                 venueViewModel = venueViewModel,
                 modifier = contentModifier,
             )

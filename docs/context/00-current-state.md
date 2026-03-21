@@ -1,6 +1,6 @@
 # Current State Snapshot
 
-Updated: `2026-03-21`
+Updated: `2026-03-22`
 
 Use this file as the bootstrap entry point for every new chat/session before reading deeper context docs.
 
@@ -16,10 +16,10 @@ Use this file as the bootstrap entry point for every new chat/session before rea
 - Latest decisions part: `governance/decisions-log/decisions-log-part-05.md`
 - Latest session-log part: `governance/session-log/session-log-part-17.md`
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-05.md`
-- Latest task-request log part: `handoff/task-request-template/task-request-template-part-28.md`
+- Latest task-request log part: `handoff/task-request-template/task-request-template-part-29.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: audience ticketing path on top of public catalog, public inventory, provider-agnostic checkout-order lifecycle, and the delivered server-side provider-agnostic ticket issuance / QR / check-in foundation, while the concrete external PSP is intentionally deferred
-- Current next bounded step: wire the new ticket issuance / QR / checker check-in contracts into shared/mobile audience and staff surfaces (`My Tickets`, QR presentation, checker scan UX), while concrete external PSP selection and activation remain deferred until the final pre-publication stage
+- Current `P0` focus: remaining MVP delivery after the provider-agnostic audience ticketing path is now wired end-to-end through public catalog, inventory, checkout-order lifecycle, issued tickets, buyer QR presentation, and checker scan surfaces, while the concrete external PSP is intentionally deferred until final pre-publication work
+- Current next bounded step: implement comedian applications plus organizer approve/reject/waitlist and lineup ordering foundation, while concrete external PSP selection and activation remain deferred until the final pre-publication stage
 
 ## Active Constraints
 

@@ -169,10 +169,13 @@ dependencies {
     implementation(projects.domain.auth)
     implementation(projects.domain.event)
     implementation(projects.domain.session)
+    implementation(projects.domain.ticketing)
     implementation(projects.domain.venue)
     implementation(projects.feature.auth)
     implementation(projects.feature.event)
+    implementation(projects.feature.ticketing)
     implementation(projects.feature.venue)
+    implementation(libs.zxing.core)
 
     debugImplementation(libs.compose.uiTooling)
     testImplementation(libs.junit)

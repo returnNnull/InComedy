@@ -9,6 +9,7 @@ import androidx.navigation.navigation
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.main.ui.MainScreen
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 import com.bam.incomedy.navigation.AppGraph
 
@@ -21,12 +22,14 @@ import com.bam.incomedy.navigation.AppGraph
 fun NavGraphBuilder.mainGraph(
     sessionViewModel: SessionAndroidViewModel,
     eventViewModel: EventAndroidViewModel,
+    ticketingViewModel: TicketingAndroidViewModel,
     venueViewModel: VenueAndroidViewModel,
 ) {
     mainGraph { modifier ->
         MainScreen(
             sessionViewModel = sessionViewModel,
             eventViewModel = eventViewModel,
+            ticketingViewModel = ticketingViewModel,
             venueViewModel = venueViewModel,
             modifier = modifier,
         )

@@ -58,6 +58,10 @@ import com.bam.incomedy.feature.event.ui.EventScreenTags
 import com.bam.incomedy.feature.event.ui.EventTabBindings
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.ticketing.ui.TicketWalletTab
+import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
+import com.bam.incomedy.feature.ticketing.ui.TicketingTabBindings
+import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.ui.VenueManagementTab
 import com.bam.incomedy.feature.venue.ui.VenueScreenTags
 import com.bam.incomedy.feature.venue.ui.VenueTabBindings
@@ -71,6 +75,7 @@ import java.net.URL
  * Экран авторизованной части приложения с нижним меню и вкладкой аккаунта.
  *
  * @property sessionViewModel Общая модель сессии, которая отдает профиль, роли и рабочие пространства.
+ * @property ticketingViewModel Android-адаптер audience/staff ticketing feature.
  * @property venueViewModel Android-адаптер organizer venue management feature.
  * @property modifier Внешний модификатор экрана.
  */
@@ -78,11 +83,13 @@ import java.net.URL
 fun MainScreen(
     sessionViewModel: SessionAndroidViewModel,
     eventViewModel: EventAndroidViewModel,
+    ticketingViewModel: TicketingAndroidViewModel,
     venueViewModel: VenueAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
     val state by sessionViewModel.state.collectAsStateWithLifecycle()
     val eventState by eventViewModel.state.collectAsStateWithLifecycle()
+    val ticketingState by ticketingViewModel.state.collectAsStateWithLifecycle()
     val venueState by venueViewModel.state.collectAsStateWithLifecycle()
 
     MainScreenContent(
@@ -124,6 +131,13 @@ fun MainScreen(
             onPauseEventSales = eventViewModel::pauseEventSales,
             onCancelEvent = eventViewModel::cancelEvent,
             onClearError = eventViewModel::clearError,
+        ),
+        ticketingBindings = TicketingTabBindings(
+            state = ticketingState,
+            onRefreshTickets = ticketingViewModel::refreshTickets,
+            onScanTicket = ticketingViewModel::scanTicket,
+            onClearError = ticketingViewModel::clearError,
+            onClearCheckInResult = ticketingViewModel::clearCheckInResult,
         ),
         venueBindings = VenueTabBindings(
             state = venueState,
@@ -174,6 +188,7 @@ fun MainScreen(
  * Тестируемое содержимое главного экрана без привязки к Android `ViewModel`.
  *
  * @property state Данные текущей сессии для отрисовки вкладок.
+ * @property ticketingBindings Данные и команды audience/staff ticketing вкладки.
  * @property onSetActiveRole Обработчик переключения активной роли.
  * @property onCreateWorkspace Обработчик создания рабочего пространства.
  * @property onCreateWorkspaceInvitation Обработчик создания invitation внутри workspace.
@@ -189,6 +204,7 @@ fun MainScreen(
 internal fun MainScreenContent(
     state: SessionState,
     eventBindings: EventTabBindings = EventTabBindings(),
+    ticketingBindings: TicketingTabBindings = TicketingTabBindings(),
     venueBindings: VenueTabBindings = VenueTabBindings(),
     onSetActiveRole: (String) -> Unit,
     onCreateWorkspace: (String, String?) -> Unit,
@@ -250,6 +266,11 @@ internal fun MainScreenContent(
                     onAcceptWorkspaceInvitation = onAcceptWorkspaceInvitation,
                     onDeclineWorkspaceInvitation = onDeclineWorkspaceInvitation,
                     onUpdateWorkspaceMembershipRole = onUpdateWorkspaceMembershipRole,
+                )
+                MainTab.TICKETS -> TicketWalletTab(
+                    sessionState = state,
+                    ticketingBindings = ticketingBindings,
+                    modifier = Modifier.testTag(TicketingScreenTags.ROOT),
                 )
                 MainTab.ACCOUNT -> AccountTab(
                     state = state,
@@ -958,6 +979,11 @@ private enum class MainTab(
         iconGlyph = "⌂",
         testTag = MainScreenTags.TAB_HOME,
     ),
+    TICKETS(
+        title = "Билеты",
+        iconGlyph = "◩",
+        testTag = MainScreenTags.TAB_TICKETS,
+    ),
     VENUES(
         title = "Площадки",
         iconGlyph = "▦",
@@ -990,6 +1016,9 @@ object MainScreenTags {
 
     /** Тег вкладки аккаунта. */
     const val TAB_ACCOUNT = "main.tab.account"
+
+    /** Тег вкладки билетов. */
+    const val TAB_TICKETS = "main.tab.tickets"
 
     /** Тег вкладки площадок. */
     const val TAB_VENUES = "main.tab.venues"

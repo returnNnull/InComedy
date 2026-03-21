@@ -33,6 +33,7 @@ kotlin {
             implementation(project(":feature:auth"))
             implementation(project(":feature:venue"))
             implementation(project(":feature:event"))
+            implementation(project(":feature:ticketing"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
         }

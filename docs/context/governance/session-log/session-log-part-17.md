@@ -20,3 +20,10 @@
 - Changes: Completed the backend/shared foundation for issued tickets and check-in by adding `IssuedTicket` / check-in domain-data contracts, the `tickets` persistence migration, idempotent ticket issuance on paid-order confirmation plus backfill for historical paid orders, authenticated `GET /api/v1/me/tickets`, checker/owner/manager `POST /api/v1/checkin/scan`, and the corresponding structured diagnostics. Added server regression coverage for issued-ticket listing, checker-only check-in, duplicate scan semantics, and the new migration surface.
 - Decisions: Kept `D-065` / `D-066` intact: no concrete PSP was selected or activated; the work remained provider-agnostic and used the existing optional YooKassa adapter only as a disabled candidate in tests for payment-confirmation flow.
 - Next: Build shared/mobile audience and staff surfaces on top of the new contracts: `My Tickets`, QR presentation for the buyer, and checker scan UX over the existing `me/tickets` and `checkin/scan` backend routes.
+
+## 2026-03-22 00:27
+
+- Context: User asked to proceed immediately after context synchronization, so the active follow-up to `D-066` became the shared/mobile ticketing slice: `My Tickets`, buyer QR presentation, and checker scan UX on top of the already delivered provider-agnostic backend contracts.
+- Changes: Added shared `:feature:ticketing` state/effect/intent orchestration plus Koin/iOS bridge wiring, Android Compose `Билеты` tab UI with QR rendering and checker scan form, iOS SwiftUI `TicketWalletView` / `TicketWalletModel`, and targeted Android/iOS UI coverage. Fixed SwiftUI accessibility identifier collisions so QR-toggle, scan input/button, and result code remain individually addressable in XCUITest.
+- Decisions: Kept `D-065` / `D-066` intact without new governance changes. No concrete PSP was selected or activated; the client delivery stayed provider-agnostic and continued to treat the existing YooKassa adapter as a disabled candidate only.
+- Next: Shift the next bounded `P0` step to comedian applications plus organizer approve/reject/waitlist and lineup ordering, while PSP selection remains deferred until final pre-publication work.

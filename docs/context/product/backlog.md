@@ -7,11 +7,13 @@ Priority scale:
 
 ## P0
 
-Current implementation sequence note (`2026-03-14`):
+Current implementation sequence note (`2026-03-22`):
 - Reset the active MVP auth standard to login + password.
 - Keep provider-agnostic identity, roles, active-role context, and organizer workspace membership as the internal auth foundation.
 - Implement credential auth first, then VK ID as the external provider; phone OTP, Telegram, and Google are no longer part of the active MVP auth scope.
-- Keep the external PSP decision deferred until the final pre-publication stage; continue ticketing delivery through provider-agnostic order/ticket/check-in foundations first.
+- Keep the external PSP decision deferred until the final pre-publication stage; the delivered ticketing slice remains provider-agnostic until then.
+- Provider-agnostic ticket wallet / QR / checker scan surfaces are now delivered on top of the ticketing foundation.
+- The next bounded `P0` delivery slice is comedian applications + organizer approve/reject/waitlist + lineup ordering.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
 - Auth via standard login + password, with provider-agnostic extension points and VK ID as the external provider.

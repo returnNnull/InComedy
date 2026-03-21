@@ -14,6 +14,9 @@ struct MainGraphView: View {
     /// Модель organizer event management feature.
     @StateObject private var eventModel: EventScreenModel
 
+    /// Модель audience/staff ticketing feature.
+    @StateObject private var ticketModel: TicketWalletModel
+
     /// Имя нового рабочего пространства из формы на вкладке "Главная".
     @State private var workspaceName: String = ""
 
@@ -51,6 +54,13 @@ struct MainGraphView: View {
                 )
             } ?? EventScreenModel()
         )
+        _ticketModel = StateObject(
+            wrappedValue: fixture.map { _ in
+                TicketWalletModel(
+                    fixture: TicketWalletFixture.preview()
+                )
+            } ?? TicketWalletModel()
+        )
     }
 
     /// Отрисовывает tab shell авторизованной части приложения.
@@ -71,6 +81,17 @@ struct MainGraphView: View {
                 Label("Главная", systemImage: "house")
             }
             .accessibilityIdentifier("main.tab.home")
+
+            NavigationStack {
+                TicketWalletView(
+                    model: ticketModel,
+                    workspaces: model.workspaces
+                )
+            }
+            .tabItem {
+                Label("Билеты", systemImage: "qrcode")
+            }
+            .accessibilityIdentifier("main.tab.tickets")
 
             NavigationStack {
                 EventManagementView(

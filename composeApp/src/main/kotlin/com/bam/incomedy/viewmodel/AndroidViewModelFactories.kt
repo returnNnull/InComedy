@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
+import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
 
 /**
@@ -55,6 +56,17 @@ object AndroidViewModelFactories {
     fun event(application: Application): ViewModelProvider.Factory {
         return singleViewModelFactory(EventAndroidViewModel::class.java) {
             EventAndroidViewModel(application)
+        }
+    }
+
+    /**
+     * Возвращает фабрику для Android-адаптера audience/staff ticketing feature.
+     *
+     * @param application Android application context, необходимый `TicketingAndroidViewModel`.
+     */
+    fun ticketing(application: Application): ViewModelProvider.Factory {
+        return singleViewModelFactory(TicketingAndroidViewModel::class.java) {
+            TicketingAndroidViewModel(application)
         }
     }
 

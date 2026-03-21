@@ -30,7 +30,7 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-21)
+## Current Implementation Status (2026-03-22)
 
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
@@ -53,11 +53,10 @@
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
   - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
   - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, event-local price/availability overrides, and a public audience discovery route for published public events with bounded `city/date/price` filtering plus audience-safe summaries;
-  - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers so inventory GET does not perform a full reconcile on every unchanged read, a public audience inventory route for published public events, authenticated personalized inventory list, hold create/release/expiry routes serialized through inventory-first locking, provider-agnostic checkout order creation from active hold-ов with persisted order lines, authenticated order-status polling through `GET /api/v1/orders/{orderId}`, `pending_payment` inventory blocking, automatic expiry recovery, idempotent issued-ticket creation with dedicated `tickets` persistence, authenticated `GET /api/v1/me/tickets` with QR payload delivery for the buyer, and checker/owner/manager `POST /api/v1/checkin/scan` with duplicate-scan semantics plus structured diagnostics; the optional YooKassa-specific PSP adapter remains an unapproved disabled-by-default candidate, and its presence in the repository/docs does not mean a PSP has been selected. The shared order/inventory/ticket semantics remain provider-agnostic. `sold_out` automation, complimentary issuance, refund/cancel ticket lifecycle, check-in stats/offline buffering, and shared/mobile audience + checker surfaces are still not implemented;
-- current Android/iOS main flow now exposes organizer venue and event surfaces, including event lifecycle controls and override editing, but deeper organizer operational flows beyond workspaces, venues, and event foundations are still missing.
+  - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers so inventory GET does not perform a full reconcile on every unchanged read, a public audience inventory route for published public events, authenticated personalized inventory list, hold create/release/expiry routes serialized through inventory-first locking, provider-agnostic checkout order creation from active hold-ов with persisted order lines, authenticated order-status polling through `GET /api/v1/orders/{orderId}`, `pending_payment` inventory blocking, automatic expiry recovery, idempotent issued-ticket creation with dedicated `tickets` persistence, authenticated `GET /api/v1/me/tickets` with QR payload delivery for the buyer, checker/owner/manager `POST /api/v1/checkin/scan` with duplicate-scan semantics plus structured diagnostics, shared `:feature:ticketing` presentation state, Android Compose `Билеты` tab wiring, and iOS SwiftUI `TicketWalletView` surfaces for `My Tickets`, QR presentation, and checker scan UX; the optional YooKassa-specific PSP adapter remains an unapproved disabled-by-default candidate, and its presence in the repository/docs does not mean a PSP has been selected. The shared order/inventory/ticket semantics remain provider-agnostic. `sold_out` automation, complimentary issuance, refund/cancel ticket lifecycle, wallet pass/export, and check-in stats/offline buffering are still not implemented;
+- current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet and check-in surfaces, but deeper organizer operational flows beyond workspaces, venues, events, and ticketing foundations are still missing.
 - Planned next bounded contexts:
   - lineup,
-  - ticketing/check-in client surfaces,
   - donations/payouts,
   - notifications,
   - analytics.

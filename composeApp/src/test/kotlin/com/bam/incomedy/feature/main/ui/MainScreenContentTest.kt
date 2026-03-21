@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
+import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
+import com.bam.incomedy.feature.ticketing.ui.TicketingTabBindings
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -188,6 +190,42 @@ class MainScreenContentTest {
         composeRule.onNodeWithTag(com.bam.incomedy.feature.event.ui.EventScreenTags.ROOT).assertIsDisplayed()
     }
 
+    /** Проверяет, что main shell умеет переключаться на audience/staff ticketing вкладку. */
+    @Test
+    fun ticketTabIsReachableFromBottomBar() {
+        setMainScreenContent()
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_TICKETS).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(TicketingScreenTags.ROOT).assertIsDisplayed()
+        composeRule.onNodeWithTag(TicketingScreenTags.COUNT).assertTextEquals("Билетов: 2")
+    }
+
+    /** Проверяет, что ticketing-вкладка отправляет QR payload на проверку. */
+    @Test
+    fun ticketTabInvokesQrScanCallback() {
+        var scannedPayload: String? = null
+
+        setMainScreenContent(
+            ticketingBindings = TicketingTabBindings(
+                state = AndroidUiStateFactory.ticketingState(),
+                onScanTicket = { scannedPayload = it },
+            ),
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_TICKETS).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(TicketingScreenTags.SCAN_INPUT)
+            .performTextInput("incomedy.ticket.v1:ticket-1")
+        composeRule.onNodeWithTag(TicketingScreenTags.SCAN_BUTTON)
+            .performScrollTo()
+            .performClick()
+
+        assertEquals("incomedy.ticket.v1:ticket-1", scannedPayload)
+    }
+
     /** Проверяет, что вкладка аккаунта показывает профиль и прокидывает действия роли и выхода. */
     @Test
     fun accountTabShowsProfileAndInvokesActions() {
@@ -331,6 +369,9 @@ class MainScreenContentTest {
     /** Поднимает содержимое главного экрана в Material-теме для проверки UI-поведения. */
     private fun setMainScreenContent(
         state: com.bam.incomedy.shared.session.SessionState = AndroidUiStateFactory.sessionState(),
+        ticketingBindings: TicketingTabBindings = TicketingTabBindings(
+            state = AndroidUiStateFactory.ticketingState(),
+        ),
         onSetActiveRole: (String) -> Unit = {},
         onCreateWorkspace: (String, String?) -> Unit = { _, _ -> },
         onCreateWorkspaceInvitation: (String, String, String) -> Unit = { _, _, _ -> },
@@ -344,6 +385,7 @@ class MainScreenContentTest {
             MaterialTheme {
                 MainScreenContent(
                     state = state,
+                    ticketingBindings = ticketingBindings,
                     onSetActiveRole = onSetActiveRole,
                     onCreateWorkspace = onCreateWorkspace,
                     onCreateWorkspaceInvitation = onCreateWorkspaceInvitation,

@@ -32,6 +32,7 @@ jedis = "5.2.0"
 argon2 = "2.12"
 robolectric = "4.14.1"
 vkid = "2.6.1"
+zxing = "3.5.3"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -87,6 +88,7 @@ argon2-jvm = { module = "de.mkammerer:argon2-jvm", version.ref = "argon2" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 vkid = { module = "com.vk.id:vkid", version.ref = "vkid" }
 vkid-onetap-compose = { module = "com.vk.id:onetap-compose", version.ref = "vkid" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
