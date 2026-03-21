@@ -20,6 +20,7 @@
 - Backend persistence changes must include migration-path verification for both clean schema creation and upgrade of a legacy initialized schema.
 - Venue/hall-template backend changes must cover route behavior, layout contract validation, and migration-path verification for the organizer venue slice.
 - Event/EventHallSnapshot backend changes must cover route behavior, lifecycle transition validation, detail/update override validation, snapshot freeze invariants, and migration-path verification for the organizer event slice.
+- Public event discovery backend changes must cover audience-safe summary shaping, `city/date/price` filtering, and request-id-correlated diagnostics for the anonymous route.
 - Ticketing inventory/hold backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, expiry/release semantics, stale-sync avoidance on unchanged reads, and migration-path verification for the ticketing foundation slice.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 - Mobile UI changes in active product flows must have executable platform UI coverage where in-repo infrastructure exists.
@@ -39,12 +40,13 @@
 - Flaky tests must be fixed or quarantined with explicit follow-up.
 - Android repository changes that affect `composeApp`/shared mobile flows must execute `./gradlew :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin` in GitHub Actions CI.
 
-## Current Mobile UI Coverage (2026-03-17)
+## Current Mobile UI Coverage (2026-03-21)
 
 - Android root auth/main navigation is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/navigation/AppNavHostContentTest.kt`, including `unauthorized -> auth`, `authorized -> main`, and `state reset/logout -> auth`.
 - Android post-auth main shell is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including happy path, empty state, loading indicator, disabled actions, fallback-profile rendering, dismissible error state, workspace invitation inbox actions, workspace invite form, and membership permission-role updates.
 - Android organizer venue management tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/venue/ui/VenueManagementTabContentTest.kt` plus bottom-tab reachability coverage in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`.
 - Android organizer event management tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/event/ui/EventManagementTabContentTest.kt` plus bottom-tab reachability coverage in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including create-form wiring, publish/open/pause/cancel actions, and text-based override-editor save flow.
+- Backend public event discovery route is covered by `server/src/test/kotlin/com/bam/incomedy/server/events/EventRoutesTest.kt`, including anonymous listing, deterministic `city/date/price` filtering, and request-id-correlated diagnostics for the public catalog route.
 - Android auth entry UI is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/auth/ui/AuthScreenContentTest.kt`, including provider dispatch, loading lock, error rendering, and authorized state.
 - Android UI tests use stable `testTag` hooks plus shared Android UI state factories to avoid brittle ad-hoc state assembly.
 - GitHub Actions mobile CI coverage is implemented through `.github/workflows/ci-android.yml` for Android UI unit tests and `composeApp` compilation.

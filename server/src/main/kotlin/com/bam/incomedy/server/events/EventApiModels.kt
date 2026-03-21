@@ -34,6 +34,12 @@ data class EventListResponse(
     val events: List<OrganizerEventResponse>,
 )
 
+/** DTO списка публичных audience-safe мероприятий. */
+@Serializable
+data class PublicEventListResponse(
+    val events: List<PublicEventSummaryResponse>,
+)
+
 /** DTO запроса создания organizer event. */
 @Serializable
 data class CreateEventRequest(
@@ -242,6 +248,50 @@ data class OrganizerEventResponse(
                 priceZones = storedEvent.priceZones.map(EventPriceZoneResponse::fromStored),
                 pricingAssignments = storedEvent.pricingAssignments.map(EventPricingAssignmentResponse::fromStored),
                 availabilityOverrides = storedEvent.availabilityOverrides.map(EventAvailabilityOverrideResponse::fromStored),
+            )
+        }
+    }
+}
+
+/** DTO audience-safe карточки публичного discovery-каталога. */
+@Serializable
+data class PublicEventSummaryResponse(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    @SerialName("venue_name")
+    val venueName: String,
+    val city: String,
+    @SerialName("starts_at")
+    val startsAt: String,
+    @SerialName("doors_open_at")
+    val doorsOpenAt: String? = null,
+    @SerialName("ends_at")
+    val endsAt: String? = null,
+    @SerialName("sales_status")
+    val salesStatus: String,
+    val currency: String,
+    @SerialName("price_min_minor")
+    val priceMinMinor: Int? = null,
+    @SerialName("price_max_minor")
+    val priceMaxMinor: Int? = null,
+) {
+    companion object {
+        /** Маппит internal discovery view в публичный response DTO. */
+        fun fromView(view: PublicEventSummaryView): PublicEventSummaryResponse {
+            return PublicEventSummaryResponse(
+                id = view.id,
+                title = view.title,
+                description = view.description,
+                venueName = view.venueName,
+                city = view.city,
+                startsAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(view.startsAt),
+                doorsOpenAt = view.doorsOpenAt?.let(DateTimeFormatter.ISO_OFFSET_DATE_TIME::format),
+                endsAt = view.endsAt?.let(DateTimeFormatter.ISO_OFFSET_DATE_TIME::format),
+                salesStatus = view.salesStatus,
+                currency = view.currency,
+                priceMinMinor = view.priceMinMinor,
+                priceMaxMinor = view.priceMaxMinor,
             )
         }
     }

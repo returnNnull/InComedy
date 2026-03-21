@@ -3,8 +3,11 @@ package com.bam.incomedy.server.events
 import com.bam.incomedy.server.auth.session.JwtSessionTokenService
 import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.db.AuthProvider
+import com.bam.incomedy.server.db.StoredEventPriceZone
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
+import com.bam.incomedy.server.observability.DiagnosticsQuery
+import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
 import com.bam.incomedy.server.support.InMemoryEventRepository
 import com.bam.incomedy.server.support.InMemoryUserRepository
@@ -19,20 +22,194 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.server.plugins.callid.CallId
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import java.time.OffsetDateTime
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
  * Route-тесты organizer event management surface.
  */
 class EventRoutesTest {
+    /** Проверяет, что anonymous audience видит только опубликованные public-события. */
+    @Test
+    fun `anonymous user can list published public events`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Moscow Late Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-10T19:00:00+03:00",
+            priceMinors = listOf(1500, 2500),
+        )
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "SPB Showcase",
+            city = "Saint Petersburg",
+            startsAtIso = "2026-04-11T20:00:00+03:00",
+            priceMinors = listOf(2900),
+        )
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Private Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-12T19:00:00+03:00",
+            visibility = "private",
+            priceMinors = listOf(1800),
+        )
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Draft Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-13T19:00:00+03:00",
+            status = "draft",
+            priceMinors = listOf(1700),
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService(),
+        )
+
+        val response = client.get("/api/v1/public/events")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Moscow Late Show"))
+        assertTrue(body.contains("SPB Showcase"))
+        assertTrue(!body.contains("Private Show"))
+        assertTrue(!body.contains("Draft Show"))
+        assertTrue(body.contains(""""price_min_minor":1500"""))
+        assertTrue(body.contains(""""price_max_minor":2500"""))
+        assertTrue(!body.contains("workspace_id"))
+        assertTrue(!body.contains("hall_snapshot"))
+    }
+
+    /** Проверяет детерминированную фильтрацию public discovery по city/date/price. */
+    @Test
+    fun `public event list filters by city date and price`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Matching Moscow Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-10T19:00:00+03:00",
+            priceMinors = listOf(1500, 2500),
+        )
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Too Expensive Moscow Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-10T20:00:00+03:00",
+            priceMinors = listOf(3000),
+        )
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Wrong Date Moscow Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-11T19:00:00+03:00",
+            priceMinors = listOf(2200),
+        )
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Wrong City Show",
+            city = "Kazan",
+            startsAtIso = "2026-04-10T19:00:00+03:00",
+            priceMinors = listOf(2200),
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService(),
+        )
+
+        val response = client.get(
+            "/api/v1/public/events?city=Moscow&date_from=2026-04-10&date_to=2026-04-10&price_min_minor=2000&price_max_minor=2600",
+        )
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Matching Moscow Show"))
+        assertTrue(!body.contains("Too Expensive Moscow Show"))
+        assertTrue(!body.contains("Wrong Date Moscow Show"))
+        assertTrue(!body.contains("Wrong City Show"))
+    }
+
+    /** Проверяет requestId-коррелированные diagnostics для публичного discovery route-а. */
+    @Test
+    fun `public event list success records diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository().apply { putOwnerUser() }
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        seedPublicEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            title = "Diagnostics Show",
+            city = "Moscow",
+            startsAtIso = "2026-04-10T19:00:00+03:00",
+            priceMinors = listOf(1900),
+        )
+
+        configureEventRoutes(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            tokenService = tokenService(),
+            diagnosticsStore = diagnosticsStore,
+        )
+
+        val response = client.get("/api/v1/public/events?city=Moscow&price_min_minor=1000")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val requestId = assertNotNull(response.headers["X-Request-ID"])
+        val event = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "event.public_list.success",
+                limit = 1,
+            ),
+        ).single()
+        assertEquals("1", event.metadata["count"])
+        assertEquals("true", event.metadata["hasCityFilter"])
+        assertEquals("false", event.metadata["hasDateFilter"])
+        assertEquals("true", event.metadata["hasPriceFilter"])
+    }
+
     /** Проверяет создание organizer event и последующую загрузку списка с frozen snapshot. */
     @Test
     fun `owner can create event and list it`() = testApplication {
@@ -698,9 +875,14 @@ class EventRoutesTest {
         venueRepository: InMemoryVenueRepository,
         eventRepository: InMemoryEventRepository,
         tokenService: JwtSessionTokenService,
+        diagnosticsStore: InMemoryDiagnosticsStore? = null,
     ) {
         environment { config = MapApplicationConfig() }
         application {
+            install(CallId) {
+                generate { UUID.randomUUID().toString() }
+                replyToHeader("X-Request-ID")
+            }
             install(ContentNegotiation) { json() }
             routing {
                 EventRoutes.register(
@@ -711,9 +893,82 @@ class EventRoutesTest {
                     venueRepository = venueRepository,
                     eventRepository = eventRepository,
                     rateLimiter = InMemoryAuthRateLimiter(),
+                    diagnosticsStore = diagnosticsStore,
                 )
             }
         }
+    }
+
+    /** Создает in-memory public event с venue metadata и необязательным price-range для discovery route-а. */
+    private fun seedPublicEvent(
+        userRepository: InMemoryUserRepository,
+        venueRepository: InMemoryVenueRepository,
+        eventRepository: InMemoryEventRepository,
+        title: String,
+        city: String,
+        startsAtIso: String,
+        status: String = "published",
+        salesStatus: String = "open",
+        visibility: String = "public",
+        priceMinors: List<Int> = listOf(1900),
+    ): String {
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = OWNER_ID,
+            name = "$title Workspace",
+            slug = "workspace-${UUID.randomUUID()}",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "$city Comedy Club",
+            city = city,
+            address = "$city Main Street 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val event = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = title,
+            description = "$title description",
+            startsAt = OffsetDateTime.parse(startsAtIso),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = status,
+            salesStatus = salesStatus,
+            currency = "RUB",
+            visibility = visibility,
+            sourceTemplateId = UUID.randomUUID().toString(),
+            sourceTemplateName = "Public Layout",
+            snapshotJson = """{"rows":[{"id":"row-a","label":"A","seats":[{"ref":"row-a-1","label":"1"}]}]}""",
+        )
+        if (priceMinors.isEmpty()) {
+            return event.id
+        }
+        return requireNotNull(
+            eventRepository.updateEvent(
+                eventId = event.id,
+                title = event.title,
+                description = event.description,
+                startsAt = event.startsAt,
+                doorsOpenAt = event.doorsOpenAt,
+                endsAt = event.endsAt,
+                currency = event.currency,
+                visibility = event.visibility,
+                priceZones = priceMinors.mapIndexed { index, priceMinor ->
+                    StoredEventPriceZone(
+                        id = "zone-$index",
+                        name = "Zone $index",
+                        priceMinor = priceMinor,
+                        currency = "RUB",
+                    )
+                },
+                pricingAssignments = emptyList(),
+                availabilityOverrides = emptyList(),
+            ),
+        ).id
     }
 
     /** Добавляет owner-пользователя в in-memory user repository. */

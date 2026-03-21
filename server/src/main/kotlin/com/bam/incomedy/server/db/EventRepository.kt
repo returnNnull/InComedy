@@ -116,6 +116,9 @@ interface EventRepository {
     /** Возвращает события, доступные пользователю по active workspace memberships. */
     fun listEvents(userId: String): List<StoredOrganizerEvent>
 
+    /** Возвращает опубликованные public-события для audience discovery surface. */
+    fun listPublicEvents(): List<StoredOrganizerEvent>
+
     /** Создает draft-событие и сразу сохраняет frozen hall snapshot. */
     fun createEvent(
         workspaceId: String,

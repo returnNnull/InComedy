@@ -34,6 +34,7 @@ class PostgresEventRepository(
                     e.sales_status,
                     e.currency,
                     e.visibility,
+                    e.updated_at,
                     s.id AS hall_snapshot_id,
                     s.source_template_id,
                     s.source_template_name,
@@ -49,6 +50,48 @@ class PostgresEventRepository(
             """.trimIndent()
             return connection.prepareStatement(sql).use { statement ->
                 statement.setObject(1, UUID.fromString(userId))
+                statement.executeQuery().use { result ->
+                    buildList {
+                        while (result.next()) {
+                            add(enrichEvent(connection, result.toStoredOrganizerEventBase()))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Возвращает только опубликованные public-события для audience discovery. */
+    override fun listPublicEvents(): List<StoredOrganizerEvent> {
+        dataSource.connection.use { connection ->
+            val sql = """
+                SELECT
+                    e.id,
+                    e.workspace_id,
+                    e.venue_id,
+                    e.venue_name,
+                    e.title,
+                    e.description,
+                    e.starts_at,
+                    e.doors_open_at,
+                    e.ends_at,
+                    e.status,
+                    e.sales_status,
+                    e.currency,
+                    e.visibility,
+                    e.updated_at,
+                    s.id AS hall_snapshot_id,
+                    s.source_template_id,
+                    s.source_template_name,
+                    s.snapshot_json
+                FROM organizer_events e
+                JOIN event_hall_snapshots s
+                  ON s.event_id = e.id
+                WHERE e.status = 'published'
+                  AND e.visibility = 'public'
+                ORDER BY e.starts_at, e.created_at
+            """.trimIndent()
+            return connection.prepareStatement(sql).use { statement ->
                 statement.executeQuery().use { result ->
                     buildList {
                         while (result.next()) {

@@ -30,6 +30,15 @@ class InMemoryEventRepository(
             .mapNotNull { event -> event.toStored(snapshotsById) }
     }
 
+    override fun listPublicEvents(): List<StoredOrganizerEvent> {
+        return eventsById.values
+            .asSequence()
+            .filter { event -> event.status == "published" && event.visibility == "public" }
+            .sortedBy { event -> event.startsAt }
+            .mapNotNull { event -> event.toStored(snapshotsById) }
+            .toList()
+    }
+
     override fun createEvent(
         workspaceId: String,
         venueId: String,

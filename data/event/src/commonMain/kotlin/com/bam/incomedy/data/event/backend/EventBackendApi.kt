@@ -18,6 +18,8 @@ import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.domain.event.EventUpdateDraft
 import com.bam.incomedy.domain.event.EventVisibility
 import com.bam.incomedy.domain.event.OrganizerEvent
+import com.bam.incomedy.domain.event.PublicEventDiscoveryFilter
+import com.bam.incomedy.domain.event.PublicEventSummary
 import com.bam.incomedy.domain.venue.HallLayout
 import com.bam.incomedy.domain.venue.HallPriceZone
 import com.bam.incomedy.domain.venue.HallRow
@@ -30,6 +32,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -60,6 +63,23 @@ class EventBackendApi(
             }
             ensureBackendSuccess(response, parser)
             response.body<EventListResponse>().events.map(EventResponse::toDomain)
+        }
+    }
+
+    /** Загружает публичный audience-каталог опубликованных событий по детерминированным фильтрам. */
+    suspend fun listPublicEvents(
+        filter: PublicEventDiscoveryFilter,
+    ): Result<List<PublicEventSummary>> {
+        return runCatching {
+            val response = httpClient.get("$baseUrl/api/v1/public/events") {
+                filter.city?.let { parameter("city", it) }
+                filter.dateFromIso?.let { parameter("date_from", it) }
+                filter.dateToIso?.let { parameter("date_to", it) }
+                filter.priceMinMinor?.let { parameter("price_min_minor", it) }
+                filter.priceMaxMinor?.let { parameter("price_max_minor", it) }
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<PublicEventListResponse>().events.map(PublicEventSummaryResponse::toDomain)
         }
     }
 
@@ -171,6 +191,12 @@ class EventBackendApi(
 @Serializable
 private data class EventListResponse(
     val events: List<EventResponse>,
+)
+
+/** DTO списка публичных мероприятий для audience discovery. */
+@Serializable
+private data class PublicEventListResponse(
+    val events: List<PublicEventSummaryResponse>,
 )
 
 /** DTO запроса создания события. */
@@ -312,6 +338,48 @@ private data class EventResponse(
             priceZones = priceZones.map(EventPriceZonePayload::toDomain),
             pricingAssignments = pricingAssignments.map(EventPricingAssignmentPayload::toDomain),
             availabilityOverrides = availabilityOverrides.map(EventAvailabilityOverridePayload::toDomain),
+        )
+    }
+}
+
+/** DTO audience-safe карточки публичного мероприятия. */
+@Serializable
+private data class PublicEventSummaryResponse(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    @SerialName("venue_name")
+    val venueName: String,
+    val city: String,
+    @SerialName("starts_at")
+    val startsAt: String,
+    @SerialName("doors_open_at")
+    val doorsOpenAt: String? = null,
+    @SerialName("ends_at")
+    val endsAt: String? = null,
+    @SerialName("sales_status")
+    val salesStatus: String,
+    val currency: String,
+    @SerialName("price_min_minor")
+    val priceMinMinor: Int? = null,
+    @SerialName("price_max_minor")
+    val priceMaxMinor: Int? = null,
+) {
+    /** Маппит transport summary в доменную audience-модель. */
+    fun toDomain(): PublicEventSummary {
+        return PublicEventSummary(
+            id = id,
+            title = title,
+            description = description,
+            venueName = venueName,
+            city = city,
+            startsAtIso = startsAt,
+            doorsOpenAtIso = doorsOpenAt,
+            endsAtIso = endsAt,
+            salesStatus = EventSalesStatus.fromWireName(salesStatus) ?: EventSalesStatus.CLOSED,
+            currency = currency,
+            priceMinMinor = priceMinMinor,
+            priceMaxMinor = priceMaxMinor,
         )
     }
 }

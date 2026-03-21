@@ -1867,6 +1867,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/public/events:
+    get:
+      tags: [Events]
+      summary: List published public events for audience discovery
+      operationId: getPublicEvents
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: city
+          required: false
+          description: Exact city filter matched case-insensitively against venue city.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 80
+        - in: query
+          name: date_from
+          required: false
+          description: Inclusive lower bound for the event local date in venue timezone.
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: date_to
+          required: false
+          description: Inclusive upper bound for the event local date in venue timezone.
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: price_min_minor
+          required: false
+          description: Inclusive lower bound for overlapping event price range in minor units.
+          schema:
+            type: integer
+            minimum: 0
+        - in: query
+          name: price_max_minor
+          required: false
+          description: Inclusive upper bound for overlapping event price range in minor units.
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: Public event discovery list returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicEventListResponse"
+        "400":
+          description: Invalid date or price filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/public/events/{eventId}/inventory:
     get:
       tags: [Ticketing]
@@ -2584,6 +2652,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OrganizerEventResponse"
+    PublicEventListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicEventSummaryResponse"
     CreateEventRequest:
       type: object
       additionalProperties: false
@@ -2833,6 +2911,55 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EventAvailabilityOverrideResponse"
+    PublicEventSummaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - venue_name
+        - city
+        - starts_at
+        - sales_status
+        - currency
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        venue_name:
+          type: string
+        city:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        doors_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        sales_status:
+          type: string
+          enum: [closed, open, paused, sold_out]
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        price_min_minor:
+          type: integer
+          nullable: true
+          minimum: 0
+        price_max_minor:
+          type: integer
+          nullable: true
+          minimum: 0
     EventHallSnapshotResponse:
       type: object
       additionalProperties: false

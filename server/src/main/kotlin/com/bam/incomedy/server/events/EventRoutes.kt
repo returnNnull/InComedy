@@ -14,6 +14,7 @@ import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.observability.DiagnosticsStore
 import com.bam.incomedy.server.observability.recordCall
 import com.bam.incomedy.server.security.AuthRateLimiter
+import com.bam.incomedy.server.security.directPeerFingerprint
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.plugins.callid.callId
@@ -24,14 +25,15 @@ import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Organizer event management routes.
+ * Organizer event management routes plus public audience discovery surface.
  *
  * Поверхность покрывает bounded organizer slice `create/list/get/update/publish`, sales
- * open/pause/cancel controls, хранит frozen `EventHallSnapshot` и event-local overrides, не
- * смешивая event lifecycle с ticketing flow.
+ * open/pause/cancel controls, хранит frozen `EventHallSnapshot` и event-local overrides, а также
+ * отдает audience-safe public discovery catalog без organizer-only полей.
  */
 object EventRoutes {
     /** Структурированный logger organizer event surface. */
@@ -43,7 +45,10 @@ object EventRoutes {
     /** Максимальный размер request тела обновления organizer event details. */
     private const val MAX_UPDATE_EVENT_REQUEST_BYTES = 32 * 1024
 
-    /** Регистрирует organizer event routes внутри защищенного session scope. */
+    /** Peer-based лимит публичного discovery route-а, чтобы catalog surface не превратился в log sink. */
+    private const val PUBLIC_EVENT_DISCOVERY_PEER_LIMIT = 240
+
+    /** Регистрирует organizer event routes и публичный audience discovery surface. */
     fun register(
         route: Route,
         tokenService: JwtSessionTokenService,
@@ -59,8 +64,137 @@ object EventRoutes {
             venueRepository = venueRepository,
             eventRepository = eventRepository,
         )
+        val publicEventDiscoveryService = PublicEventDiscoveryService(
+            eventRepository = eventRepository,
+            venueRepository = venueRepository,
+        )
 
         route.route("/api/v1") {
+            /** Публичный discovery-каталог опубликованных public-событий для audience surface. */
+            get("/public/events") {
+                val directPeer = call.directPeerFingerprint()
+                if (!rateLimiter.allow(
+                        key = "event_public_list_peer:$directPeer",
+                        limit = PUBLIC_EVENT_DISCOVERY_PEER_LIMIT,
+                        windowMs = 60_000L,
+                    )
+                ) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.rate_limited",
+                        status = HttpStatusCode.TooManyRequests.value,
+                        safeErrorCode = "rate_limited",
+                        metadata = mapOf("scope" to "peer"),
+                    )
+                    call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                    return@get
+                }
+
+                val city = call.request.queryParameters["city"]?.trim()?.takeIf(String::isNotBlank)
+                val dateFrom = parseOptionalLocalDate(call.request.queryParameters["date_from"]).getOrElse {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.invalid_date_from",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid date_from"))
+                    return@get
+                }
+                val dateTo = parseOptionalLocalDate(call.request.queryParameters["date_to"]).getOrElse {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.invalid_date_to",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid date_to"))
+                    return@get
+                }
+                val priceMinMinor = parseOptionalPositiveInt(call.request.queryParameters["price_min_minor"]).getOrElse {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.invalid_price_min_minor",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid price_min_minor"))
+                    return@get
+                }
+                val priceMaxMinor = parseOptionalPositiveInt(call.request.queryParameters["price_max_minor"]).getOrElse {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.invalid_price_max_minor",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid price_max_minor"))
+                    return@get
+                }
+
+                if (dateFrom != null && dateTo != null && dateFrom > dateTo) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.invalid_date_range",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse("bad_request", "date_from must be on or before date_to"),
+                    )
+                    return@get
+                }
+                if (priceMinMinor != null && priceMaxMinor != null && priceMinMinor > priceMaxMinor) {
+                    diagnosticsStore?.recordCall(
+                        call = call,
+                        stage = "event.public_list.invalid_price_range",
+                        status = HttpStatusCode.BadRequest.value,
+                        safeErrorCode = "bad_request",
+                    )
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse("bad_request", "price_min_minor must be less than or equal to price_max_minor"),
+                    )
+                    return@get
+                }
+
+                val events = publicEventDiscoveryService.listPublicEvents(
+                    query = PublicEventDiscoveryQuery(
+                        city = city,
+                        dateFrom = dateFrom,
+                        dateTo = dateTo,
+                        priceMinMinor = priceMinMinor,
+                        priceMaxMinor = priceMaxMinor,
+                    ),
+                )
+                logger.info(
+                    "event.public_list.success requestId={} count={} hasCityFilter={} hasDateFilter={} hasPriceFilter={}",
+                    call.callId ?: "n/a",
+                    events.size,
+                    city != null,
+                    dateFrom != null || dateTo != null,
+                    priceMinMinor != null || priceMaxMinor != null,
+                )
+                diagnosticsStore?.recordCall(
+                    call = call,
+                    stage = "event.public_list.success",
+                    status = HttpStatusCode.OK.value,
+                    metadata = mapOf(
+                        "count" to events.size.toString(),
+                        "hasCityFilter" to (city != null).toString(),
+                        "hasDateFilter" to (dateFrom != null || dateTo != null).toString(),
+                        "hasPriceFilter" to (priceMinMinor != null || priceMaxMinor != null).toString(),
+                    ),
+                )
+                call.respond(
+                    HttpStatusCode.OK,
+                    PublicEventListResponse(
+                        events = events.map(PublicEventSummaryResponse::fromView),
+                    ),
+                )
+            }
+
             withSessionAuth(
                 tokenService = tokenService,
                 userRepository = sessionUserRepository,
@@ -655,5 +789,25 @@ object EventRoutes {
     private fun String?.isUuid(): Boolean {
         val value = this ?: return false
         return runCatching { UUID.fromString(value) }.isSuccess
+    }
+
+    /** Парсит необязательный `YYYY-MM-DD` query parameter discovery route-а. */
+    private fun parseOptionalLocalDate(
+        rawValue: String?,
+    ): Result<LocalDate?> {
+        val normalized = rawValue?.trim()?.takeIf(String::isNotBlank) ?: return Result.success(null)
+        return runCatching { LocalDate.parse(normalized) }
+    }
+
+    /** Парсит необязательный non-negative integer query parameter discovery route-а. */
+    private fun parseOptionalPositiveInt(
+        rawValue: String?,
+    ): Result<Int?> {
+        val normalized = rawValue?.trim()?.takeIf(String::isNotBlank) ?: return Result.success(null)
+        return runCatching {
+            normalized.toInt().also { value ->
+                require(value >= 0)
+            }
+        }
     }
 }
