@@ -27,3 +27,10 @@
 - Changes: Added shared `:feature:ticketing` state/effect/intent orchestration plus Koin/iOS bridge wiring, Android Compose `Билеты` tab UI with QR rendering and checker scan form, iOS SwiftUI `TicketWalletView` / `TicketWalletModel`, and targeted Android/iOS UI coverage. Fixed SwiftUI accessibility identifier collisions so QR-toggle, scan input/button, and result code remain individually addressable in XCUITest.
 - Decisions: Kept `D-065` / `D-066` intact without new governance changes. No concrete PSP was selected or activated; the client delivery stayed provider-agnostic and continued to treat the existing YooKassa adapter as a disabled candidate only.
 - Next: Shift the next bounded `P0` step to comedian applications plus organizer approve/reject/waitlist and lineup ordering, while PSP selection remains deferred until final pre-publication work.
+
+## 2026-03-22 22:12
+
+- Context: Automation started a new epic after context sync and no recoverable in-progress run was found; the next bounded `P0` slice remained comedian applications plus lineup ordering.
+- Changes: Formalized `EPIC-067` in task memory, created branch `codex/epic-067-comedian-applications-foundation`, and completed `TASK-067` as a backend-only foundation step: added migration `V13__comedian_applications_foundation.sql`, repository/service/routes for comedian submit + organizer list/status change, OpenAPI entries, and targeted server regression coverage.
+- Decisions: Kept `D-065` / `D-066` intact without new governance decisions. No PSP was selected; delivery continued on an additive non-payment MVP slice with localized blast radius.
+- Next: Execute exactly one next subtask in the same epic: `TASK-068` for lineup-entry foundation (`approved -> lineup draft entry`, explicit `order_index`, organizer reorder API) before any shared/mobile UI work.

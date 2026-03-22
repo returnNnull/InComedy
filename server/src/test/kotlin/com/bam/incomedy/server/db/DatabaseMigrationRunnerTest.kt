@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
  */
 class DatabaseMigrationRunnerTest {
 
-    /** Подтверждает, что clean schema получает все актуальные таблицы ticketing/order/check-in foundation. */
+    /** Подтверждает, что clean schema получает все актуальные таблицы ticketing и comedian-applications foundation. */
     @Test
     fun `migrate creates current schema on clean database`() {
         postgresDataSource().use { dataSource ->
@@ -40,7 +40,8 @@ class DatabaseMigrationRunnerTest {
                 assertTrue(tableExists(connection, "ticket_order_lines"))
                 assertTrue(tableExists(connection, "ticket_checkout_sessions"))
                 assertTrue(tableExists(connection, "tickets"))
-                assertEquals(12, appliedMigrationCount(connection))
+                assertTrue(tableExists(connection, "comedian_applications"))
+                assertEquals(13, appliedMigrationCount(connection))
             }
         }
     }
