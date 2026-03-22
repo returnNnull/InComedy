@@ -2,12 +2,14 @@ package com.bam.incomedy.shared.di
 
 import com.bam.incomedy.data.auth.di.authDataModule
 import com.bam.incomedy.data.event.di.eventDataModule
+import com.bam.incomedy.data.lineup.di.lineupDataModule
 import com.bam.incomedy.data.session.di.sessionDataModule
 import com.bam.incomedy.data.ticketing.di.ticketingDataModule
 import com.bam.incomedy.data.venue.di.venueDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.feature.event.EventViewModel
+import com.bam.incomedy.feature.lineup.LineupViewModel
 import com.bam.incomedy.feature.ticketing.TicketingViewModel
 import com.bam.incomedy.feature.venue.VenueViewModel
 import com.bam.incomedy.shared.session.SessionViewModel
@@ -30,6 +32,7 @@ object InComedyKoin {
         venueDataModule,
         eventDataModule,
         ticketingDataModule,
+        lineupDataModule,
         authFeatureModule,
         module {
             single {
@@ -54,6 +57,12 @@ object InComedyKoin {
             single {
                 TicketingViewModel(
                     ticketingService = get(),
+                    accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
+                )
+            }
+            single {
+                LineupViewModel(
+                    lineupManagementService = get(),
                     accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
                 )
             }
@@ -94,6 +103,12 @@ object InComedyKoin {
 
     /** Возвращает общую модель audience/staff ticketing feature. */
     fun getTicketingViewModel(): TicketingViewModel {
+        init()
+        return requireNotNull(koinApp).koin.get()
+    }
+
+    /** Возвращает общую модель comedian applications и organizer lineup. */
+    fun getLineupViewModel(): LineupViewModel {
         init()
         return requireNotNull(koinApp).koin.get()
     }

@@ -10,62 +10,52 @@ Do not append history here. Historical context belongs in:
 
 ## Current State
 
-- Timestamp: `2026-03-23T00:08:35+03:00`
+- Timestamp: `2026-03-23T02:07:08+03:00`
 - Cycle ID: `2026-03-22-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-067`
-- Active Subtask: `TASK-069`
+- Active Subtask: `TASK-070`
 - Branch: `codex/epic-067-comedian-applications-foundation`
 - Epic Status: `in_progress`
 - Run Status: `completed`
 
 ## Goal
 
-- `Продвинуть EPIC-067 по одному безопасному шагу за запуск. В этом запуске завершен TASK-068: backend lineup foundation поверх approved applications с explicit order_index и organizer reorder API.`
+- `Продвинуть EPIC-067 по одному безопасному шагу за запуск. В этом запуске завершен TASK-069: shared/data/feature foundation для comedian applications и lineup без Android/iOS UI wiring.`
 
 ## Current Outcome
 
-- `TASK-068 completed: добавлены migration V14, lineup persistence/service/routes, idempotent approved->draft lineup entry bridge, organizer/host lineup list+reorder API, OpenAPI/context sync и targeted server regression coverage.`
+- `TASK-069 completed: добавлены `:domain:lineup`, `:data:lineup`, `:feature:lineup` и `shared/lineup` с backend adapter, shared ViewModel/bridge, Koin wiring и тестами без platform UI wiring.`
 
 ## Files Touched
 
+- `docs/context/handoff/active-run.md`
+- `docs/context/handoff/task-request-log.md`
+- `docs/context/handoff/task-request-template/task-request-template-part-30.md`
 - `docs/context/00-current-state.md`
-- `docs/context/engineering/api-contracts/v1/openapi.yaml`
 - `docs/context/engineering/architecture-overview.md`
 - `docs/context/engineering/test-strategy.md`
 - `docs/context/governance/decision-traceability/decision-traceability-part-05.md`
-- `docs/context/governance/decisions-log/decisions-log-part-05.md`
 - `docs/context/governance/session-log/session-log-part-17.md`
-- `docs/context/handoff/active-run.md`
-- `docs/context/handoff/task-request-template/task-request-template-part-29.md`
-- `server/src/main/kotlin/com/bam/incomedy/server/Application.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/db/LineupRepository.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/db/PostgresLineupRepository.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsRoutes.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsService.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupApiModels.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupRoutes.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupService.kt`
-- `server/src/main/resources/db/migration/V14__lineup_entries_foundation.sql`
-- `server/src/test/kotlin/com/bam/incomedy/server/db/DatabaseMigrationRunnerTest.kt`
-- `server/src/test/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsRoutesTest.kt`
-- `server/src/test/kotlin/com/bam/incomedy/server/support/InMemoryLineupRepository.kt`
+- `settings.gradle.kts`
+- `domain:lineup`, `data:lineup`, `feature:lineup`, `shared/lineup`
 
 ## Verification
 
-- `./gradlew :server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`
+- `./gradlew :feature:lineup:allTests`
+- `./gradlew :data:lineup:compileKotlinMetadata :shared:compileKotlinMetadata`
 
 ## Uncommitted Changes Expected
 
-- `yes`
+- `yes (pre-existing docs handoff edits + текущий TASK-069 worktree)`
 
 ## Last Safe Checkpoint
 
-- `Verification green; docs/context synchronized to completed TASK-068 and next TASK-069.`
+- `Shared/data/feature lineup foundation implemented, verification green, context docs synchronized to next TASK-070.`
 
 ## Resume From
 
-- `Начать TASK-069 в этой же ветке: shared/data/feature integration для organizer/comedian applications + lineup surfaces поверх готового backend foundation.`
+- `Продолжать EPIC-067 в этой же ветке с TASK-070: добавить Android/iOS UI wiring и executable platform coverage поверх готового KMP lineup foundation.`
 
 ## If Crash
 
@@ -76,4 +66,4 @@ Do not append history here. Historical context belongs in:
 
 ## Next
 
-- `Ровно одна следующая подзадача: TASK-069 — shared/data/feature integration для comedian applications и lineup surfaces без Android/iOS UI wiring в этом же запуске.`
+- `Ровно одна следующая подзадача: TASK-070 — Android/iOS UI wiring и executable coverage для comedian applications и lineup management поверх готового KMP foundation.`

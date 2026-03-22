@@ -65,6 +65,7 @@
 - `TicketingRoutesTest` now also covers anonymous public inventory access, request-id-correlated diagnostics for the public route, sanitization of active hold metadata in anonymous inventory responses, successful checkout-order creation, rejection of чужих/неактивных hold-ов, inventory recovery after pending order expiration, successful YooKassa checkout-session start, idempotent reuse of an existing session, authenticated order-status reads, disabled-provider `503`, expired-order rejection, foreign-order denial, successful `payment.succeeded` webhook application with issued-ticket creation, authenticated issued-ticket listing with QR payload delivery, checker-only check-in, duplicate scan semantics, `payment.canceled` release semantics, and source-IP rejection for the public payments webhook.
 - `YooKassaCheckoutGatewayTest` validates server-side request shaping for YooKassa (`amount`, `Idempotence-Key`, `return_url`, safe metadata), payment snapshot lookup (`amount`, `metadata.order_id`, `metadata.event_id`), and provider-response validation for missing `confirmation_url`.
 - Comedian applications + lineup backend foundation automation now also includes `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`.
+- Shared comedian applications + lineup foundation automation now also includes `:feature:lineup:allTests` and `:data:lineup:compileKotlinMetadata :shared:compileKotlinMetadata`.
 
 ## High-Risk Scenario Set
 

@@ -41,3 +41,10 @@
 - Changes: Added migration `V14__lineup_entries_foundation.sql`, lineup persistence/service/routes, and idempotent `approved -> draft lineup entry` materialization with explicit `order_index`. Added organizer/host `GET/PATCH /api/v1/events/{eventId}/lineup`, updated OpenAPI/context docs, and extended targeted server regression coverage for lineup creation/reorder plus migration surface.
 - Decisions: Accept `D-067`: approved review status now creates one draft lineup entry exactly once, while reverse-sync/deletion on later application status changes remains intentionally out of scope for this additive slice. `D-065` / `D-066` remain unchanged.
 - Next: Keep `EPIC-067` active and execute exactly one next subtask: `TASK-069` for shared/data/feature integration of comedian applications + lineup surfaces before Android/iOS wiring.
+
+## 2026-03-23 02:07
+
+- Context: Automation resumed the same `EPIC-067` branch and completed the next bounded shared/mobile preparation step without taking a new epic or touching Android/iOS UI wiring.
+- Changes: Added dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules with backend adapters, shared MVI state, Koin wiring, and Swift-friendly bridge/snapshots for comedian submit plus organizer review/reorder flows. Updated active context docs and verification guidance for the new KMP bounded context.
+- Decisions: No new governance decision was needed. `D-065` / `D-066` / `D-067` remain unchanged, and the new shared modules consume the existing backend foundation without changing provider or lineup-deletion semantics.
+- Next: Keep `EPIC-067` active and execute exactly one next subtask: `TASK-070` for Android/iOS UI wiring and executable platform coverage on top of the delivered shared/data/feature lineup foundation.
