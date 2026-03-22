@@ -4,6 +4,7 @@ import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.server.db.ComedianApplicationRepository
 import com.bam.incomedy.server.db.ComedianApplicationStatus
 import com.bam.incomedy.server.db.EventRepository
+import com.bam.incomedy.server.db.LineupRepository
 import com.bam.incomedy.server.db.SessionUserRepository
 import com.bam.incomedy.server.db.StoredComedianApplication
 import com.bam.incomedy.server.db.UserRole
@@ -21,6 +22,7 @@ class ComedianApplicationsService(
     private val workspaceRepository: WorkspaceRepository,
     private val eventRepository: EventRepository,
     private val comedianApplicationRepository: ComedianApplicationRepository,
+    private val lineupRepository: LineupRepository,
 ) {
     /** Создает новую заявку комика на опубликованное событие. */
     fun submitApplication(
@@ -61,7 +63,7 @@ class ComedianApplicationsService(
         return comedianApplicationRepository.listEventApplications(eventId)
     }
 
-    /** Меняет review-статус заявки organizer-ом. */
+    /** Меняет review-статус заявки organizer-ом и при `approved` материализует draft lineup entry. */
     fun updateApplicationStatus(
         actorUserId: String,
         eventId: String,
@@ -81,12 +83,18 @@ class ComedianApplicationsService(
         if (existing.status == ComedianApplicationStatus.WITHDRAWN) {
             throw ComedianApplicationValidationException("Снятая заявка не может быть возвращена в review-поток")
         }
-        return comedianApplicationRepository.updateComedianApplicationStatus(
+        val updated = comedianApplicationRepository.updateComedianApplicationStatus(
             eventId = eventId,
             applicationId = applicationId,
             status = status,
             reviewedByUserId = actorUserId,
         ) ?: throw ComedianApplicationNotFoundException(applicationId)
+        LineupService(
+            workspaceRepository = workspaceRepository,
+            eventRepository = eventRepository,
+            lineupRepository = lineupRepository,
+        ).ensureApprovedApplicationEntry(updated)
+        return updated
     }
 
     /** Проверяет owner/manager доступ к organizer workspace события. */

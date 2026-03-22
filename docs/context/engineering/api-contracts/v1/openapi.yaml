@@ -2036,6 +2036,143 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events/{eventId}/lineup:
+    get:
+      tags: [Lineup]
+      summary: List organizer lineup entries for an event
+      operationId: getEventLineup
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Event UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lineup returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineupListResponse"
+        "400":
+          description: Invalid event id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage lineup for this event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or workspace scope not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags: [Lineup]
+      summary: Reorder the full organizer lineup for an event
+      operationId: patchEventLineup
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Event UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderLineupRequest"
+      responses:
+        "200":
+          description: Lineup reordered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineupListResponse"
+        "400":
+          description: Invalid event id, payload, or reorder semantics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage lineup for this event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or workspace scope not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/events/{eventId}/inventory:
     get:
       tags: [Ticketing]
@@ -3213,6 +3350,85 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EventAvailabilityOverrideResponse"
+    ReorderLineupRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - entries
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReorderLineupEntryRequest"
+    ReorderLineupEntryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - entry_id
+        - order_index
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+        order_index:
+          type: integer
+          minimum: 1
+    LineupListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - entries
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineupEntryResponse"
+    LineupEntryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_id
+        - comedian_user_id
+        - comedian_display_name
+        - order_index
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        comedian_user_id:
+          type: string
+          format: uuid
+        comedian_display_name:
+          type: string
+        comedian_username:
+          type: string
+          nullable: true
+        application_id:
+          type: string
+          format: uuid
+          nullable: true
+        order_index:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [draft, up_next, on_stage, done, delayed, dropped]
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     PublicEventSummaryResponse:
       type: object
       additionalProperties: false

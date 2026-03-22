@@ -34,3 +34,10 @@
 - Changes: Formalized `EPIC-067` in task memory, created branch `codex/epic-067-comedian-applications-foundation`, and completed `TASK-067` as a backend-only foundation step: added migration `V13__comedian_applications_foundation.sql`, repository/service/routes for comedian submit + organizer list/status change, OpenAPI entries, and targeted server regression coverage.
 - Decisions: Kept `D-065` / `D-066` intact without new governance decisions. No PSP was selected; delivery continued on an additive non-payment MVP slice with localized blast radius.
 - Next: Execute exactly one next subtask in the same epic: `TASK-068` for lineup-entry foundation (`approved -> lineup draft entry`, explicit `order_index`, organizer reorder API) before any shared/mobile UI work.
+
+## 2026-03-23 00:08
+
+- Context: Automation resumed the same `EPIC-067` branch and recovery checkpoint for `TASK-068`; the git state was consistent for continuing one backend-only lineup step without taking a new epic.
+- Changes: Added migration `V14__lineup_entries_foundation.sql`, lineup persistence/service/routes, and idempotent `approved -> draft lineup entry` materialization with explicit `order_index`. Added organizer/host `GET/PATCH /api/v1/events/{eventId}/lineup`, updated OpenAPI/context docs, and extended targeted server regression coverage for lineup creation/reorder plus migration surface.
+- Decisions: Accept `D-067`: approved review status now creates one draft lineup entry exactly once, while reverse-sync/deletion on later application status changes remains intentionally out of scope for this additive slice. `D-065` / `D-066` remain unchanged.
+- Next: Keep `EPIC-067` active and execute exactly one next subtask: `TASK-069` for shared/data/feature integration of comedian applications + lineup surfaces before Android/iOS wiring.

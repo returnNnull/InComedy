@@ -1,18 +1,19 @@
 # Current State Snapshot
 
-Updated: `2026-03-22`
+Updated: `2026-03-23`
 
 ```yaml
 AutomationState:
   cycle_id: "2026-03-22-10-04"
   cycle_window: "10:00-04:00 Europe/Moscow"
   active_epic_id: "EPIC-067"
-  active_subtask_id: "TASK-068"
+  active_subtask_id: "TASK-069"
   active_branch: "codex/epic-067-comedian-applications-foundation"
   epic_status: "in_progress"
   completed_subtasks_in_cycle:
     - "TASK-067"
-  last_run_at: "2026-03-22T22:12:30+03:00"
+    - "TASK-068"
+  last_run_at: "2026-03-23T00:08:35+03:00"
   last_run_result: "completed"
 ```
 
@@ -27,14 +28,14 @@ Use this file as the bootstrap entry point for every new chat/session after that
 
 ## Current Snapshot
 
-- Latest accepted decision: `D-066`
+- Latest accepted decision: `D-067`
 - Latest decisions part: `governance/decisions-log/decisions-log-part-05.md`
 - Latest session-log part: `governance/session-log/session-log-part-17.md`
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-05.md`
 - Latest task-request log part: `handoff/task-request-template/task-request-template-part-29.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: remaining MVP delivery after the provider-agnostic audience ticketing path is now wired end-to-end through public catalog, inventory, checkout-order lifecycle, issued tickets, buyer QR presentation, and checker scan surfaces; `EPIC-067` is now in progress on comedian applications/lineup while the concrete external PSP remains intentionally deferred until final pre-publication work
-- Current next bounded step: continue `EPIC-067` with lineup-entry ordering foundation (`approved -> lineup draft entry`, explicit `order_index`, organizer reorder API) and only after that move the same epic into shared/mobile surfaces, while concrete external PSP selection and activation remain deferred until the final pre-publication stage
+- Current `P0` focus: remaining MVP delivery after the provider-agnostic audience ticketing path is wired end-to-end and `EPIC-067` now has backend comedian applications plus lineup ordering foundation (`approved -> draft lineup entry`, explicit `order_index`, organizer reorder/list API); the same epic should now move into shared/mobile applications/lineup surfaces while the concrete external PSP remains intentionally deferred until final pre-publication work
+- Current next bounded step: continue `EPIC-067` with `TASK-069` for shared/data/feature integration of comedian applications + lineup surfaces on top of the delivered backend foundation, and only after that move the same epic into Android/iOS UI wiring, while concrete external PSP selection and activation remain deferred until the final pre-publication stage
 
 ## Active Constraints
 

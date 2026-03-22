@@ -15,3 +15,11 @@
 - Decision: Defer concrete external PSP selection and activation until the final pre-publication stage. Until then, continue the `P0` ticketing path only through provider-agnostic order, ticket issuance, QR, and check-in foundations.
 - Rationale: The user explicitly does not want provider selection to be auto-carried forward from implementation momentum, and also does not want to choose a PSP yet. Blocking all ticketing progress on that future choice would stall core product delivery unnecessarily, while the repository already has enough provider-agnostic order semantics to continue internal ticket/check-in work first.
 - Consequences: `00-current-state.md` and `product/backlog.md` must stop treating PSP confirmation as the immediate next step; the next active task becomes provider-agnostic ticket issuance plus checker-facing QR/check-in foundations; and any existing PSP adapter remains disabled candidate-only infrastructure until the final pre-publication decision point.
+
+## D-067
+
+- Date: 2026-03-23
+- Status: accepted
+- Decision: Organizer review transition to `approved` must idempotently materialize a draft `lineup entry` with explicit `order_index`, while the same slice must not auto-delete or auto-rebuild lineup entries on later status changes.
+- Rationale: `EPIC-067` needed a safe backend-only bridge from comedian applications into lineup ordering before shared/mobile UI work. Creating draft entries exactly once on approval enables organizer reorder semantics immediately, while avoiding destructive reverse-sync keeps the blast radius additive until later live-state and organizer edit rules are explicitly delivered.
+- Consequences: backend application review flow now owns the one-way `approved -> draft lineup entry` bridge; lineup persistence must keep stable explicit ordering plus organizer reorder API; and future work on lineup editing/live-state must treat deletion/reconciliation behavior as a separate step rather than an implicit side effect of review-status changes.

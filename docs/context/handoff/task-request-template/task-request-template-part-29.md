@@ -121,3 +121,68 @@
 - `TASK-068`: lineup-entry foundation и `approved -> lineup draft entry` с `order_index`.
 - `TASK-069`: shared/data/feature integration для organizer/comedian applications surfaces.
 - `TASK-070`: Android/iOS UI wiring и executable coverage для applications/lineup management.
+
+---
+
+## Formalized Implementation Request (Lineup Entry Foundation)
+
+### Epic
+
+- `EPIC-067` — comedian applications and lineup foundation.
+
+### Task
+
+- `TASK-068` — lineup entry foundation и автосвязка `approved -> lineup draft entry` с explicit `order_index`.
+
+### Why This Step
+
+- После `TASK-067` backend уже умел принимать и ревьювить заявки, но approved-заявка еще не переходила в lineup и organizer не мог управлять порядком выступлений.
+- Без backend lineup foundation дальнейший shared/mobile slice был бы вынужден строиться поверх временных read-model или ручных фикстур.
+- Нужен был безопасный additive bridge без live-state и destructive cleanup semantics в этом же запуске.
+
+### Scope For This Run
+
+- Добавить migration и persistence для `lineup_entries`.
+- Материализовать ровно одну draft lineup entry при переводе заявки в `approved`.
+- Добавить organizer/host lineup list + reorder API с явным `order_index`.
+- Добавить targeted migration/route coverage и синхронизировать `docs/context/*`.
+
+### Explicitly Out Of Scope
+
+- comedian-facing lineup visibility
+- Android/iOS/shared UI
+- live-stage status (`up_next` / `on_stage` / `done` / `delayed` / `dropped`) как отдельный workflow
+- автоматическое удаление/rebuild lineup entry при обратной смене review-статуса
+
+### Constraints
+
+- Approved-заявка должна создавать lineup entry идемпотентно, без дублей при повторном PATCH.
+- Порядок lineup должен храниться явно через `order_index`.
+- Reorder должен работать только на полном текущем lineup наборе, чтобы не плодить неявные partial semantics.
+- Backend flow обязан писать structured diagnostics без секретов.
+
+### Acceptance Signals
+
+- Organizer review `approved` создает draft lineup entry.
+- Organizer/host может получить текущий lineup события.
+- Organizer/host может переставить lineup через явные `order_index`.
+- Regression coverage проверяет migration, happy path, validation/error path и diagnostics.
+
+### Implementation Outcome
+
+#### Delivered
+
+- Добавлены `lineup_entries` migration/persistence model и отдельный backend repository/service слой для lineup.
+- Organizer review `approved` теперь идемпотентно создает одну draft lineup entry с автоназначением следующего `order_index`.
+- Добавлены authenticated organizer/host routes: `GET /api/v1/events/{eventId}/lineup` и `PATCH /api/v1/events/{eventId}/lineup`.
+- Обновлены OpenAPI и контекст-документы; зафиксировано решение `D-067` про one-way materialization без auto-delete в этом slice.
+
+#### Verification
+
+- `./gradlew :server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`
+
+#### Remaining Follow-Up
+
+- `TASK-069`: shared/data/feature integration для organizer/comedian applications и lineup surfaces.
+- `TASK-070`: Android/iOS UI wiring и executable coverage для applications/lineup management.
+- Отдельно позднее: live-stage semantics и richer lineup editing rules.

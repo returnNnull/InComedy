@@ -7,6 +7,7 @@ import com.bam.incomedy.server.auth.session.withSessionAuth
 import com.bam.incomedy.server.db.ComedianApplicationRepository
 import com.bam.incomedy.server.db.ComedianApplicationStatus
 import com.bam.incomedy.server.db.EventRepository
+import com.bam.incomedy.server.db.LineupRepository
 import com.bam.incomedy.server.db.SessionUserRepository
 import com.bam.incomedy.server.db.WorkspaceRepository
 import com.bam.incomedy.server.http.PayloadTooLargeException
@@ -50,6 +51,7 @@ object ComedianApplicationsRoutes {
         workspaceRepository: WorkspaceRepository,
         eventRepository: EventRepository,
         comedianApplicationRepository: ComedianApplicationRepository,
+        lineupRepository: LineupRepository,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {
@@ -58,6 +60,7 @@ object ComedianApplicationsRoutes {
             workspaceRepository = workspaceRepository,
             eventRepository = eventRepository,
             comedianApplicationRepository = comedianApplicationRepository,
+            lineupRepository = lineupRepository,
         )
 
         route.route("/api/v1") {
