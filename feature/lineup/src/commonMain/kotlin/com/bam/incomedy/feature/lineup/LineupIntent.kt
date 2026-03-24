@@ -1,6 +1,7 @@
 package com.bam.incomedy.feature.lineup
 
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 
 /**
  * Пользовательские intents comedian applications и lineup feature.
@@ -28,6 +29,13 @@ sealed interface LineupIntent {
     data class ReorderLineup(
         val eventId: String,
         val orderedEntryIds: List<String>,
+    ) : LineupIntent
+
+    /** Меняет live-stage статус конкретной записи lineup. */
+    data class UpdateLineupEntryStatus(
+        val eventId: String,
+        val entryId: String,
+        val status: LineupEntryStatus,
     ) : LineupIntent
 
     /** Очищает текущую feature-ошибку. */

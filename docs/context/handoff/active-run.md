@@ -10,69 +10,68 @@ Do not append history here. Historical context belongs in:
 
 ## Current State
 
-- Timestamp: `2026-03-24T16:13:37+03:00`
+- Timestamp: `2026-03-24T19:09:05+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-068`
-- Active Subtask: `TASK-072`
+- Active Subtask: `TASK-073`
 - Branch: `codex/epic-068-live-stage-status-foundation`
 - Epic Status: `in_progress`
 - Run Status: `completed`
 
 ## Goal
 
-- `Зафиксировать завершение TASK-071 и оставить один следующий bounded step: shared/data/feature live-stage integration без UI/realtime расширения scope.`
+- `Закрыть TASK-072 одним bounded outcome: провести live-stage read/write semantics через domain/data/feature/shared lineup слои и подготовить следующий platform UI step без Android/iOS UI и без realtime delivery.`
 
 ## Current Outcome
 
-- `EPIC-067` уже завершен и смержен: `main`/`origin/main` содержат merge commit `f7f11d7` для `codex/epic-067-comedian-applications-foundation`.
-- `TASK-071` завершен: backend lineup slice теперь поддерживает organizer/host `POST /api/v1/events/{eventId}/lineup/live-state`, server-side transition validation для `draft/up_next/on_stage/done/delayed/dropped`, structured diagnostics и OpenAPI sync без миграций и без client/realtime scope expansion.
-- Targeted verification green: `./gradlew :server:test --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`.
-- Следующий и единственный подготовленный bounded step: `TASK-072` для shared/data/feature live-stage integration и общего экспорта lineup live-state статусов в KMP слоях; Android/iOS UI, WebSocket/push и announcements остаются следующими подзадачами после него.
+- `TASK-072 завершен: shared lineup bounded context теперь поддерживает live-stage read/write semantics во всех KMP слоях без platform UI расширения scope.`
+- `Domain/data/feature/shared слой теперь умеет: читать статусы draft/up_next/on_stage/done/delayed/dropped, вызывать backend live-state mutation, вычислять current performer / next up и экспортировать это через shared snapshot/bridge.`
+- `Context sync завершен: bootstrap, backlog, architecture, test strategy, task/session memory и recovery checkpoint переключены на следующий bounded step TASK-073.`
 
 ## Files Touched
 
 - `docs/context/00-current-state.md`
-- `docs/context/engineering/api-contracts/v1/openapi.yaml`
 - `docs/context/engineering/architecture-overview.md`
 - `docs/context/engineering/test-strategy.md`
-- `docs/context/governance/decision-traceability/decision-traceability-part-03.md`
-- `docs/context/governance/session-log.md`
+- `docs/context/governance/decision-traceability/decision-traceability-part-05.md`
 - `docs/context/governance/session-log/session-log-part-18.md`
 - `docs/context/handoff/task-request-log.md`
-- `docs/context/handoff/task-request-template/task-request-template-part-31.md`
+- `docs/context/handoff/task-request-template/task-request-template-part-32.md`
 - `docs/context/handoff/active-run.md`
 - `docs/context/product/backlog.md`
-- `server/src/main/kotlin/com/bam/incomedy/server/db/LineupRepository.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/db/PostgresLineupRepository.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupApiModels.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupRoutes.kt`
-- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupService.kt`
-- `server/src/test/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsRoutesTest.kt`
-- `server/src/test/kotlin/com/bam/incomedy/server/support/InMemoryLineupRepository.kt`
+- `domain/lineup/src/commonMain/kotlin/com/bam/incomedy/domain/lineup/LineupManagementService.kt`
+- `data/lineup/src/commonMain/kotlin/com/bam/incomedy/data/lineup/backend/LineupBackendApi.kt`
+- `data/lineup/src/commonMain/kotlin/com/bam/incomedy/data/lineup/backend/BackendLineupManagementService.kt`
+- `feature/lineup/src/commonMain/kotlin/com/bam/incomedy/feature/lineup/LineupIntent.kt`
+- `feature/lineup/src/commonMain/kotlin/com/bam/incomedy/feature/lineup/LineupState.kt`
+- `feature/lineup/src/commonMain/kotlin/com/bam/incomedy/feature/lineup/LineupViewModel.kt`
+- `feature/lineup/src/commonTest/kotlin/com/bam/incomedy/feature/lineup/LineupViewModelTest.kt`
+- `shared/src/commonMain/kotlin/com/bam/incomedy/shared/lineup/LineupBridge.kt`
+- `shared/src/commonMain/kotlin/com/bam/incomedy/shared/lineup/LineupStateSnapshot.kt`
 
 ## Verification
 
-- `Passed: ./gradlew :server:test --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`
+- `Passed: ./gradlew :feature:lineup:allTests :data:lineup:compileKotlinMetadata :shared:compileKotlinMetadata :composeApp:compileDebugKotlin --console=plain`
 
 ## Uncommitted Changes Expected
 
-- `no after TASK-071 commit`
+- `no after the TASK-072 completion commit`
 
 ## Last Safe Checkpoint
 
-- `TASK-071 is implemented and verified on codex/epic-068-live-stage-status-foundation; next resume point is TASK-072 shared/data/feature live-stage integration.`
+- `TASK-072 implementation и docs sync уже verified на codex/epic-068-live-stage-status-foundation; следующий resume point в чистом дереве — TASK-073 platform UI wiring.`
 
 ## Resume From
 
-- `Продолжать EPIC-068 с ровно одной следующей подзадачей TASK-072; TASK-071 не reopen-ить без regression/follow-up.`
+- `Если чат оборвется до commit, завершить один commit по TASK-072 на той же ветке и затем возобновлять только TASK-073.`
 
 ## If Crash
 
 - Check `git status`.
 - Confirm branch is still `codex/epic-068-live-stage-status-foundation`.
-- If commit for `TASK-071` already exists, resume from `TASK-072` only.
+- If the TASK-072 commit is absent, create exactly one completion commit for the verified implementation and do not start TASK-073 yet.
 
 ## Next
 
-- `Ровно одна следующая подзадача: расширить shared/data/feature lineup contracts под live-stage read/write semantics (TASK-072) без Android/iOS UI и без realtime delivery.`
+- `Ровно одна следующая подзадача после этого запуска: TASK-073 — Android/iOS UI wiring для current performer / next up и organizer live controls без realtime/WebSocket delivery.`

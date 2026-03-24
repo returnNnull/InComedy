@@ -38,6 +38,29 @@ class LineupViewModelTest {
         assertEquals(null, viewModel.state.value.errorMessage)
     }
 
+    /** Проверяет, что organizer context корректно вычисляет current performer и next up. */
+    @Test
+    fun loadOrganizerContextExposesLiveStagePointers() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeLineupManagementService(
+            initialLineup = mutableListOf(
+                defaultLineupEntry(id = "entry-up-next", orderIndex = 1, status = LineupEntryStatus.UP_NEXT),
+                defaultLineupEntry(id = "entry-on-stage", orderIndex = 2, status = LineupEntryStatus.ON_STAGE),
+            ),
+        )
+        val viewModel = LineupViewModel(
+            lineupManagementService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadOrganizerContext("event-1")
+        advanceUntilIdle()
+
+        assertEquals("entry-on-stage", viewModel.state.value.currentPerformer?.id)
+        assertEquals("entry-up-next", viewModel.state.value.nextUpPerformer?.id)
+    }
+
     /** Проверяет, что comedian submit локально добавляет новую заявку в state. */
     @Test
     fun submitApplicationAppendsApplicationToState() = runTest {
@@ -109,6 +132,34 @@ class LineupViewModelTest {
 
         assertEquals(listOf("entry-2", "entry-1"), viewModel.state.value.lineup.map(LineupEntry::id))
         assertEquals(listOf(1, 2), viewModel.state.value.lineup.map(LineupEntry::orderIndex))
+    }
+
+    /** Проверяет, что live-stage мутация обновляет статус lineup entry в state. */
+    @Test
+    fun updateLineupEntryStatusUpdatesLiveStageState() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeLineupManagementService(
+            initialLineup = mutableListOf(
+                defaultLineupEntry(id = "entry-1", orderIndex = 1, status = LineupEntryStatus.DRAFT),
+                defaultLineupEntry(id = "entry-2", orderIndex = 2, status = LineupEntryStatus.UP_NEXT),
+            ),
+        )
+        val viewModel = LineupViewModel(
+            lineupManagementService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.updateLineupEntryStatus(
+            eventId = "event-1",
+            entryId = "entry-1",
+            status = LineupEntryStatus.ON_STAGE,
+        )
+        advanceUntilIdle()
+
+        assertEquals(LineupEntryStatus.ON_STAGE, viewModel.state.value.lineup.first { it.id == "entry-1" }.status)
+        assertEquals("entry-1", viewModel.state.value.currentPerformer?.id)
+        assertEquals("entry-2", viewModel.state.value.nextUpPerformer?.id)
     }
 }
 
@@ -188,6 +239,20 @@ private class FakeLineupManagementService(
         lineupEntries.addAll(reordered)
         return Result.success(lineupEntries.toList())
     }
+
+    override suspend fun updateLineupEntryStatus(
+        accessToken: String,
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): Result<List<LineupEntry>> {
+        val index = lineupEntries.indexOfFirst { it.id == entryId }
+        lineupEntries[index] = lineupEntries[index].copy(
+            status = status,
+            updatedAtIso = "2026-03-24T18:30:00+03:00",
+        )
+        return Result.success(lineupEntries.sortedBy(LineupEntry::orderIndex))
+    }
 }
 
 /** Собирает дефолтную заявку для тестов. */
@@ -217,6 +282,7 @@ private fun defaultLineupEntry(
     id: String = "entry-1",
     applicationId: String? = "application-seeded",
     orderIndex: Int = 1,
+    status: LineupEntryStatus = LineupEntryStatus.DRAFT,
 ): LineupEntry {
     return LineupEntry(
         id = id,
@@ -226,7 +292,7 @@ private fun defaultLineupEntry(
         comedianUsername = "smile",
         applicationId = applicationId,
         orderIndex = orderIndex,
-        status = LineupEntryStatus.DRAFT,
+        status = status,
         notes = null,
         createdAtIso = "2026-03-23T01:10:00+03:00",
         updatedAtIso = "2026-03-23T01:10:00+03:00",

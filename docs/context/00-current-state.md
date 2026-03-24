@@ -7,12 +7,13 @@ AutomationState:
   cycle_id: "2026-03-24-10-04"
   cycle_window: "10:00-04:00 Europe/Moscow"
   active_epic_id: "EPIC-068"
-  active_subtask_id: "TASK-072"
+  active_subtask_id: "TASK-073"
   active_branch: "codex/epic-068-live-stage-status-foundation"
   epic_status: "in_progress"
   completed_subtasks_in_cycle:
     - "TASK-071"
-  last_run_at: "2026-03-24T16:13:37+03:00"
+    - "TASK-072"
+  last_run_at: "2026-03-24T19:09:05+03:00"
   last_run_result: "completed"
 ```
 
@@ -31,10 +32,10 @@ Use this file as the bootstrap entry point for every new chat/session after that
 - Latest decisions part: `governance/decisions-log/decisions-log-part-05.md`
 - Latest session-log part: `governance/session-log/session-log-part-18.md`
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-05.md`
-- Latest task-request log part: `handoff/task-request-template/task-request-template-part-31.md`
+- Latest task-request log part: `handoff/task-request-template/task-request-template-part-32.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction, and `EPIC-068` is the active epic after the already merged `EPIC-067`. Backend live-stage mutation foundation is now delivered on top of the lineup slice, so the active focus moves to exposing the same live-stage semantics through shared/data/feature layers before platform UI and realtime delivery
-- Current next bounded step: execute `TASK-072` in `codex/epic-068-live-stage-status-foundation` by extending shared/domain/data/feature lineup contracts to load and mutate live-stage statuses, while keeping Android/iOS UI, WebSocket delivery, push, and announcements out of scope for that next bounded step
+- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction, and `EPIC-068` stays the active epic after the already merged `EPIC-067`. Backend plus shared/data/feature live-stage foundations are now delivered on top of the lineup slice, so the active focus moves to platform UI wiring for current performer / next up and organizer live controls before realtime delivery
+- Current next bounded step: execute `TASK-073` in `codex/epic-068-live-stage-status-foundation` by wiring Android/iOS lineup surfaces to the delivered shared live-stage state and mutation contracts, while keeping WebSocket delivery, push, and announcements out of scope for that next bounded step
 
 ## Active Constraints
 

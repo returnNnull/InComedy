@@ -4,6 +4,7 @@ import com.bam.incomedy.domain.lineup.ComedianApplication
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 import com.bam.incomedy.domain.lineup.LineupManagementService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -20,8 +21,8 @@ import kotlinx.coroutines.launch
  * Shared MVI-координатор comedian applications и organizer lineup management.
  *
  * Модель подготавливает общий state слой для будущих Android/iOS экранов и удерживает в одном
- * месте comedian submit flow, organizer review и lineup reorder поверх уже существующего backend
- * foundation.
+ * месте comedian submit flow, organizer review, lineup reorder и live-stage mutation поверх уже
+ * существующего backend foundation.
  *
  * @property lineupManagementService Domain-сервис applications/lineup bounded context-а.
  * @property accessTokenProvider Провайдер текущего access token из app-level session state.
@@ -54,6 +55,11 @@ class LineupViewModel(
             is LineupIntent.ReorderLineup -> reorderLineup(
                 eventId = intent.eventId,
                 orderedEntryIds = intent.orderedEntryIds,
+            )
+            is LineupIntent.UpdateLineupEntryStatus -> updateLineupEntryStatus(
+                eventId = intent.eventId,
+                entryId = intent.entryId,
+                status = intent.status,
             )
             LineupIntent.ClearError -> clearError()
         }
@@ -232,6 +238,48 @@ class LineupViewModel(
                         it.copy(
                             isSubmitting = false,
                             errorMessage = error.message?.take(200) ?: "Не удалось переставить lineup",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    /** Меняет live-stage статус записи lineup и сохраняет актуальный organizer lineup в state. */
+    fun updateLineupEntryStatus(
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ) {
+        if (eventId.isBlank() || entryId.isBlank()) {
+            _state.update { it.copy(errorMessage = "Не хватает данных для изменения live-stage статуса") }
+            return
+        }
+
+        scope.launch {
+            val accessToken = requireAccessToken() ?: return@launch
+            _state.update { it.copy(isSubmitting = true, errorMessage = null) }
+            lineupManagementService.updateLineupEntryStatus(
+                accessToken = accessToken,
+                eventId = eventId,
+                entryId = entryId,
+                status = status,
+            ).fold(
+                onSuccess = { lineup ->
+                    _state.update {
+                        it.copy(
+                            selectedEventId = eventId,
+                            lineup = sortLineup(lineup),
+                            isSubmitting = false,
+                            errorMessage = null,
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = error.message?.take(200) ?: "Не удалось изменить live-stage статус",
                         )
                     }
                 },

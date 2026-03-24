@@ -14,7 +14,8 @@ Current implementation sequence note (`2026-03-24`):
 - Keep the external PSP decision deferred until the final pre-publication stage; the delivered ticketing slice remains provider-agnostic until then.
 - Provider-agnostic ticket wallet / QR / checker scan surfaces are now delivered on top of the ticketing foundation.
 - Comedian applications + organizer approve/reject/waitlist + lineup ordering are now delivered end-to-end, including Android/iOS shells and targeted executable verification.
-- The next bounded `P0` delivery slice is live stage status (`current performer`, `next up`) on top of the delivered lineup foundation, starting from backend mutation semantics and then moving to realtime/client surfaces.
+- Live stage status foundation now includes backend mutation semantics plus shared/data/feature lineup contracts for `current performer` / `next up`.
+- The next bounded `P0` delivery slice is Android/iOS UI wiring for organizer live controls and audience-facing current/next state on top of that delivered shared foundation, before realtime/WebSocket delivery.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
 - Auth via standard login + password, with provider-agnostic extension points and VK ID as the external provider.

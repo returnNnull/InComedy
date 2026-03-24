@@ -10,9 +10,9 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 
 ## Current Active Request
 
-- `EPIC-068` remains active, but `TASK-071` is now `completed`.
-- Current next bounded outcome target: `TASK-072` for shared/data/feature live-stage integration on top of the delivered backend mutation surface, without Android/iOS UI or realtime delivery yet.
-- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-31.md`.
+- `EPIC-068` remains active; `TASK-071` and `TASK-072` are now `completed`.
+- Current next bounded outcome target: `TASK-073` for Android/iOS UI wiring of current performer / next up and organizer live controls on top of the delivered shared live-stage foundation, without realtime delivery yet.
+- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-32.md`.
 
 ## Parts (Exact Order)
 
@@ -46,9 +46,10 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 28. `task-request-template/task-request-template-part-28.md` (external-provider governance correction and approval-semantics sync from 2026-03-21)
 29. `task-request-template/task-request-template-part-29.md` (shared/mobile ticket wallet and checker scan surfaces from 2026-03-22)
 30. `task-request-template/task-request-template-part-30.md` (EPIC-067 lineup foundation and platform UI wiring from 2026-03-23)
-31. `task-request-template/task-request-template-part-31.md` (EPIC-067 review-ready completion from 2026-03-24)
+31. `task-request-template/task-request-template-part-31.md` (EPIC-067 review-ready completion + EPIC-068 backend live-stage foundation from 2026-03-24)
+32. `task-request-template/task-request-template-part-32.md` (EPIC-068 shared/data/feature live-stage integration outcome from 2026-03-24)
 
 ## Append Rule
 
-- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-31.md`.
+- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-32.md`.
 - If the latest part grows above ~8,000 characters, create the next sequential part file, update this index, and continue appending there.

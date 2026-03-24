@@ -3,6 +3,7 @@ package com.bam.incomedy.shared.lineup
 import com.bam.incomedy.domain.lineup.ComedianApplication
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 import com.bam.incomedy.feature.lineup.LineupState
 import com.bam.incomedy.feature.lineup.LineupViewModel
 import com.bam.incomedy.shared.bridge.BaseFeatureBridge
@@ -12,7 +13,7 @@ import com.bam.incomedy.shared.di.InComedyKoin
  * Bridge над общей lineup feature model для Swift-слоя.
  *
  * Bridge скрывает typed Kotlin state и дает iOS стабильные snapshot-модели и высокоуровневые
- * команды для comedian submit, organizer review и lineup reorder.
+ * команды для comedian submit, organizer review, lineup reorder и live-stage mutation.
  *
  * @property viewModel Общая feature model bounded context-а `lineup`.
  */
@@ -70,6 +71,20 @@ class LineupBridge(
         )
     }
 
+    /** Меняет live-stage статус записи lineup по wire-ключу. */
+    fun updateLineupEntryStatus(
+        eventId: String,
+        entryId: String,
+        statusKey: String,
+    ) {
+        val status = LineupEntryStatus.fromWireName(statusKey) ?: return
+        viewModel.updateLineupEntryStatus(
+            eventId = eventId,
+            entryId = entryId,
+            status = status,
+        )
+    }
+
     /** Очищает текущую ошибку feature-а. */
     fun clearError() {
         viewModel.clearError()
@@ -82,6 +97,10 @@ private fun LineupState.toSnapshot(): LineupStateSnapshot {
         selectedEventId = selectedEventId,
         applications = applications.map(ComedianApplication::toSnapshot),
         lineup = lineup.map(LineupEntry::toSnapshot),
+        currentPerformerEntryId = currentPerformer?.id,
+        currentPerformerDisplayName = currentPerformer?.comedianDisplayName,
+        nextUpEntryId = nextUpPerformer?.id,
+        nextUpDisplayName = nextUpPerformer?.comedianDisplayName,
         isLoading = isLoading,
         isSubmitting = isSubmitting,
         errorMessage = errorMessage,

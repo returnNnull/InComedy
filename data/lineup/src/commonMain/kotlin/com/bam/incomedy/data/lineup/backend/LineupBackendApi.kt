@@ -120,6 +120,29 @@ class LineupBackendApi(
             response.body<LineupListResponse>().entries.map(LineupEntryResponse::toDomain)
         }
     }
+
+    /** Меняет live-stage статус конкретной записи lineup через backend API. */
+    suspend fun updateLineupEntryStatus(
+        accessToken: String,
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): Result<List<LineupEntry>> {
+        return runCatching {
+            val response = httpClient.post("$baseUrl/api/v1/events/$eventId/lineup/live-state") {
+                bearer(accessToken)
+                contentType(ContentType.Application.Json)
+                setBody(
+                    UpdateLineupLiveStateRequest(
+                        entryId = entryId,
+                        status = status.wireName,
+                    ),
+                )
+            }
+            ensureBackendSuccess(response, parser)
+            response.body<LineupListResponse>().entries.map(LineupEntryResponse::toDomain)
+        }
+    }
 }
 
 /** DTO списка organizer applications. */
@@ -143,6 +166,14 @@ private data class SubmitComedianApplicationRequest(
 /** DTO request-а на смену review-статуса. */
 @Serializable
 private data class UpdateComedianApplicationStatusRequest(
+    val status: String,
+)
+
+/** DTO request-а на смену live-stage статуса lineup entry. */
+@Serializable
+private data class UpdateLineupLiveStateRequest(
+    @SerialName("entry_id")
+    val entryId: String,
     val status: String,
 )
 
