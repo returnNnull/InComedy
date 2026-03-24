@@ -4,19 +4,16 @@ Updated: `2026-03-24`
 
 ```yaml
 AutomationState:
-  cycle_id: "2026-03-22-10-04"
+  cycle_id: "2026-03-24-10-04"
   cycle_window: "10:00-04:00 Europe/Moscow"
-  active_epic_id: ""
-  active_subtask_id: ""
-  active_branch: "main"
-  epic_status: "done"
+  active_epic_id: "EPIC-068"
+  active_subtask_id: "TASK-072"
+  active_branch: "codex/epic-068-live-stage-status-foundation"
+  epic_status: "in_progress"
   completed_subtasks_in_cycle:
-    - "TASK-067"
-    - "TASK-068"
-    - "TASK-069"
-    - "TASK-070"
-  last_run_at: "2026-03-24T14:27:47+03:00"
-  last_run_result: "done"
+    - "TASK-071"
+  last_run_at: "2026-03-24T16:13:37+03:00"
+  last_run_result: "completed"
 ```
 
 If `handoff/active-run.md` exists, read it first as the crash-recovery checkpoint.
@@ -32,12 +29,12 @@ Use this file as the bootstrap entry point for every new chat/session after that
 
 - Latest accepted decision: `D-068`
 - Latest decisions part: `governance/decisions-log/decisions-log-part-05.md`
-- Latest session-log part: `governance/session-log/session-log-part-17.md`
+- Latest session-log part: `governance/session-log/session-log-part-18.md`
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-05.md`
 - Latest task-request log part: `handoff/task-request-template/task-request-template-part-31.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction, and `EPIC-067` is now explicitly completed after user review confirmation. Backend comedian applications foundation, shared KMP contracts, Android Compose lineup tab, iOS SwiftUI lineup tab, repo-side Xcode/KMP bridge hardening, and targeted executable verification are fully delivered end-to-end. The final targeted iOS verification for `testLineupTabShowsApplicationsAndReorderSurface` succeeded on `iPhone 17 Pro (iOS 26.2)`, so this epic no longer stays active in delivery memory
-- Current next bounded step: after merge/push of branch `codex/epic-067-comedian-applications-foundation`, choose the next highest-priority unfinished epic from `product/backlog.md` and `handoff/task-request-log.md`; do not reopen `EPIC-067` unless a post-merge regression or explicit follow-up request appears
+- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction, and `EPIC-068` is the active epic after the already merged `EPIC-067`. Backend live-stage mutation foundation is now delivered on top of the lineup slice, so the active focus moves to exposing the same live-stage semantics through shared/data/feature layers before platform UI and realtime delivery
+- Current next bounded step: execute `TASK-072` in `codex/epic-068-live-stage-status-foundation` by extending shared/domain/data/feature lineup contracts to load and mutate live-stage statuses, while keeping Android/iOS UI, WebSocket delivery, push, and announcements out of scope for that next bounded step
 
 ## Active Constraints
 

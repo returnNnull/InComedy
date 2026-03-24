@@ -34,6 +34,19 @@ data class ReorderLineupRequest(
 )
 
 /**
+ * Request на смену live-stage статуса одного lineup entry.
+ *
+ * @property entryId Идентификатор записи, которую нужно перевести в новый live-state.
+ * @property status Новый wire-статус записи.
+ */
+@Serializable
+data class UpdateLineupLiveStateRequest(
+    @SerialName("entry_id")
+    val entryId: String,
+    val status: String,
+)
+
+/**
  * Один lineup entry в HTTP API.
  *
  * @property id Идентификатор записи.
@@ -99,6 +112,11 @@ data class LineupEntryResponse(
 data class LineupListResponse(
     val entries: List<LineupEntryResponse>,
 )
+
+/** Пытается восстановить целевой live-stage статус из request payload. */
+internal fun UpdateLineupLiveStateRequest.toTargetStatusOrNull(): com.bam.incomedy.server.db.LineupEntryStatus? {
+    return com.bam.incomedy.server.db.LineupEntryStatus.fromWireName(status)
+}
 
 /** Преобразует API reorder request в persistence-friendly DTO. */
 internal fun ReorderLineupRequest.toOrderUpdates(): List<LineupEntryOrderUpdate> {

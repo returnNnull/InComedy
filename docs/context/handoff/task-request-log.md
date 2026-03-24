@@ -10,9 +10,9 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 
 ## Current Active Request
 
-- `EPIC-067` / `TASK-070` is no longer active: the user explicitly confirmed completion, so the epic is now `done`.
-- Latest outcome state: `done`; Android lineup UI wiring, iOS lineup UI wiring, repo-side Xcode/KMP bridge hardening, and targeted executable coverage are all delivered, and targeted iOS verification ended with terminal success for `testLineupTabShowsApplicationsAndReorderSurface` on `iPhone 17 Pro (iOS 26.2)`.
-- Detailed rolling outcome history is stored in `task-request-template/task-request-template-part-30.md`, and the review/closure summary is recorded in `task-request-template/task-request-template-part-31.md`.
+- `EPIC-068` remains active, but `TASK-071` is now `completed`.
+- Current next bounded outcome target: `TASK-072` for shared/data/feature live-stage integration on top of the delivered backend mutation surface, without Android/iOS UI or realtime delivery yet.
+- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-31.md`.
 
 ## Parts (Exact Order)
 

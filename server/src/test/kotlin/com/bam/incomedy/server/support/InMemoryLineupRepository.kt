@@ -65,6 +65,20 @@ class InMemoryLineupRepository(
         return record.toStored()
     }
 
+    override fun updateLineupEntryStatus(
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): List<StoredLineupEntry> {
+        val timestamp = nowProvider()
+        val record = recordsById[entryId]
+        if (record != null && record.eventId == eventId) {
+            record.status = status
+            record.updatedAt = timestamp
+        }
+        return listEventLineup(eventId)
+    }
+
     override fun reorderEventLineup(
         eventId: String,
         updates: List<LineupEntryOrderUpdate>,

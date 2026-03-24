@@ -10,57 +10,69 @@ Do not append history here. Historical context belongs in:
 
 ## Current State
 
-- Timestamp: `2026-03-24T14:27:47+03:00`
-- Cycle ID: `2026-03-22-10-04`
+- Timestamp: `2026-03-24T16:13:37+03:00`
+- Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `none`
-- Active Subtask: `none`
-- Branch: `main`
-- Epic Status: `done`
+- Active Epic: `EPIC-068`
+- Active Subtask: `TASK-072`
+- Branch: `codex/epic-068-live-stage-status-foundation`
+- Epic Status: `in_progress`
 - Run Status: `completed`
 
 ## Goal
 
-- `Зафиксировать явное user confirmation для EPIC-067, завершить epic в контексте, затем merge-нуть ветку в main и push-нуть результат.`
+- `Зафиксировать завершение TASK-071 и оставить один следующий bounded step: shared/data/feature live-stage integration без UI/realtime расширения scope.`
 
 ## Current Outcome
 
-- User review confirmation received: `EPIC-067` / `TASK-070` больше не находится в `awaiting_user_review`; статус переведен в `done`.
-- Android lineup shell, iOS lineup shell, Xcode/KMP bridge hardening и targeted executable verification остаются delivered и зафиксированы в feature-branch history.
-- Final iOS runtime fix set остается прежним и уже verified: `iosAppUITests.xcscheme` не использует unstable cloned-device parallel path, `LineupManagementView.swift` сохраняет child accessibility identifiers, `LineupScreenModel.swift` явно публикует fixture updates, а `build-shared.sh` держит stable repo-local Gradle bridge.
-- Task memory closed: completed-подзадач в текущем cycle теперь четыре (`TASK-067`..`TASK-070`), и этот epic больше не активен для дальнейшего implementation work.
+- `EPIC-067` уже завершен и смержен: `main`/`origin/main` содержат merge commit `f7f11d7` для `codex/epic-067-comedian-applications-foundation`.
+- `TASK-071` завершен: backend lineup slice теперь поддерживает organizer/host `POST /api/v1/events/{eventId}/lineup/live-state`, server-side transition validation для `draft/up_next/on_stage/done/delayed/dropped`, structured diagnostics и OpenAPI sync без миграций и без client/realtime scope expansion.
+- Targeted verification green: `./gradlew :server:test --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`.
+- Следующий и единственный подготовленный bounded step: `TASK-072` для shared/data/feature live-stage integration и общего экспорта lineup live-state статусов в KMP слоях; Android/iOS UI, WebSocket/push и announcements остаются следующими подзадачами после него.
 
 ## Files Touched
 
 - `docs/context/00-current-state.md`
-- `docs/context/governance/session-log/session-log-part-17.md`
-- `docs/context/handoff/active-run.md`
+- `docs/context/engineering/api-contracts/v1/openapi.yaml`
+- `docs/context/engineering/architecture-overview.md`
+- `docs/context/engineering/test-strategy.md`
+- `docs/context/governance/decision-traceability/decision-traceability-part-03.md`
+- `docs/context/governance/session-log.md`
+- `docs/context/governance/session-log/session-log-part-18.md`
 - `docs/context/handoff/task-request-log.md`
 - `docs/context/handoff/task-request-template/task-request-template-part-31.md`
+- `docs/context/handoff/active-run.md`
+- `docs/context/product/backlog.md`
+- `server/src/main/kotlin/com/bam/incomedy/server/db/LineupRepository.kt`
+- `server/src/main/kotlin/com/bam/incomedy/server/db/PostgresLineupRepository.kt`
+- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupApiModels.kt`
+- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupRoutes.kt`
+- `server/src/main/kotlin/com/bam/incomedy/server/lineup/LineupService.kt`
+- `server/src/test/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsRoutesTest.kt`
+- `server/src/test/kotlin/com/bam/incomedy/server/support/InMemoryLineupRepository.kt`
 
 ## Verification
 
-- `Previously passed and accepted: ./gradlew :feature:lineup:allTests :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' --tests 'com.bam.incomedy.feature.lineup.ui.LineupManagementTabContentTest' :composeApp:compileDebugKotlin`
-- `Previously passed and accepted: xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'id=5EC0AE38-9521-40C0-B43F-874924578A0F' -only-testing:iosAppUITests/iosAppUITests/testLineupTabShowsApplicationsAndReorderSurface test CODE_SIGNING_ALLOWED=NO`
+- `Passed: ./gradlew :server:test --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`
 
 ## Uncommitted Changes Expected
 
-- `no after merge/push finalization`
+- `no after TASK-071 commit`
 
 ## Last Safe Checkpoint
 
-- `EPIC-067 is complete and explicitly user-confirmed; next repo state should be merged main + pushed origin/main.`
+- `TASK-071 is implemented and verified on codex/epic-068-live-stage-status-foundation; next resume point is TASK-072 shared/data/feature live-stage integration.`
 
 ## Resume From
 
-- `Не возобновлять EPIC-067 как активный epic. После merge/push выбирать новый epic только из актуального backlog, если пользователь даст новую задачу или automation возьмет следующий приоритетный item.`
+- `Продолжать EPIC-068 с ровно одной следующей подзадачей TASK-072; TASK-071 не reopen-ить без regression/follow-up.`
 
 ## If Crash
 
 - Check `git status`.
-- Check whether `main` already contains merge commit for `codex/epic-067-comedian-applications-foundation`.
-- If merge/push is already complete, keep `EPIC-067` closed and do not reopen it.
+- Confirm branch is still `codex/epic-068-live-stage-status-foundation`.
+- If commit for `TASK-071` already exists, resume from `TASK-072` only.
 
 ## Next
 
-- `Ровно одна следующая подзадача: после merge/push выбрать следующий highest-priority unfinished epic из backlog; EPIC-067 не трогать без нового запроса.`
+- `Ровно одна следующая подзадача: расширить shared/data/feature lineup contracts под live-stage read/write semantics (TASK-072) без Android/iOS UI и без realtime delivery.`

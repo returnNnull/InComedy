@@ -2099,6 +2099,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/events/{eventId}/lineup/live-state:
+    post:
+      tags: [Lineup]
+      summary: Update organizer live-stage status for one lineup entry
+      operationId: postEventLineupLiveState
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer access token.
+          schema:
+            type: string
+        - in: header
+          name: X-Request-ID
+          required: false
+          description: Optional client-provided UUID request id for tracing.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: eventId
+          required: true
+          description: Event UUID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLineupLiveStateRequest"
+      responses:
+        "200":
+          description: Lineup live-stage status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineupListResponse"
+        "400":
+          description: Invalid event id, payload, status, or transition semantics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Current user cannot manage lineup for this event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event, workspace scope, or lineup entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds route size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       tags: [Lineup]
       summary: Reorder the full organizer lineup for an event
@@ -3373,6 +3448,19 @@ components:
         order_index:
           type: integer
           minimum: 1
+    UpdateLineupLiveStateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - entry_id
+        - status
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [draft, up_next, on_stage, done, delayed, dropped]
     LineupListResponse:
       type: object
       additionalProperties: false

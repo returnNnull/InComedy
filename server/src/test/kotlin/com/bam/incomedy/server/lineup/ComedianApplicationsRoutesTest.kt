@@ -457,6 +457,383 @@ class ComedianApplicationsRoutesTest {
         assertEquals("2", diagnostics.single().metadata["count"])
     }
 
+    /** Проверяет happy path live-stage mutation для organizer lineup entry. */
+    @Test
+    fun `organizer can update lineup live-stage status`() = testApplication {
+        val userRepository = InMemoryUserRepository()
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val applicationRepository = InMemoryComedianApplicationRepository()
+        val lineupRepository = InMemoryLineupRepository()
+        val tokenService = tokenService()
+
+        val owner = ownerUser()
+        val comedian = comedianUser()
+        userRepository.putUser(owner)
+        userRepository.putUser(comedian)
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = owner.id,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val template = venueRepository.createHallTemplate(
+            venueId = venue.id,
+            name = "Late Layout",
+            status = "published",
+            layoutJson = """{"stage":{"label":"Main Stage"},"rows":[]}""",
+        )
+        val event = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Late Show",
+            description = "Test event",
+            startsAt = OffsetDateTime.parse("2026-04-10T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = template.id,
+            sourceTemplateName = template.name,
+            snapshotJson = template.layoutJson,
+        )
+        configureApplicationsRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            applicationRepository = applicationRepository,
+            lineupRepository = lineupRepository,
+            tokenService = tokenService,
+        )
+
+        val ownerAccessToken = tokenService.issue(
+            userId = owner.id,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        submitAndApprove(
+            comedian = comedian,
+            eventId = event.id,
+            ownerAccessToken = ownerAccessToken,
+            tokenService = tokenService,
+        )
+        lineupRepository.bindUser(comedian.id, comedian.displayName, comedian.username)
+        val lineupEntryId = loadLineupEntryIds(event.id, ownerAccessToken).single()
+
+        val upNextResponse = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"$lineupEntryId","status":"up_next"}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, upNextResponse.status)
+        assertTrue(upNextResponse.bodyAsText().contains(""""status":"up_next""""))
+
+        val onStageResponse = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"$lineupEntryId","status":"on_stage"}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, onStageResponse.status)
+        assertTrue(onStageResponse.bodyAsText().contains(""""status":"on_stage""""))
+    }
+
+    /** Проверяет, что второй `on_stage` отклоняется, пока у события уже есть текущий выступающий. */
+    @Test
+    fun `organizer cannot assign second on stage entry`() = testApplication {
+        val userRepository = InMemoryUserRepository()
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val applicationRepository = InMemoryComedianApplicationRepository()
+        val lineupRepository = InMemoryLineupRepository()
+        val tokenService = tokenService()
+
+        val owner = ownerUser()
+        val firstComedian = comedianUser()
+        val secondComedian = secondComedianUser()
+        userRepository.putUser(owner)
+        userRepository.putUser(firstComedian)
+        userRepository.putUser(secondComedian)
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = owner.id,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val template = venueRepository.createHallTemplate(
+            venueId = venue.id,
+            name = "Late Layout",
+            status = "published",
+            layoutJson = """{"stage":{"label":"Main Stage"},"rows":[]}""",
+        )
+        val event = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Late Show",
+            description = "Test event",
+            startsAt = OffsetDateTime.parse("2026-04-10T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = template.id,
+            sourceTemplateName = template.name,
+            snapshotJson = template.layoutJson,
+        )
+        configureApplicationsRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            applicationRepository = applicationRepository,
+            lineupRepository = lineupRepository,
+            tokenService = tokenService,
+        )
+
+        val ownerAccessToken = tokenService.issue(
+            userId = owner.id,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        submitAndApprove(
+            comedian = firstComedian,
+            eventId = event.id,
+            ownerAccessToken = ownerAccessToken,
+            tokenService = tokenService,
+        )
+        submitAndApprove(
+            comedian = secondComedian,
+            eventId = event.id,
+            ownerAccessToken = ownerAccessToken,
+            tokenService = tokenService,
+        )
+        lineupRepository.bindUser(firstComedian.id, firstComedian.displayName, firstComedian.username)
+        lineupRepository.bindUser(secondComedian.id, secondComedian.displayName, secondComedian.username)
+        val lineupEntryIds = loadLineupEntryIds(event.id, ownerAccessToken)
+        assertEquals(2, lineupEntryIds.size)
+
+        val firstOnStageResponse = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"${lineupEntryIds[0]}","status":"on_stage"}""")
+        }
+        assertEquals(HttpStatusCode.OK, firstOnStageResponse.status)
+
+        val secondOnStageResponse = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"${lineupEntryIds[1]}","status":"on_stage"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, secondOnStageResponse.status)
+        assertTrue(secondOnStageResponse.bodyAsText().contains("Only one lineup entry can be on_stage"))
+    }
+
+    /** Проверяет, что terminal live-state не позволяет вернуть запись в активный поток. */
+    @Test
+    fun `terminal lineup live-state cannot transition back`() = testApplication {
+        val userRepository = InMemoryUserRepository()
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val applicationRepository = InMemoryComedianApplicationRepository()
+        val lineupRepository = InMemoryLineupRepository()
+        val tokenService = tokenService()
+
+        val owner = ownerUser()
+        val comedian = comedianUser()
+        userRepository.putUser(owner)
+        userRepository.putUser(comedian)
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = owner.id,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val template = venueRepository.createHallTemplate(
+            venueId = venue.id,
+            name = "Late Layout",
+            status = "published",
+            layoutJson = """{"stage":{"label":"Main Stage"},"rows":[]}""",
+        )
+        val event = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Late Show",
+            description = "Test event",
+            startsAt = OffsetDateTime.parse("2026-04-10T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = template.id,
+            sourceTemplateName = template.name,
+            snapshotJson = template.layoutJson,
+        )
+        configureApplicationsRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            applicationRepository = applicationRepository,
+            lineupRepository = lineupRepository,
+            tokenService = tokenService,
+        )
+
+        val ownerAccessToken = tokenService.issue(
+            userId = owner.id,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        submitAndApprove(
+            comedian = comedian,
+            eventId = event.id,
+            ownerAccessToken = ownerAccessToken,
+            tokenService = tokenService,
+        )
+        lineupRepository.bindUser(comedian.id, comedian.displayName, comedian.username)
+        val lineupEntryId = loadLineupEntryIds(event.id, ownerAccessToken).single()
+
+        val doneResponse = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"$lineupEntryId","status":"done"}""")
+        }
+        assertEquals(HttpStatusCode.OK, doneResponse.status)
+
+        val invalidResponse = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"$lineupEntryId","status":"up_next"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, invalidResponse.status)
+        assertTrue(invalidResponse.bodyAsText().contains("Terminal lineup entry"))
+    }
+
+    /** Проверяет diagnostics запись для успешной смены live-stage статуса. */
+    @Test
+    fun `live-state update success records diagnostics`() = testApplication {
+        val userRepository = InMemoryUserRepository()
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val applicationRepository = InMemoryComedianApplicationRepository()
+        val lineupRepository = InMemoryLineupRepository()
+        val diagnosticsStore = InMemoryDiagnosticsStore(retentionLimit = 20)
+        val tokenService = tokenService()
+
+        val owner = ownerUser()
+        val comedian = comedianUser()
+        userRepository.putUser(owner)
+        userRepository.putUser(comedian)
+        val workspace = userRepository.createWorkspace(
+            ownerUserId = owner.id,
+            name = "Comedy Ops",
+            slug = "comedy-ops",
+        )
+        val venue = venueRepository.createVenue(
+            workspaceId = workspace.id,
+            name = "Moscow Cellar",
+            city = "Moscow",
+            address = "Tverskaya 1",
+            timezone = "Europe/Moscow",
+            capacity = 120,
+            description = null,
+            contactsJson = "[]",
+        )
+        val template = venueRepository.createHallTemplate(
+            venueId = venue.id,
+            name = "Late Layout",
+            status = "published",
+            layoutJson = """{"stage":{"label":"Main Stage"},"rows":[]}""",
+        )
+        val event = eventRepository.createEvent(
+            workspaceId = workspace.id,
+            venueId = venue.id,
+            venueName = venue.name,
+            title = "Late Show",
+            description = "Test event",
+            startsAt = OffsetDateTime.parse("2026-04-10T19:00:00+03:00"),
+            doorsOpenAt = null,
+            endsAt = null,
+            status = "published",
+            salesStatus = "closed",
+            currency = "RUB",
+            visibility = "public",
+            sourceTemplateId = template.id,
+            sourceTemplateName = template.name,
+            snapshotJson = template.layoutJson,
+        )
+        configureApplicationsRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            applicationRepository = applicationRepository,
+            lineupRepository = lineupRepository,
+            tokenService = tokenService,
+            diagnosticsStore = diagnosticsStore,
+        )
+
+        val ownerAccessToken = tokenService.issue(
+            userId = owner.id,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        submitAndApprove(
+            comedian = comedian,
+            eventId = event.id,
+            ownerAccessToken = ownerAccessToken,
+            tokenService = tokenService,
+        )
+        lineupRepository.bindUser(comedian.id, comedian.displayName, comedian.username)
+        val lineupEntryId = loadLineupEntryIds(event.id, ownerAccessToken).single()
+
+        val response = client.post("/api/v1/events/${event.id}/lineup/live-state") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+            contentType(ContentType.Application.Json)
+            setBody("""{"entry_id":"$lineupEntryId","status":"delayed"}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val requestId = response.headers["X-Request-ID"] ?: error("Missing request id")
+        val diagnostics = diagnosticsStore.query(
+            DiagnosticsQuery(
+                requestId = requestId,
+                stage = "organizer.lineup.live_state.success",
+                limit = 5,
+            ),
+        )
+        assertEquals(1, diagnostics.size)
+        assertEquals("delayed", diagnostics.single().metadata["status"])
+        assertEquals(lineupEntryId, diagnostics.single().metadata["entryId"])
+    }
+
     /** Проверяет, что reorder request с неполным набором lineup entries отклоняется. */
     @Test
     fun `reorder lineup rejects partial payload`() = testApplication {
@@ -620,6 +997,21 @@ class ComedianApplicationsRoutesTest {
         return applicationId
     }
 
+    /** Загружает текущий lineup события и возвращает все entry id в явном порядке. */
+    private suspend fun ApplicationTestBuilder.loadLineupEntryIds(
+        eventId: String,
+        ownerAccessToken: String,
+    ): List<String> {
+        val lineupResponse = client.get("/api/v1/events/$eventId/lineup") {
+            header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+        }
+        assertEquals(HttpStatusCode.OK, lineupResponse.status)
+        return Regex(""""id":"([^"]+)"""")
+            .findAll(lineupResponse.bodyAsText())
+            .map { it.groupValues[1] }
+            .toList()
+    }
+
     /** Создает token service для isolated route tests. */
     private fun tokenService(): JwtSessionTokenService {
         return JwtSessionTokenService(
@@ -652,6 +1044,20 @@ class ComedianApplicationsRoutesTest {
             id = "00000000-0000-0000-0000-000000000202",
             displayName = "Comedian User",
             username = "comedian_user",
+            photoUrl = null,
+            sessionRevokedAt = null,
+            linkedProviders = setOf(AuthProvider.PASSWORD),
+            roles = setOf(UserRole.AUDIENCE, UserRole.COMEDIAN),
+            activeRole = UserRole.COMEDIAN,
+        )
+    }
+
+    /** Возвращает второго пользователя-комика для multi-entry lineup тестов. */
+    private fun secondComedianUser(): StoredUser {
+        return StoredUser(
+            id = "00000000-0000-0000-0000-000000000303",
+            displayName = "Second Comedian",
+            username = "second_comedian",
             photoUrl = null,
             sessionRevokedAt = null,
             linkedProviders = setOf(AuthProvider.PASSWORD),
