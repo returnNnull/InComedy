@@ -42,6 +42,11 @@
 - `EPIC-067` now covers the full intended bounded slice: backend comedian applications foundation, organizer review -> lineup materialization, shared/data/feature client wiring, Android lineup shell, iOS lineup shell, and executable verification on both platforms.
 - No new epic may start automatically from automation after this point; the branch stays on `codex/epic-067-comedian-applications-foundation` until explicit user review/confirmation.
 
+#### User Confirmation Outcome
+
+- Пользователь явно подтвердил, что задача завершена и ее можно merge-нуть и push-нуть.
+- `EPIC-067` переведен из `awaiting_user_review` в `done`; reopen допустим только для нового follow-up request или post-merge regression.
+
 #### Next
 
-- `Ровно одна следующая подзадача: user review EPIC-067 / TASK-070 и явное confirmation, что epic можно перевести из awaiting_user_review в done.`
+- `Ровно одна следующая подзадача: merge/push результата в main и затем выбрать следующий highest-priority unfinished epic из backlog.`

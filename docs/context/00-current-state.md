@@ -6,17 +6,17 @@ Updated: `2026-03-24`
 AutomationState:
   cycle_id: "2026-03-22-10-04"
   cycle_window: "10:00-04:00 Europe/Moscow"
-  active_epic_id: "EPIC-067"
-  active_subtask_id: "TASK-070"
-  active_branch: "codex/epic-067-comedian-applications-foundation"
-  epic_status: "awaiting_user_review"
+  active_epic_id: ""
+  active_subtask_id: ""
+  active_branch: "main"
+  epic_status: "done"
   completed_subtasks_in_cycle:
     - "TASK-067"
     - "TASK-068"
     - "TASK-069"
     - "TASK-070"
-  last_run_at: "2026-03-24T14:09:59+03:00"
-  last_run_result: "completed"
+  last_run_at: "2026-03-24T14:27:47+03:00"
+  last_run_result: "done"
 ```
 
 If `handoff/active-run.md` exists, read it first as the crash-recovery checkpoint.
@@ -36,8 +36,8 @@ Use this file as the bootstrap entry point for every new chat/session after that
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-05.md`
 - Latest task-request log part: `handoff/task-request-template/task-request-template-part-31.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: remaining MVP delivery still stays provider-agnostic and PSP selection remains intentionally deferred until final pre-publication work, but the currently active delivery slice `EPIC-067` is no longer blocked. Backend foundation, shared KMP contracts, Android Compose lineup tab, iOS SwiftUI lineup tab, repo-side Xcode/KMP bridge hardening, and targeted executable coverage are now implemented end-to-end. The last run proved terminal iOS verification for `testLineupTabShowsApplicationsAndReorderSurface` on `iPhone 17 Pro (iOS 26.2)`: the simulator-clone runtime drop was removed by disabling parallelizable cloned-device execution for `iosAppUITests`, and lineup card accessibility identifiers now remain addressable inside XCUITest. `EPIC-067` therefore waits only for user review before any new epic may start
-- Current next bounded step: keep branch `codex/epic-067-comedian-applications-foundation` checked out, present the `EPIC-067` review summary, and wait for explicit user confirmation on the completed `TASK-070` / `EPIC-067` outcome before selecting any next epic from backlog or task-request memory
+- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction, and `EPIC-067` is now explicitly completed after user review confirmation. Backend comedian applications foundation, shared KMP contracts, Android Compose lineup tab, iOS SwiftUI lineup tab, repo-side Xcode/KMP bridge hardening, and targeted executable verification are fully delivered end-to-end. The final targeted iOS verification for `testLineupTabShowsApplicationsAndReorderSurface` succeeded on `iPhone 17 Pro (iOS 26.2)`, so this epic no longer stays active in delivery memory
+- Current next bounded step: after merge/push of branch `codex/epic-067-comedian-applications-foundation`, choose the next highest-priority unfinished epic from `product/backlog.md` and `handoff/task-request-log.md`; do not reopen `EPIC-067` unless a post-merge regression or explicit follow-up request appears
 
 ## Active Constraints
 
