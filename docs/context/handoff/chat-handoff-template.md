@@ -14,6 +14,7 @@ Copy and send this message to start a new chat with full context sync:
 - Выбор внешнего auth/payment/push/PSP-провайдера не может считаться принятым автоматически по прошлому ответу чата, существующему коду, примеру env/config или draft-документации; нужен явный `user confirmation`.
 
 Сначала синхронизируй контекст по порядку:
+0) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/handoff/active-run.md, если файл существует
 1) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/00-current-state.md
 2) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/product/product-brief.md
 3) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/product/backlog.md
@@ -27,6 +28,12 @@ Copy and send this message to start a new chat with full context sync:
 11) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/governance/session-log.md + latest part from `00-current-state.md` (последние записи сначала)
 12) /Users/abetirov/AndroidStudioProjects/InComedy/docs/context/governance/decision-traceability.md + latest part from `00-current-state.md`
 13) /Users/abetirov/AndroidStudioProjects/InComedy/docs/standup-platform-ru/README.md и релевантные подробные spec-файлы, если задача требует продуктовой детализации
+
+Сразу после чтения шага 0:
+- Сверь `active-run.md` с `git status` и текущей веткой.
+- Если `active-run.md` показывает `in_progress`, `awaiting_verification` или `partial` и есть незакоммиченные изменения, продолжай тот же `active_epic_id` и `active_subtask_id`.
+- Проблемы verification/test-runtime для активной задачи не считаются отдельным blocker/task по умолчанию: их нужно дожимать внутри того же `active_epic_id` / `active_subtask_id`, пока не появится настоящий внешний blocker или граница user confirmation.
+- Не выбирай новую задачу, пока recovery state не приведен в консистентное состояние.
 
 После чтения:
 - Подтверди последний ID решения из governance/decisions-log.

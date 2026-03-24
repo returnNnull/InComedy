@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
+import com.bam.incomedy.feature.lineup.viewmodel.LineupAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
@@ -67,6 +68,17 @@ object AndroidViewModelFactories {
     fun ticketing(application: Application): ViewModelProvider.Factory {
         return singleViewModelFactory(TicketingAndroidViewModel::class.java) {
             TicketingAndroidViewModel(application)
+        }
+    }
+
+    /**
+     * Возвращает фабрику для Android-адаптера comedian applications и organizer lineup feature.
+     *
+     * @param application Android application context, необходимый `LineupAndroidViewModel`.
+     */
+    fun lineup(application: Application): ViewModelProvider.Factory {
+        return singleViewModelFactory(LineupAndroidViewModel::class.java) {
+            LineupAndroidViewModel(application)
         }
     }
 

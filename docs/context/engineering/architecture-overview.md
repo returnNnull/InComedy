@@ -30,7 +30,7 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-22)
+## Current Implementation Status (2026-03-23)
 
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
@@ -54,9 +54,11 @@
   - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
   - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, event-local price/availability overrides, and a public audience discovery route for published public events with bounded `city/date/price` filtering plus audience-safe summaries;
   - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers so inventory GET does not perform a full reconcile on every unchanged read, a public audience inventory route for published public events, authenticated personalized inventory list, hold create/release/expiry routes serialized through inventory-first locking, provider-agnostic checkout order creation from active hold-ов with persisted order lines, authenticated order-status polling through `GET /api/v1/orders/{orderId}`, `pending_payment` inventory blocking, automatic expiry recovery, idempotent issued-ticket creation with dedicated `tickets` persistence, authenticated `GET /api/v1/me/tickets` with QR payload delivery for the buyer, checker/owner/manager `POST /api/v1/checkin/scan` with duplicate-scan semantics plus structured diagnostics, shared `:feature:ticketing` presentation state, Android Compose `Билеты` tab wiring, and iOS SwiftUI `TicketWalletView` surfaces for `My Tickets`, QR presentation, and checker scan UX; the optional YooKassa-specific PSP adapter remains an unapproved disabled-by-default candidate, and its presence in the repository/docs does not mean a PSP has been selected. The shared order/inventory/ticket semantics remain provider-agnostic. `sold_out` automation, complimentary issuance, refund/cancel ticket lifecycle, wallet pass/export, and check-in stats/offline buffering are still not implemented;
+  - comedian applications and lineup backend foundation now include backend migrations/persistence plus authenticated routes for comedian submit, organizer owner/manager review (`submit/list/status change`), idempotent `approved -> draft lineup entry` materialization, and organizer/host lineup list + reorder with explicit `order_index`, all with structured diagnostics and regression coverage; shared/mobile surfaces plus richer live-stage semantics are still missing;
+  - comedian applications and lineup shared/mobile foundation now also includes dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules with backend adapters, shared MVI state, Koin wiring, Swift-friendly snapshots/bridge, Android Compose `Lineup` tab wiring, and iOS SwiftUI lineup management surfaces for comedian submit plus organizer review/reorder flows; targeted Android UI coverage and `composeApp` compilation are green, while local iOS executable verification for the new lineup tab is currently blocked by the automation environment (`CoreSimulator` / Gradle lock restrictions), and richer comedian-facing history/live-stage semantics are still missing;
 - current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet and check-in surfaces, but deeper organizer operational flows beyond workspaces, venues, events, and ticketing foundations are still missing.
 - Planned next bounded contexts:
-  - lineup,
+  - reliable iOS verification and fit/finish for comedian applications + lineup organizer/comedian surfaces,
   - donations/payouts,
   - notifications,
   - analytics.

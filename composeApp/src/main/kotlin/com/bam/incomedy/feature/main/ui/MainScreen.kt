@@ -57,6 +57,10 @@ import com.bam.incomedy.feature.event.ui.EventManagementTab
 import com.bam.incomedy.feature.event.ui.EventScreenTags
 import com.bam.incomedy.feature.event.ui.EventTabBindings
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
+import com.bam.incomedy.feature.lineup.ui.LineupManagementTab
+import com.bam.incomedy.feature.lineup.ui.LineupScreenTags
+import com.bam.incomedy.feature.lineup.ui.LineupTabBindings
+import com.bam.incomedy.feature.lineup.viewmodel.LineupAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.ticketing.ui.TicketWalletTab
 import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
@@ -75,6 +79,8 @@ import java.net.URL
  * Экран авторизованной части приложения с нижним меню и вкладкой аккаунта.
  *
  * @property sessionViewModel Общая модель сессии, которая отдает профиль, роли и рабочие пространства.
+ * @property eventViewModel Android-адаптер organizer event feature.
+ * @property lineupViewModel Android-адаптер comedian applications и organizer lineup feature.
  * @property ticketingViewModel Android-адаптер audience/staff ticketing feature.
  * @property venueViewModel Android-адаптер organizer venue management feature.
  * @property modifier Внешний модификатор экрана.
@@ -83,12 +89,14 @@ import java.net.URL
 fun MainScreen(
     sessionViewModel: SessionAndroidViewModel,
     eventViewModel: EventAndroidViewModel,
+    lineupViewModel: LineupAndroidViewModel,
     ticketingViewModel: TicketingAndroidViewModel,
     venueViewModel: VenueAndroidViewModel,
     modifier: Modifier = Modifier,
 ) {
     val state by sessionViewModel.state.collectAsStateWithLifecycle()
     val eventState by eventViewModel.state.collectAsStateWithLifecycle()
+    val lineupState by lineupViewModel.state.collectAsStateWithLifecycle()
     val ticketingState by ticketingViewModel.state.collectAsStateWithLifecycle()
     val venueState by venueViewModel.state.collectAsStateWithLifecycle()
 
@@ -131,6 +139,15 @@ fun MainScreen(
             onPauseEventSales = eventViewModel::pauseEventSales,
             onCancelEvent = eventViewModel::cancelEvent,
             onClearError = eventViewModel::clearError,
+        ),
+        lineupBindings = LineupTabBindings(
+            state = lineupState,
+            organizerEvents = eventState.events,
+            onLoadOrganizerContext = lineupViewModel::loadOrganizerContext,
+            onSubmitApplication = lineupViewModel::submitApplication,
+            onUpdateApplicationStatus = lineupViewModel::updateApplicationStatus,
+            onReorderLineup = lineupViewModel::reorderLineup,
+            onClearError = lineupViewModel::clearError,
         ),
         ticketingBindings = TicketingTabBindings(
             state = ticketingState,
@@ -188,6 +205,8 @@ fun MainScreen(
  * Тестируемое содержимое главного экрана без привязки к Android `ViewModel`.
  *
  * @property state Данные текущей сессии для отрисовки вкладок.
+ * @property eventBindings Данные и команды organizer event вкладки.
+ * @property lineupBindings Данные и команды comedian applications / lineup вкладки.
  * @property ticketingBindings Данные и команды audience/staff ticketing вкладки.
  * @property onSetActiveRole Обработчик переключения активной роли.
  * @property onCreateWorkspace Обработчик создания рабочего пространства.
@@ -204,6 +223,7 @@ fun MainScreen(
 internal fun MainScreenContent(
     state: SessionState,
     eventBindings: EventTabBindings = EventTabBindings(),
+    lineupBindings: LineupTabBindings = LineupTabBindings(),
     ticketingBindings: TicketingTabBindings = TicketingTabBindings(),
     venueBindings: VenueTabBindings = VenueTabBindings(),
     onSetActiveRole: (String) -> Unit,
@@ -281,6 +301,10 @@ internal fun MainScreenContent(
                     workspaces = state.workspaces,
                     eventBindings = eventBindings,
                     modifier = Modifier.testTag(EventScreenTags.ROOT),
+                )
+                MainTab.LINEUP -> LineupManagementTab(
+                    lineupBindings = lineupBindings,
+                    modifier = Modifier.testTag(LineupScreenTags.ROOT),
                 )
                 MainTab.VENUES -> VenueManagementTab(
                     workspaces = state.workspaces,
@@ -994,6 +1018,11 @@ private enum class MainTab(
         iconGlyph = "◫",
         testTag = MainScreenTags.TAB_EVENTS,
     ),
+    LINEUP(
+        title = "Лайнап",
+        iconGlyph = "≣",
+        testTag = MainScreenTags.TAB_LINEUP,
+    ),
     ACCOUNT(
         title = "Аккаунт",
         iconGlyph = "☺",
@@ -1025,6 +1054,9 @@ object MainScreenTags {
 
     /** Тег вкладки событий. */
     const val TAB_EVENTS = "main.tab.events"
+
+    /** Тег вкладки лайнапа и заявок. */
+    const val TAB_LINEUP = "main.tab.lineup"
 
     /** Тег контейнера вкладки главной сводки. */
     const val HOME_CONTENT = "main.content.home"

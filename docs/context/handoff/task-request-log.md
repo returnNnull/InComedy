@@ -8,6 +8,12 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 
 - Historical part files remain under `task-request-template/` for compatibility with older session logs and references.
 
+## Current Active Request
+
+- `EPIC-067` / `TASK-070` is no longer active: the user explicitly confirmed completion, so the epic is now `done`.
+- Latest outcome state: `done`; Android lineup UI wiring, iOS lineup UI wiring, repo-side Xcode/KMP bridge hardening, and targeted executable coverage are all delivered, and targeted iOS verification ended with terminal success for `testLineupTabShowsApplicationsAndReorderSurface` on `iPhone 17 Pro (iOS 26.2)`.
+- Detailed rolling outcome history is stored in `task-request-template/task-request-template-part-30.md`, and the review/closure summary is recorded in `task-request-template/task-request-template-part-31.md`.
+
 ## Parts (Exact Order)
 
 1. `task-request-template/task-request-template-part-01.md` (generic template + historical requests through shared protected-route auth middleware)
@@ -39,8 +45,10 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 27. `task-request-template/task-request-template-part-27.md` (public audience event discovery continuation and documentation-structure rework from 2026-03-21)
 28. `task-request-template/task-request-template-part-28.md` (external-provider governance correction and approval-semantics sync from 2026-03-21)
 29. `task-request-template/task-request-template-part-29.md` (shared/mobile ticket wallet and checker scan surfaces from 2026-03-22)
+30. `task-request-template/task-request-template-part-30.md` (EPIC-067 lineup foundation and platform UI wiring from 2026-03-23)
+31. `task-request-template/task-request-template-part-31.md` (EPIC-067 review-ready completion from 2026-03-24)
 
 ## Append Rule
 
-- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-29.md`.
+- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-31.md`.
 - If the latest part grows above ~8,000 characters, create the next sequential part file, update this index, and continue appending there.

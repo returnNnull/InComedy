@@ -5,11 +5,13 @@ This protocol defines how to use and transfer project context between chats.
 ## Source of Truth
 
 - The folder `docs/context/` is the single source of truth for product and engineering context.
-- Every new chat must start from `../00-current-state.md`.
+- Every new chat must start from `active-run.md` when it exists, then continue from `../00-current-state.md`.
 - If chat discussion conflicts with these docs, update docs first, then continue implementation.
+- Verification/test-runtime issues found while finishing the active task stay inside that same task by default; do not split them into a new task or blocker unless an external/user-confirmation boundary is actually reached.
 
 ## Read Order (for any new chat/session)
 
+0. `active-run.md` when it exists, then compare it with `git status` and the current branch before choosing work
 1. `../00-current-state.md`
 2. `../product/product-brief.md`
 3. `../product/backlog.md`
@@ -34,6 +36,7 @@ This protocol defines how to use and transfer project context between chats.
 - After each major work block -> append short entry to the latest session-log part referenced by `../governance/session-log.md`.
 - For major implementation changes -> update `../governance/decision-traceability.md`.
 - For major tasks -> structure the request through `task-request-template.md` and record historical request/outcome context in `task-request-log.md`.
+- Maintain `active-run.md` as a short overwrite-only recovery checkpoint for the current run; do not use it as a historical log.
 - External-provider selections may be recorded as active/default/confirmed only after explicit user confirmation; assistant inference, existing code, or sample config/docs do not count as approval.
 - Before major tasks, assistant must remind to refresh:
   - `../product/backlog.md` (current priorities),
@@ -64,10 +67,11 @@ When moving to another chat, share:
 
 1. Absolute path to repo root.
 2. Rule: "`docs/context/*` is the primary source of truth."
-3. Path to `../00-current-state.md`.
-4. Path to `chat-handoff-template.md`.
-5. Latest relevant part files from decisions/session/traceability referenced by `../00-current-state.md`.
-6. Current `P0` focus and next action from `../00-current-state.md`.
+3. Path to `active-run.md` when it exists.
+4. Path to `../00-current-state.md`.
+5. Path to `chat-handoff-template.md`.
+6. Latest relevant part files from decisions/session/traceability referenced by `../00-current-state.md`.
+7. Current `P0` focus and next action from `../00-current-state.md`.
 
 Ready-to-use message template:
 - `chat-handoff-template.md`
@@ -79,6 +83,7 @@ Template sync rule:
 
 Before considering context synchronized in a new chat:
 
+- `active-run.md` is checked when it exists and reconciled with the current git state,
 - bootstrap snapshot is read,
 - read order is completed,
 - latest decision ID is acknowledged,

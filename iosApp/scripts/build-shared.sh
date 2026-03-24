@@ -24,5 +24,16 @@ export PATH="$JAVA_HOME/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# Для Xcode script phase используем отдельный persistent cache внутри репозитория,
+# чтобы KMP build не зависел от случайного состояния глобального Gradle home.
+if [ -z "${GRADLE_USER_HOME:-}" ]; then
+  GRADLE_USER_HOME="$PROJECT_ROOT/.gradle/xcode"
+fi
+
+export GRADLE_USER_HOME
+
 cd "$PROJECT_ROOT"
-./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
+# В Xcode script phase daemon не нужен: отдельный одноразовый запуск снижает риск
+# зависших background-процессов и повторного конфликта между retry-попытками.
+./gradlew --no-daemon --console=plain :shared:embedAndSignAppleFrameworkForXcode

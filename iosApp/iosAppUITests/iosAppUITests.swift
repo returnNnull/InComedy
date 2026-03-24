@@ -94,6 +94,44 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.buttons["event.update.save"].exists)
     }
 
+    /// Проверяет вкладку лайнапа, organizer review controls и reorder surface.
+    func testLineupTabShowsApplicationsAndReorderSurface() {
+        app.tabBars.buttons["Лайнап"].tap()
+
+        let lineupRoot = app.descendants(matching: .any)
+            .matching(identifier: "lineup.root")
+            .firstMatch
+        let applicationCount = app.descendants(matching: .any)
+            .matching(identifier: "lineup.count.applications")
+            .firstMatch
+        let lineupCount = app.descendants(matching: .any)
+            .matching(identifier: "lineup.count.entries")
+            .firstMatch
+        let loadButton = app.buttons["lineup.organizer.load"]
+        let approveButton = app.buttons["lineup.application.action.application-1.approved"]
+        let moveDownButton = app.buttons["lineup.entry.moveDown.entry-1"]
+        let applicationStatus = app.descendants(matching: .any)
+            .matching(identifier: "lineup.application.status.application-1")
+            .firstMatch
+        let orderLabel = app.descendants(matching: .any)
+            .matching(identifier: "lineup.entry.order.entry-1")
+            .firstMatch
+
+        XCTAssertTrue(lineupRoot.waitForExistence(timeout: 2))
+        XCTAssertTrue(applicationCount.waitForExistence(timeout: 2))
+        XCTAssertTrue(lineupCount.waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollUntilVisible(loadButton))
+        loadButton.tap()
+        XCTAssertTrue(scrollUntilVisible(approveButton))
+        approveButton.tap()
+        XCTAssertTrue(applicationStatus.waitForExistence(timeout: 2))
+        XCTAssertEqual(applicationStatus.label, "Статус: Одобрена")
+        XCTAssertTrue(scrollUntilVisible(moveDownButton))
+        moveDownButton.tap()
+        XCTAssertTrue(orderLabel.waitForExistence(timeout: 2))
+        XCTAssertEqual(orderLabel.label, "2. Иван Смехов")
+    }
+
     /// Проверяет вкладку билетов, раскрытие QR и staff check-in форму.
     func testTicketTabShowsWalletAndCheckInSurface() {
         app.tabBars.buttons["Билеты"].tap()

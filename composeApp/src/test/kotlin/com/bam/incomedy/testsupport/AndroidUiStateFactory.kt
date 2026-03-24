@@ -8,6 +8,10 @@ import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
 import com.bam.incomedy.domain.event.EventVisibility
 import com.bam.incomedy.domain.event.OrganizerEvent
+import com.bam.incomedy.domain.lineup.ComedianApplication
+import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
+import com.bam.incomedy.domain.lineup.LineupEntry
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 import com.bam.incomedy.domain.ticketing.IssuedTicket
 import com.bam.incomedy.domain.ticketing.IssuedTicketStatus
 import com.bam.incomedy.domain.session.OrganizerWorkspace
@@ -23,6 +27,7 @@ import com.bam.incomedy.domain.venue.OrganizerVenue
 import com.bam.incomedy.domain.venue.VenueContact
 import com.bam.incomedy.feature.auth.mvi.AuthState
 import com.bam.incomedy.feature.event.EventState
+import com.bam.incomedy.feature.lineup.LineupState
 import com.bam.incomedy.feature.ticketing.TicketingState
 import com.bam.incomedy.feature.venue.VenueState
 import com.bam.incomedy.shared.session.SessionState
@@ -177,6 +182,27 @@ object AndroidUiStateFactory {
             tickets = tickets,
             isLoading = isLoading,
             isScanning = isScanning,
+            errorMessage = errorMessage,
+        )
+    }
+
+    /**
+     * Возвращает состояние comedian applications и organizer lineup feature для Android UI-тестов.
+     */
+    fun lineupState(
+        selectedEventId: String = "event-1",
+        applications: List<ComedianApplication> = listOf(comedianApplication()),
+        lineup: List<LineupEntry> = listOf(lineupEntry()),
+        isLoading: Boolean = false,
+        isSubmitting: Boolean = false,
+        errorMessage: String? = null,
+    ): LineupState {
+        return LineupState(
+            selectedEventId = selectedEventId,
+            applications = applications,
+            lineup = lineup,
+            isLoading = isLoading,
+            isSubmitting = isSubmitting,
             errorMessage = errorMessage,
         )
     }
@@ -425,6 +451,70 @@ object AndroidUiStateFactory {
             currency = currency,
             visibility = visibility,
             hallSnapshot = hallSnapshot,
+        )
+    }
+
+    /**
+     * Возвращает тестовую comedian application для lineup UI.
+     */
+    fun comedianApplication(
+        id: String = "application-1",
+        eventId: String = "event-1",
+        comedianUserId: String = "comedian-1",
+        comedianDisplayName: String = "Иван Смехов",
+        comedianUsername: String? = "smile",
+        status: ComedianApplicationStatus = ComedianApplicationStatus.SUBMITTED,
+        note: String? = "Новый пятиминутный сет",
+        reviewedByUserId: String? = null,
+        reviewedByDisplayName: String? = null,
+        createdAtIso: String = "2026-03-23T01:00:00+03:00",
+        updatedAtIso: String = "2026-03-23T01:00:00+03:00",
+        statusUpdatedAtIso: String = "2026-03-23T01:00:00+03:00",
+    ): ComedianApplication {
+        return ComedianApplication(
+            id = id,
+            eventId = eventId,
+            comedianUserId = comedianUserId,
+            comedianDisplayName = comedianDisplayName,
+            comedianUsername = comedianUsername,
+            status = status,
+            note = note,
+            reviewedByUserId = reviewedByUserId,
+            reviewedByDisplayName = reviewedByDisplayName,
+            createdAtIso = createdAtIso,
+            updatedAtIso = updatedAtIso,
+            statusUpdatedAtIso = statusUpdatedAtIso,
+        )
+    }
+
+    /**
+     * Возвращает тестовый lineup entry для UI-проверок reorder.
+     */
+    fun lineupEntry(
+        id: String = "entry-1",
+        eventId: String = "event-1",
+        comedianUserId: String = "comedian-1",
+        comedianDisplayName: String = "Иван Смехов",
+        comedianUsername: String? = "smile",
+        applicationId: String? = "application-1",
+        orderIndex: Int = 1,
+        status: LineupEntryStatus = LineupEntryStatus.DRAFT,
+        notes: String? = null,
+        createdAtIso: String = "2026-03-23T01:10:00+03:00",
+        updatedAtIso: String = "2026-03-23T01:10:00+03:00",
+    ): LineupEntry {
+        return LineupEntry(
+            id = id,
+            eventId = eventId,
+            comedianUserId = comedianUserId,
+            comedianDisplayName = comedianDisplayName,
+            comedianUsername = comedianUsername,
+            applicationId = applicationId,
+            orderIndex = orderIndex,
+            status = status,
+            notes = notes,
+            createdAtIso = createdAtIso,
+            updatedAtIso = updatedAtIso,
         )
     }
 }

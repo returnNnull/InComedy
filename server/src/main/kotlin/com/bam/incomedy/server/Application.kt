@@ -11,13 +11,17 @@ import com.bam.incomedy.server.auth.vk.VkIdAuthService
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
+import com.bam.incomedy.server.db.PostgresComedianApplicationRepository
 import com.bam.incomedy.server.db.PostgresEventRepository
+import com.bam.incomedy.server.db.PostgresLineupRepository
 import com.bam.incomedy.server.db.PostgresTicketingRepository
 import com.bam.incomedy.server.db.PostgresVenueRepository
 import com.bam.incomedy.server.db.PostgresUserRepository
 import com.bam.incomedy.server.events.EventRoutes
 import com.bam.incomedy.server.ios.AppleAppSiteAssociationRoutes
 import com.bam.incomedy.server.identity.IdentityRoutes
+import com.bam.incomedy.server.lineup.ComedianApplicationsRoutes
+import com.bam.incomedy.server.lineup.LineupRoutes
 import com.bam.incomedy.server.observability.DiagnosticsConfig
 import com.bam.incomedy.server.observability.DiagnosticsRoutes
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
@@ -61,6 +65,8 @@ fun Application.module() {
     val repository = PostgresUserRepository(dataSource)
     val venueRepository = PostgresVenueRepository(dataSource)
     val eventRepository = PostgresEventRepository(dataSource)
+    val comedianApplicationRepository = PostgresComedianApplicationRepository(dataSource)
+    val lineupRepository = PostgresLineupRepository(dataSource)
     val ticketingRepository = PostgresTicketingRepository(dataSource)
     val tokenService = JwtSessionTokenService(config.jwt)
     val passwordHasher = Argon2PasswordHasher()
@@ -201,6 +207,27 @@ fun Application.module() {
             workspaceRepository = repository,
             venueRepository = venueRepository,
             eventRepository = eventRepository,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        ComedianApplicationsRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            sessionUserRepository = repository,
+            workspaceRepository = repository,
+            eventRepository = eventRepository,
+            comedianApplicationRepository = comedianApplicationRepository,
+            lineupRepository = lineupRepository,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        LineupRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            sessionUserRepository = repository,
+            workspaceRepository = repository,
+            eventRepository = eventRepository,
+            lineupRepository = lineupRepository,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )
