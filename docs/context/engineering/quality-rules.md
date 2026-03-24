@@ -9,6 +9,7 @@ This document defines mandatory delivery and quality controls for InComedy.
 - If the task changes the latest decision, current `P0` focus, next step, or active cross-cutting constraints, `docs/context/00-current-state.md` must be updated in the same change.
 - CI checks for the changed scope must pass before merge.
 - Mandatory security review is part of DoD for every task, even if the change is not explicitly security-related.
+- Verification, test harness, simulator/runtime, and analogous execution issues discovered while completing the current task are part of that same task by default; they may keep the task `partial`, but they must not be reclassified as a separate blocker/task/epic unless a true external blocker or explicit user decision boundary is reached.
 
 ## Error Handling
 

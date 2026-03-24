@@ -17,6 +17,9 @@ import androidx.compose.ui.test.performTextInput
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
 import com.bam.incomedy.feature.ticketing.ui.TicketingTabBindings
+import com.bam.incomedy.feature.lineup.ui.LineupScreenTags
+import com.bam.incomedy.feature.lineup.ui.LineupTabBindings
+import com.bam.incomedy.feature.event.ui.EventTabBindings
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -202,6 +205,17 @@ class MainScreenContentTest {
         composeRule.onNodeWithTag(TicketingScreenTags.COUNT).assertTextEquals("Билетов: 2")
     }
 
+    /** Проверяет, что main shell умеет переключаться на вкладку лайнапа и заявок. */
+    @Test
+    fun lineupTabIsReachableFromBottomBar() {
+        setMainScreenContent()
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_LINEUP).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(LineupScreenTags.ROOT).assertIsDisplayed()
+    }
+
     /** Проверяет, что ticketing-вкладка отправляет QR payload на проверку. */
     @Test
     fun ticketTabInvokesQrScanCallback() {
@@ -369,6 +383,13 @@ class MainScreenContentTest {
     /** Поднимает содержимое главного экрана в Material-теме для проверки UI-поведения. */
     private fun setMainScreenContent(
         state: com.bam.incomedy.shared.session.SessionState = AndroidUiStateFactory.sessionState(),
+        eventBindings: EventTabBindings = EventTabBindings(
+            state = AndroidUiStateFactory.eventState(),
+        ),
+        lineupBindings: LineupTabBindings = LineupTabBindings(
+            state = AndroidUiStateFactory.lineupState(),
+            organizerEvents = AndroidUiStateFactory.eventState().events,
+        ),
         ticketingBindings: TicketingTabBindings = TicketingTabBindings(
             state = AndroidUiStateFactory.ticketingState(),
         ),
@@ -385,6 +406,8 @@ class MainScreenContentTest {
             MaterialTheme {
                 MainScreenContent(
                     state = state,
+                    eventBindings = eventBindings,
+                    lineupBindings = lineupBindings,
                     ticketingBindings = ticketingBindings,
                     onSetActiveRole = onSetActiveRole,
                     onCreateWorkspace = onCreateWorkspace,

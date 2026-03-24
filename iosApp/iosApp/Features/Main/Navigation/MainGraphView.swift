@@ -14,6 +14,9 @@ struct MainGraphView: View {
     /// Модель organizer event management feature.
     @StateObject private var eventModel: EventScreenModel
 
+    /// Модель comedian applications и organizer lineup feature.
+    @StateObject private var lineupModel: LineupScreenModel
+
     /// Модель audience/staff ticketing feature.
     @StateObject private var ticketModel: TicketWalletModel
 
@@ -33,26 +36,38 @@ struct MainGraphView: View {
         fixture: MainSessionFixture? = nil
     ) {
         self.onSignOut = onSignOut
+        let previewWorkspaceId = fixture?.workspaces.first?.id ?? "ws-1"
+        let previewEventFixture = fixture.map { _ in
+            EventScreenFixture.preview(
+                workspaceId: previewWorkspaceId
+            )
+        }
+        let previewLineupEventId = previewEventFixture?.events.first?.id ?? "event-1"
         _model = StateObject(
             wrappedValue: fixture.map(MainSessionModel.init(fixture:)) ?? MainSessionModel()
         )
         _venueModel = StateObject(
-            wrappedValue: fixture.map {
+            wrappedValue: fixture.map { _ in
                 VenueScreenModel(
                     fixture: VenueScreenFixture.preview(
-                        workspaceId: $0.workspaces.first?.id ?? "ws-1"
+                        workspaceId: previewWorkspaceId
                     )
                 )
             } ?? VenueScreenModel()
         )
         _eventModel = StateObject(
-            wrappedValue: fixture.map {
+            wrappedValue: fixture.map { _ in
                 EventScreenModel(
-                    fixture: EventScreenFixture.preview(
-                        workspaceId: $0.workspaces.first?.id ?? "ws-1"
-                    )
+                    fixture: previewEventFixture ?? EventScreenFixture.preview(workspaceId: previewWorkspaceId)
                 )
             } ?? EventScreenModel()
+        )
+        _lineupModel = StateObject(
+            wrappedValue: fixture.map { _ in
+                LineupScreenModel(
+                    fixture: LineupScreenFixture.preview(eventId: previewLineupEventId)
+                )
+            } ?? LineupScreenModel()
         )
         _ticketModel = StateObject(
             wrappedValue: fixture.map { _ in
@@ -103,6 +118,17 @@ struct MainGraphView: View {
                 Label("События", systemImage: "calendar")
             }
             .accessibilityIdentifier("main.tab.events")
+
+            NavigationStack {
+                LineupManagementView(
+                    model: lineupModel,
+                    events: eventModel.events
+                )
+            }
+            .tabItem {
+                Label("Лайнап", systemImage: "list.number")
+            }
+            .accessibilityIdentifier("main.tab.lineup")
 
             NavigationStack {
                 VenueManagementView(
