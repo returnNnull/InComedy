@@ -10,37 +10,37 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-25T17:45:52+03:00`
+- Timestamp: `2026-03-25T17:49:44+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `EPIC-069`
-- Active Subtask: `TASK-086`
-- Branch: `codex/epic-069-live-stage-realtime-delivery`
-- Epic Status: `awaiting_user_review`
-- Run Status: `awaiting_user_review`
+- Active Epic: `none`
+- Active Subtask: `none`
+- Branch: `main`
+- Epic Status: `done`
+- Run Status: `completed`
 
 ## Цель
 
-- `Удерживать EPIC-069 на review boundary после завершения TASK-086 и не открывать следующий epic до явного user confirmation.`
+- `Зафиксировать явное user confirmation для EPIC-069, закрыть epic в context docs, затем merge-нуть ветку в main и push-нуть origin/main.`
 
 ## Итог
 
-- `TASK-086` завершён: shared `LineupViewModel` теперь lifecycle-gated подписывается на public `/ws/events/{eventId}` feed, применяет audience-safe live summary к organizer lineup state и подтягивает organizer applications после `application_approved`, а Android/iOS surface-ы включают/выключают feed по platform lifecycle.`
-- `Verification completed: ./gradlew :data:lineup:allTests :feature:lineup:allTests :shared:compileKotlinMetadata :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.lineup.ui.LineupManagementTabContentTest' --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' :composeApp:compileDebugKotlin`, generic iOS simulator build и targeted `iosAppUITests/testLineupTabShowsApplicationsAndReorderSurface` на `iPhone 17 Pro (iOS 26.2)` завершились успешно 2026-03-25.`
-- `Локальная commit boundary TASK-086 закрыта текущим локальным commit-ом; ordered plan EPIC-069 полностью выполнен, поэтому epic переведён в posture awaiting_user_review.`
+- `User review confirmation received: EPIC-069 / TASK-086 больше не находится в posture awaiting_user_review; epic переведён в status done.`
+- Delivered realtime slice остаётся прежним и принятым: public `/ws/events/{eventId}` feed, lifecycle-gated Android/iOS consumption, audience-safe live summary и organizer refresh после `application_approved` уже verified и зафиксированы в branch history.
+- После merge/push default branch снова `main`; EPIC-069 больше не является active delivery epic, а `R-013` остаётся open как residual rollout limitation profile для будущего follow-up scope.
 
 ## Возобновление
 
-- `Если чат оборвется, сверить branch и git status, затем сохранить posture EPIC-069/TASK-086 как awaiting_user_review. Не продолжать новый epic/task автоматически; ждать явного user confirmation по review boundary текущего epic-а.`
+- `Если чат оборвется, сверить branch и git status. Если merge main + push уже завершены, оставить EPIC-069 закрытым; если нет — довести интеграцию до merged main + pushed origin/main без переоткрытия epic-а.`
 
 ## Если сессия оборвётся
 
 - Check `git status`.
-- Confirm branch is still `codex/epic-069-live-stage-realtime-delivery`.
-- Treat active recovery state as `EPIC-069/TASK-086` in posture `awaiting_user_review`.
-- Do not start `EPIC-070` or any новый task без explicit user confirmation.
-- Reopen `TASK-086` only if a concrete regression is found in delivered realtime lifecycle wiring or executable verification evidence.
+- Check whether `main` already contains merge commit for `codex/epic-069-live-stage-realtime-delivery`.
+- Keep `EPIC-069` closed if merge/push is already complete.
+- Do not start `EPIC-070` автоматически только потому, что EPIC-069 завершён.
+- Reopen `EPIC-069` only for a concrete post-merge regression or explicit follow-up request.
 
 ## Следующий шаг
 
-- `Ровно один следующий шаг после этого запуска: дождаться явного user review/confirmation по EPIC-069; только после этого выбирать следующий epic из next-epic-queue.`
+- `Ровно один следующий шаг после merge/push: при новом запросе выбрать следующий highest-priority unfinished epic из next-epic-queue; EPIC-069 не трогать без follow-up/regression.`

@@ -34,6 +34,11 @@
 - Security review verdict: delivered client realtime slice остаётся public/read-only и audience-safe; platform lifecycle лишь ограничивает длительность активной подписки, а access token используется только для organizer-side refresh заявок после публичного approval update.
 - `R-013` остаётся open: mobile consumption delivered, но rollout-ready verdict всё ещё блокируется отсутствием durable outbox/multi-instance fanout и reconnect/push fallback.
 
+### User Confirmation Outcome
+
+- Пользователь явно подтвердил review и запросил merge/push finished branch.
+- `EPIC-069` переведён из `awaiting_user_review` в `done`; reopen допустим только для post-merge regression или нового explicit follow-up request.
+
 ### Next
 
-- `EPIC-069` переведён в `awaiting_user_review`; ровно один следующий шаг — дождаться явного user review/confirmation, не открывая `EPIC-070` до этого подтверждения.
+- После merge/push считать следующим future candidate `EPIC-070` из next-epic-queue, но не открывать новый epic автоматически без отдельного user request.

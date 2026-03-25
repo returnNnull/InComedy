@@ -32,7 +32,6 @@
 
 ## Next Bounded Contexts
 
-1. `EPIC-069` user review / acceptance boundary
-2. donations/payouts
-3. notifications
-4. analytics
+1. donations/payouts
+2. notifications
+3. analytics

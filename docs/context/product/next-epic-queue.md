@@ -4,7 +4,7 @@
 
 Используй этот файл, когда:
 
-- текущий epic уже в `awaiting_user_review`;
+- review boundary предыдущего epic-а уже закрыт и нужно держать под рукой следующий `P0` кандидат;
 - нужно быстро выбрать следующий `P0` epic без восстановления шага из backlog, current-state и task history;
 - требуется зафиксировать порядок ближайших epic-ов.
 
@@ -19,11 +19,11 @@
 
 ## Активированный epic
 
-- `EPIC-069` — realtime/WebSocket delivery для live stage updates
-  - Status: `awaiting_user_review`
-  - Activated because: пользователь явно подтвердил review `EPIC-068`, а после completion всего ordered realtime plan этот epic теперь ждёт явного user confirmation перед продвижением очереди к `EPIC-070`.
+- `none`
+  - Last completed: `EPIC-069` явно подтверждён пользователем и смержен в `main` как завершённый realtime/WebSocket delivery slice.
+  - Next candidate on future request: `EPIC-070` — donations/payout foundation.
 
 ## Правило
 
-- Не начинай следующий epic из этого списка, пока пользователь явно не подтвердит review текущего epic.
+- Не начинай следующий epic из этого списка автоматически сразу после merge/push завершённого epic-а; нужен новый явный user request или отдельный automation step, который зафиксирует новый active epic.
 - Если порядок меняется, синхронно обновляй этот файл, `00-current-state.md`, `task-request-log.md` и session memory.

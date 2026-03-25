@@ -8,7 +8,7 @@
 
 ### Status
 
-- `awaiting_user_review`
+- `done`
 
 ### Why Now
 
@@ -32,15 +32,15 @@
 
 ### Current Next
 
-- `Ordered plan полностью выполнен; ровно один следующий шаг — дождаться явного user review/confirmation по EPIC-069 и не открывать новый epic до этого подтверждения.`
+- `После explicit user review confirmation и merge/push считать EPIC-069 закрытым; следующий future epic выбирать из next-epic-queue только по новому запросу, не переоткрывая этот epic автоматически.`
 
 ### Current Recovery State
 
-- `Локальная commit boundary TASK-086 закрыта текущим локальным commit-ом; после completion всего ordered plan epic удерживается в posture awaiting_user_review.`
+- `EPIC-069 закрыт после explicit user confirmation; active recovery cleared, а default branch после merge/push снова становится main.`
 
 ### Recovery Guardrail
 
-- `Если новая сессия возобновит этот epic, она обязана сохранить review boundary EPIC-069 и не открывать новый epic/task без explicit user confirmation. Если обнаружится dirty worktree после completed/docs_only подзадачи, сначала нужно закрыть local commit boundary.`
+- `После merge/push EPIC-069 нельзя возвращать в active epic без конкретного post-merge regression signal или нового explicit follow-up request. Следующий epic не стартует автоматически только потому, что этот закрыт.`
 
 ## Implementation Outcome (EPIC-069 TASK-084 Backend Live Event WebSocket Channel)
 
