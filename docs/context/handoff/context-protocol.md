@@ -16,16 +16,19 @@ This protocol defines how to use and transfer project context between chats.
 ## Read Order (for any new chat/session)
 
 0. `active-run.md` when it exists, then compare it with `git status` and the current branch before choosing work
-0a. `automation-executor-prompt.md` for scheduled `InComedy Executor` automation runs or when the task is to maintain automation governance/prompt rules
+0a. `automation-executor-prompt.md` for scheduled `InComedy Executor` automation runs; from there read `executor-checklist.md`, and open `executor-policy.md` only when the short checklist is not enough
 1. `../00-current-state.md`
 2. `../product/product-brief.md`
 3. `../product/backlog.md`
+3a. `../product/next-epic-queue.md` when the active epic is already in `awaiting_user_review` or when you need to choose the next epic quickly
 4. `../engineering/tooling-stack.md`
 5. `../engineering/engineering-standards.md`
 6. `../engineering/quality-rules.md`
 7. `../product/non-functional-requirements.md`
 8. `../engineering/architecture-overview.md`
+8a. `../engineering/implementation-status.md` when the task needs current delivery state rather than stable architecture
 9. `../engineering/test-strategy.md`
+9a. `../engineering/verification-memory.md` when the task needs current executable coverage or recent verification outcomes
 10. `../governance/decisions-log.md` + latest part referenced by `../00-current-state.md`
 11. `../governance/session-log.md` + latest part referenced by `../00-current-state.md`
 12. `../governance/decision-traceability.md` + latest part referenced by `../00-current-state.md`
@@ -97,6 +100,7 @@ When moving to another chat, share:
 6. Path to `automation-executor-prompt.md` when the task is a scheduled executor run or automation-governance/prompt maintenance work.
 7. Latest relevant part files from decisions/session/traceability referenced by `../00-current-state.md`.
 8. Current `P0` focus, next action, and active cross-cutting constraints from `../00-current-state.md`.
+9. `../product/next-epic-queue.md` when the current epic is already at review boundary.
 
 Template sync rule:
 - If read order, bootstrap rules, responsibilities, or handoff checks change in this protocol, `../00-current-state.md`, `../README.md`, and any affected governance references must be updated in the same change when applicable.

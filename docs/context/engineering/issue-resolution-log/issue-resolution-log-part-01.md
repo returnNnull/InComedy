@@ -100,5 +100,6 @@ xcodebuild -project iosApp/iosApp.xcodeproj \
 
 - `docs/context/handoff/active-run.md`
 - `docs/context/engineering/test-strategy.md`
+- `docs/context/engineering/verification-memory.md`
 - `docs/context/handoff/task-request-template/task-request-template-part-34.md`
 - `docs/context/governance/decisions-log/decisions-log-part-06.md` (`D-072`, `D-073`, `D-075`)

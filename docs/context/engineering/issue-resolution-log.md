@@ -15,6 +15,17 @@
 - `governance/session-log.md` для хронологии сессий;
 - `handoff/active-run.md` для crash-safe текущего recovery checkpoint.
 
+## Symptom Index
+
+- Xcode/simulator:
+  - `I-001` — `CoreSimulatorService` / placeholder destinations / targeted XCUITest device selection failure
+- Gradle/KMP:
+  - пока нет записей
+- Android emulator:
+  - пока нет записей
+- CI:
+  - пока нет записей
+
 ## Формат записи
 
 Каждая запись должна содержать:

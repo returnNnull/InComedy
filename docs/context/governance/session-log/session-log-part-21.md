@@ -48,3 +48,10 @@
 - Changes: Подготовлен единый commit для завершённого `TASK-073` и последующего docs-only sync `TASK-082`; после commit ветка `codex/epic-068-live-stage-status-foundation` должна быть отправлена в remote. Product code не менялся; security verdict не меняется: verification/docs/process sync only, security-impacting runtime surface не менялся.
 - Decisions: Новое governance decision не принималось; выполняется пользовательское действие по фиксации уже синхронизированного состояния репозитория.
 - Next: После push `EPIC-068` по-прежнему остаётся в `awaiting_user_review`; следующий продуктовый шаг не открывать до явного user confirmation.
+
+## 2026-03-25 15:23
+
+- Context: Пользователь потребовал рефакторинг docs/context ради эффективности: разделить checklist/policy/status/history, сократить `00-current-state.md` и `active-run.md`, вынести verification и delivery history в отдельные документы, добавить symptom index и `next-epic-queue`.
+- Changes: Созданы `handoff/executor-checklist.md`, `handoff/executor-policy.md`, `engineering/verification-memory.md`, `engineering/implementation-status.md`, `product/next-epic-queue.md` и соответствующие part-файлы. `automation-executor-prompt.md` превращён в короткую entrypoint-страницу, `00-current-state.md` сжат до bootstrap snapshot, `active-run.md` — до recovery checkpoint, `test-strategy.md` и `architecture-overview.md` очищены от history-контента, а `issue-resolution-log.md` получил symptom index. Security review verdict: docs/process-only sync, security-impacting runtime surface не менялся.
+- Decisions: Принят `D-077`: operational docs должны разделять snapshot/recovery/checklist/policy/status/history по отдельным файлам.
+- Next: `EPIC-068` всё ещё остаётся в `awaiting_user_review`; следующий продуктовый шаг не открывать до user confirmation. После review следующий epic брать из `product/next-epic-queue.md`.

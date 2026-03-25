@@ -23,6 +23,7 @@ This folder stores the compact operational context for product, engineering, gov
 
 - `product/product-brief.md`: stable product vision and core flows.
 - `product/backlog.md`: prioritized feature backlog.
+- `product/next-epic-queue.md`: short ordered queue for the next epics after review boundary.
 - `product/glossary.md`: domain terms and definitions.
 - `product/non-functional-requirements.md`: performance, reliability, security, and operability targets.
 - `product/risk-log.md`: current risks with mitigation and owners.
@@ -30,7 +31,9 @@ This folder stores the compact operational context for product, engineering, gov
 - `engineering/engineering-standards.md`: mandatory architecture, MVI, governance-memory, and commenting rules.
 - `engineering/quality-rules.md`: DoD, quality gates, test minimums, and engineering constraints.
 - `engineering/architecture-overview.md`: high-level module and data-flow map.
+- `engineering/implementation-status.md`: current delivery status and near-term bounded contexts.
 - `engineering/test-strategy.md`: test levels, ownership, and CI expectations.
+- `engineering/verification-memory.md`: current executable coverage map and recent verification outcomes.
 - `engineering/server-diagnostics-runbook.md`: operator-only diagnostics retrieval and correlation workflow.
 - `engineering/issue-resolution-log.md`: журнал повторяемых технических проблем, симптомов и известных путей решения.
 - `governance/decisions-log.md`: decisions-log index with links to part files.
@@ -39,6 +42,8 @@ This folder stores the compact operational context for product, engineering, gov
 - `governance/context-integrity-checklist.md`: pre-merge context consistency checks.
 - `handoff/context-protocol.md`: standard for reading, updating, and handing off context across chats.
 - `handoff/automation-executor-prompt.md`: canonical runbook for scheduled `InComedy Executor` automations and automation-governance prompt rules.
+- `handoff/executor-checklist.md`: short executor startup/finish checklist.
+- `handoff/executor-policy.md`: detailed executor policy and edge-case rules.
 - `handoff/task-request-template.md`: active reusable structure for new major tasks.
 - `handoff/task-request-log.md`: historical formalized requests and implementation outcomes.
 - `../standup-platform-ru/README.md`: entry point to the full Russian product/technical handoff package.

@@ -28,3 +28,4 @@
 - Repeated technical problems and their known repair paths should be accumulated in `context/engineering/issue-resolution-log.md`.
 - Before new blocker diagnostics, first check `context/engineering/issue-resolution-log.md` for an existing matching entry.
 - For iOS simulator / Xcode destination failures, first launch Xcode or restart it if it is hung.
+- Executor runbook is split into a short checklist and a detailed policy under `context/handoff/`.

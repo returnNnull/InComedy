@@ -158,3 +158,52 @@
 ### Next
 
 - `Точное следующее действие не меняется: дождаться явного user confirmation по EPIC-068 review; только после этого выбирать следующий P0 epic.`
+
+## Documentation Outcome (EPIC-068 TASK-083 Docs Structure Refactor)
+
+### Epic
+
+- `EPIC-068` — live stage status foundation.
+
+### Task
+
+- `TASK-083` — docs-only process refactor: разделить checklist/policy/snapshot/recovery/status/history по отдельным context docs для более быстрого bootstrap.
+
+### Status
+
+- `docs_only`
+
+### Delivered
+
+- Созданы новые документы:
+  - `docs/context/handoff/executor-checklist.md`
+  - `docs/context/handoff/executor-policy.md`
+  - `docs/context/engineering/verification-memory.md`
+  - `docs/context/engineering/verification-memory/verification-memory-part-01.md`
+  - `docs/context/engineering/implementation-status.md`
+  - `docs/context/engineering/implementation-status/implementation-status-part-01.md`
+  - `docs/context/product/next-epic-queue.md`
+- `docs/context/handoff/automation-executor-prompt.md` сокращён до короткой entrypoint-страницы, которая отправляет в checklist/policy вместо хранения всего процесса в одном файле.
+- `docs/context/00-current-state.md` сокращён до bootstrap snapshot (YAML + компактные bullets).
+- `docs/context/handoff/active-run.md` сокращён до recovery checkpoint без развёрнутой history/verification inventory.
+- `docs/context/engineering/test-strategy.md` очищен от run-history; конкретная verification memory перенесена в `verification-memory`.
+- `docs/context/engineering/architecture-overview.md` очищен от delivery history; текущий implementation status перенесён в `implementation-status`.
+- `docs/context/engineering/issue-resolution-log.md` получил короткий symptom index.
+- `docs/context/handoff/context-protocol.md`, `docs/context/README.md` и `docs/README.md` синхронизированы с новой структурой.
+- В decisions log принят `D-077`.
+
+### Verification
+
+- `Passed: executor entrypoint now delegates to short checklist + detailed policy`
+- `Passed: current-state and active-run compressed to snapshot/recovery roles`
+- `Passed: delivery history and verification history moved into dedicated files`
+- `Passed: docs-only security review recorded; no security-impacting runtime surface changed in this run`
+
+### Notes
+
+- Это process-only refactor; продуктовый код не менялся.
+- `EPIC-068` остаётся в `awaiting_user_review`; новый epic по-прежнему нельзя начинать без user confirmation.
+
+### Next
+
+- `Точное следующее действие не меняется: дождаться явного user confirmation по EPIC-068 review; затем выбрать следующий P0 epic из product/next-epic-queue.md.`

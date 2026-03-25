@@ -30,38 +30,10 @@
 - Live stage status and event announcements/feed
 - Donations and payouts
 
-## Current Implementation Status (2026-03-24)
+## Current Delivery Status
 
-- Implemented:
-  - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
-  - Argon2id-backed credential storage/migration plus server-side credential abuse controls for register/login routes;
-  - VK ID start/verify flow across backend routes, shared callback parsing, public HTTPS callback bridge with auto-return attempt plus manual fallback, Android official VK OneTap in documented auth-code mode with client-generated `state/PKCE` plus browser fallback, and iOS/browser handoff;
-  - auth/session foundation across mobile and server, with mobile split into dedicated `core`, `domain`, `feature`, and `data` responsibilities so role/workspace growth stays out of the auth presentation layer and data adapters depend on domain contracts instead of feature modules;
-  - provider-agnostic backend `User + AuthIdentity` persistence foundation that can support multiple auth providers without turning provider ids into primary business ids;
-  - backend role storage, active-role context, and organizer workspace create/list plus registered-user invitation inbox, invitation response, roster visibility, and bounded permission-role update routes;
-  - shared session-focused ViewModel/bridge state with role context, linked providers, organizer workspace list/create wiring, invitation inbox handling, and workspace membership mutations;
-  - organizer venue management foundation across backend migration/repository/routes, shared `domain/data/feature` venue modules, Android Compose, and iOS SwiftUI, covering venue list/create plus hall-template create/update/clone on top of a canonical 2D hall layout schema;
-  - organizer event management foundation across backend migration/repository/routes, shared `domain/data/feature` event modules, Android Compose, and iOS SwiftUI, covering event create/list/get/update/publish, `workspace -> venue -> hall template` selection, frozen `EventHallSnapshot` persistence, and text-based organizer editing of event-local price zones, pricing assignments, and availability overrides on top of the canonical hall layout schema;
-  - Android root navigation + auth subgraph + post-auth main shell with bottom navigation, home/account tabs, avatar/profile data, role switching, sign-out, workspace create/list, invitation inbox, team roster, invite form, and permission-role edits bound to shared session state;
-  - iOS root graph container with auth/main shells + post-auth bottom navigation, home/account tabs, organizer venue/event tabs, avatar/profile data, role switching, sign-out, workspace create/list, invitation inbox, team roster, invite form, permission-role edits, and associated-domain handling for auth return links;
-  - auth entry surfaces now expose credentials plus VK while preserving provider-extensible session/identity seams for future providers;
-  - session restore/refresh/logout backend contract;
-  - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
-  - shared/mobile backend error correlation via surfaced backend request ids in failure messages.
-- Partial:
-  - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
-  - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
-  - organizer workspace team management is intentionally bounded to invites for already registered users by exact login/username lookup, pending invitations via `workspace_members.joined_at IS NULL`, and owner/manager role edits; owner transfer, arbitrary member removal/cancel, and external invitation delivery are still missing;
-  - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, event-local price/availability overrides, and a public audience discovery route for published public events with bounded `city/date/price` filtering plus audience-safe summaries;
-  - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers so inventory GET does not perform a full reconcile on every unchanged read, a public audience inventory route for published public events, authenticated personalized inventory list, hold create/release/expiry routes serialized through inventory-first locking, provider-agnostic checkout order creation from active hold-ов with persisted order lines, authenticated order-status polling through `GET /api/v1/orders/{orderId}`, `pending_payment` inventory blocking, automatic expiry recovery, idempotent issued-ticket creation with dedicated `tickets` persistence, authenticated `GET /api/v1/me/tickets` with QR payload delivery for the buyer, checker/owner/manager `POST /api/v1/checkin/scan` with duplicate-scan semantics plus structured diagnostics, shared `:feature:ticketing` presentation state, Android Compose `Билеты` tab wiring, and iOS SwiftUI `TicketWalletView` surfaces for `My Tickets`, QR presentation, and checker scan UX; the optional YooKassa-specific PSP adapter remains an unapproved disabled-by-default candidate, and its presence in the repository/docs does not mean a PSP has been selected. The shared order/inventory/ticket semantics remain provider-agnostic. `sold_out` automation, complimentary issuance, refund/cancel ticket lifecycle, wallet pass/export, and check-in stats/offline buffering are still not implemented;
-  - comedian applications and lineup backend foundation now include backend migrations/persistence plus authenticated routes for comedian submit, organizer owner/manager review (`submit/list/status change`), idempotent `approved -> draft lineup entry` materialization, organizer/host lineup list + reorder with explicit `order_index`, and organizer/host live-stage mutation through `POST /api/v1/events/{eventId}/lineup/live-state` with structured diagnostics, uniqueness guards for `up_next` / `on_stage`, and targeted regression coverage; realtime delivery is still missing;
-  - comedian applications and lineup shared/mobile foundation now also includes dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules with backend adapters, shared MVI state, Koin wiring, Swift-friendly snapshots/bridge, Android Compose `Lineup` tab wiring, and iOS SwiftUI lineup management surfaces for comedian submit plus organizer review/reorder flows; live-stage shared integration now also exports all lineup status keys, organizer live-stage mutation through the shared feature model, and derived `current performer` / `next up` summary for platform UI wiring. Dedicated Android/iOS live controls are now delivered, `composeApp` compilation is green, and the targeted iOS executable verification for `testLineupTabShowsApplicationsAndReorderSurface` passed on `2026-03-25 15:14-15:15 MSK`; richer comedian-facing history and realtime delivery are still missing;
-- current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet and check-in surfaces, but deeper organizer operational flows beyond workspaces, venues, events, and ticketing foundations are still missing.
-- Planned next bounded contexts:
-  - realtime/WebSocket delivery for live stage updates,
-  - donations/payouts,
-  - notifications,
-  - analytics.
+- Current delivery status and next bounded contexts now live in [implementation-status.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/implementation-status.md).
+- Keep this document architecture-level; do not append per-epic delivery history here.
 
 ## Dependency Direction (Client)
 
