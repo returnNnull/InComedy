@@ -26,3 +26,5 @@
 - If `context/*` and `standup-platform-ru/*` diverge, treat `context/*` as the operational source of truth and `standup-platform-ru/*` as the detailed target-state layer that must be resynchronized.
 - New and materially updated project documentation in `context/*` and top-level `docs/` navigation files should be written in Russian; untouched historical text may be normalized gradually when those files are edited.
 - Repeated technical problems and their known repair paths should be accumulated in `context/engineering/issue-resolution-log.md`.
+- Before new blocker diagnostics, first check `context/engineering/issue-resolution-log.md` for an existing matching entry.
+- For iOS simulator / Xcode destination failures, first launch Xcode or restart it if it is hung.

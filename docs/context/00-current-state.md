@@ -7,11 +7,11 @@ AutomationState:
   cycle_id: "2026-03-24-10-04"
   cycle_window: "10:00-04:00 Europe/Moscow"
   active_epic_id: "EPIC-068"
-  active_subtask_id: "TASK-073"
+  active_subtask_id: "TASK-082"
   active_branch: "codex/epic-068-live-stage-status-foundation"
-  epic_status: "in_progress"
-  run_slots_used_in_cycle: 10
-  last_run_at: "2026-03-25T14:39:18+03:00"
+  epic_status: "awaiting_user_review"
+  run_slots_used_in_cycle: 12
+  last_run_at: "2026-03-25T15:18:34+03:00"
   last_run_result: "docs_only"
 ```
 
@@ -26,14 +26,14 @@ Use this file as the bootstrap entry point for every new chat/session after that
 
 ## Current Snapshot
 
-- Latest accepted decision: `D-075`
+- Latest accepted decision: `D-076`
 - Latest decisions part: `governance/decisions-log/decisions-log-part-06.md`
 - Latest session-log part: `governance/session-log/session-log-part-21.md`
 - Latest decision-traceability part: `governance/decision-traceability/decision-traceability-part-06.md`
-- Latest task-request log part: `handoff/task-request-template/task-request-template-part-34.md`
+- Latest task-request log part: `handoff/task-request-template/task-request-template-part-35.md`
 - Active auth baseline: `login + password` plus `VK ID`
-- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction, and `EPIC-068` stays the active epic after the already merged `EPIC-067`. Android/iOS lineup live-stage UI wiring is implemented on top of the delivered shared foundation; `iosApp/scripts/build-shared.sh` now bootstrap-s a repo-local Kotlin/Native bundle for Xcode, and the remaining SwiftUI `#Preview` macro blocks were replaced with `PreviewProvider` fallbacks so the generic iOS simulator build is green in this sandbox. `TASK-073` remains `in_progress`, and the current `P0` execution focus is to repair the current host's iOS simulator/XCUITest path instead of treating it as a standing external blocker.
-- Current next bounded step: continue the same `TASK-073` in `codex/epic-068-live-stage-status-foundation` by repairing the current host's `CoreSimulatorService` / simulator destination path and then re-running the targeted iOS lineup XCUITest verification for the live-stage controls, while keeping WebSocket delivery, push, announcements, and any next epic selection out of scope
+- Current `P0` focus: provider-agnostic MVP delivery remains the active product direction. `EPIC-068` больше не заблокирован средой: повторный rerun на `2026-03-25 15:10-15:15 MSK` показал, что `xcrun simctl list devices available` и `xcodebuild -showdestinations` снова видят реальные simulator destinations, а targeted iOS XCUITest `testLineupTabShowsApplicationsAndReorderSurface` на `iPhone 17 Pro (iOS 26.2)` прошёл успешно. Это закрыло `TASK-073`, поэтому весь `EPIC-068` переведён в `awaiting_user_review`.
+- Current next bounded step: провести review `EPIC-068` и получить явное user confirmation перед переходом к следующему `P0` epic; после review ближайшим продуктовым кандидатом остаётся realtime/WebSocket delivery для live stage updates
 
 ## Active Constraints
 
@@ -43,11 +43,14 @@ Use this file as the bootstrap entry point for every new chat/session after that
 - `docs/context/handoff/context-protocol.md` is the general cross-chat bootstrap checklist; no separate bootstrap-template file is maintained.
 - `docs/context/handoff/automation-executor-prompt.md` is the mandatory runbook for `InComedy Executor` automations, and the automation TOML prompt should reference that document instead of duplicating long process rules inline.
 - `AutomationState.run_slots_used_in_cycle` tracks how many executor launches were used in the current cycle.
-- Verification/test-runtime issues discovered while closing the active task must be solved inside that same task by default; the next bounded run should resume the recorded local repair path on the current host before the issue is escalated to another host or to `blocked_external`.
+- Verification/test-runtime issues discovered while closing the active task must be solved inside that same task by default; для `TASK-073` этот цикл завершён успешным targeted iOS XCUITest rerun на текущем host.
 - Active epic execution should follow a documented ordered subtask plan; new product subtasks or plan reordering require an explicit update in task/governance memory before implementation continues.
 - New and materially updated project documentation in `docs/context/*`, `docs/README.md`, and adjacent governance/handoff indexes must be written in Russian; legacy English fragments are normalized when the touched document is updated.
 - Repeated technical problems and confirmed repair paths must be recorded in `engineering/issue-resolution-log.md` so future runs can resume troubleshooting without starting from zero.
+- Перед новой диагностикой blocker-а сначала нужно проверять `engineering/issue-resolution-log.md` на уже существующие записи с теми же симптомами и использовать их repair path.
+- Для iOS simulator / Xcode destination проблем первым repair step нужно считать запуск Xcode или его перезапуск, если приложение зависло.
 - Every meaningful task, including executor governance/docs-only sync, requires a proportional mandatory security review before closure; if the change is docs/process only, the zero-impact security verdict must still be recorded explicitly.
+- После перевода epic в `awaiting_user_review` новый epic не должен начинаться, пока пользователь явно не подтвердит review текущего результата.
 - Changes that move scope, decisions, current focus, next step, or active constraints must update `docs/context/*` in the same change.
 
 ## Required Read Path After This File

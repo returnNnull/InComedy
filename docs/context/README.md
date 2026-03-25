@@ -49,6 +49,8 @@ This folder stores the compact operational context for product, engineering, gov
 - Keep files in the proper subfolder; avoid creating many unrelated files in one directory.
 - New and materially updated project documentation in `docs/context/*` and adjacent `docs/` navigation/index files should be written in Russian; untouched historical text can be normalized when the file is next edited.
 - Repeated technical problems and confirmed repair paths should be recorded in `engineering/issue-resolution-log.md`.
+- Перед новой диагностикой blocker-а сначала проверяй `engineering/issue-resolution-log.md` на уже существующие записи с теми же симптомами.
+- Для iOS simulator / Xcode destination проблем первым repair step считай запуск Xcode или его перезапуск, если приложение зависло.
 - Product owner responsibility:
   - keep priorities in `product/backlog.md` clear (`P0`/`P1`/`P2`),
   - provide free-form task requests.

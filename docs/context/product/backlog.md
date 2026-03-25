@@ -15,7 +15,7 @@ Current implementation sequence note (`2026-03-24`):
 - Provider-agnostic ticket wallet / QR / checker scan surfaces are now delivered on top of the ticketing foundation.
 - Comedian applications + organizer approve/reject/waitlist + lineup ordering are now delivered end-to-end, including Android/iOS shells and targeted executable verification.
 - Live stage status foundation now includes backend mutation semantics plus shared/data/feature lineup contracts for `current performer` / `next up`.
-- The next bounded `P0` delivery slice is Android/iOS UI wiring for organizer live controls and audience-facing current/next state on top of that delivered shared foundation, before realtime/WebSocket delivery.
+- Android/iOS UI wiring for organizer live controls and audience-facing current/next state on top of the delivered shared foundation уже завершён в `EPIC-068`; следующий bounded `P0` delivery slice после review — realtime/WebSocket delivery для live stage updates.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
 - Auth via standard login + password, with provider-agnostic extension points and VK ID as the external provider.
