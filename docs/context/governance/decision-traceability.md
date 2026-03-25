@@ -20,9 +20,10 @@ Track how decisions map to implementation and tests.
 3. `decision-traceability/decision-traceability-part-03.md` (`D-041` -> `D-051`)
 4. `decision-traceability/decision-traceability-part-04.md` (`D-052` -> `D-059`)
 5. `decision-traceability/decision-traceability-part-05.md` (`D-060` -> `D-068`)
-6. `decision-traceability/decision-traceability-part-06.md` (`D-067` live-stage platform UI continuation, `D-069` executor prompt governance, `D-070` cycle slot accounting, and later entries)
+6. `decision-traceability/decision-traceability-part-06.md` (`D-067` -> `D-077`)
+7. `decision-traceability/decision-traceability-part-07.md` (`D-078` and later entries)
 
 ## Append Rule
 
-- Append new decision entries to `decision-traceability/decision-traceability-part-06.md`.
-- If the latest part grows above ~8,000 characters, create `decision-traceability/decision-traceability-part-07.md`, update this index, and continue appending there.
+- Append new decision entries to `decision-traceability/decision-traceability-part-07.md`.
+- If the latest part grows above ~8,000 characters, create `decision-traceability/decision-traceability-part-08.md`, update this index, and continue appending there.

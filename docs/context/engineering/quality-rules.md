@@ -104,4 +104,5 @@ This document defines mandatory delivery and quality controls for InComedy.
 - Token refresh must use refresh-token rotation (one-time refresh token consumption and issuance of a new refresh token).
 - Remote datastore transport must be secured by default (DB TLS / Redis TLS) with any insecure override treated as temporary exception.
 - Auth callback payload fields must be validated for format, length, and protocol constraints before verification/storage.
+- Any meaningful task that leaves active delivery/technical/security limitations after completion must update `docs/context/product/risk-log.md` in the same work block with mitigation, owner, and status.
 - Any discovered vulnerability must be immediately reported to product owner and tracked in `docs/context/product/risk-log.md` with remediation plan, owner, and target date.

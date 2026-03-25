@@ -89,6 +89,11 @@ class LineupBridge(
     fun clearError() {
         viewModel.clearError()
     }
+
+    /** Переключает runtime-подписку на public live updates в зависимости от platform lifecycle. */
+    fun setLiveUpdatesActive(isActive: Boolean) {
+        viewModel.setLiveUpdatesActive(isActive)
+    }
 }
 
 /** Преобразует внутреннее состояние lineup feature в export-friendly snapshot. */

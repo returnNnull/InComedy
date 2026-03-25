@@ -5,6 +5,9 @@ struct LineupManagementView: View {
     /// Модель lineup feature.
     @ObservedObject var model: LineupScreenModel
 
+    /// Фаза текущей scene для stop/start lifecycle realtime feed-а.
+    @Environment(\.scenePhase) private var scenePhase
+
     /// Organizer events, доступные для выбора context-а.
     let events: [EventItem]
 
@@ -16,6 +19,9 @@ struct LineupManagementView: View {
 
     /// Заметка к comedian application.
     @State private var submitNote: String = ""
+
+    /// Хранит факт, что lineup tab сейчас видим пользователю.
+    @State private var isVisible: Bool = false
 
     /// Отрисовывает lineup surface с organizer review/reorder и submit form.
     var body: some View {
@@ -126,8 +132,19 @@ struct LineupManagementView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear(perform: syncDefaultEventSelection)
+        .onAppear {
+            isVisible = true
+            syncLiveUpdatesActivation()
+        }
+        .onDisappear {
+            isVisible = false
+            syncLiveUpdatesActivation()
+        }
         .onChange(of: events.map(\.id)) { _, _ in
             syncDefaultEventSelection()
+        }
+        .onChange(of: scenePhase) { _, _ in
+            syncLiveUpdatesActivation()
         }
     }
 
@@ -140,6 +157,11 @@ struct LineupManagementView: View {
         if submitEventId.isEmpty {
             submitEventId = firstEventId
         }
+    }
+
+    /// Включает realtime feed только пока вкладка видима и приложение активно.
+    private func syncLiveUpdatesActivation() {
+        model.setLiveUpdatesActive(isVisible && scenePhase == .active)
     }
 }
 

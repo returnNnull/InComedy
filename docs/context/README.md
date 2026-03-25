@@ -4,7 +4,7 @@ This folder stores the compact operational context for product, engineering, gov
 
 ## Quick Start
 
-- For every new chat/session, read `00-current-state.md` first.
+- For every new chat/session, read `handoff/active-run.md` first when it exists, then `00-current-state.md`.
 - Then follow the ordered onboarding path in `handoff/context-protocol.md`.
 - For scheduled executor automations or automation-governance/prompt work, also read `handoff/automation-executor-prompt.md`.
 - Treat `docs/context/*` as the primary source of truth for ongoing work.
@@ -13,7 +13,7 @@ This folder stores the compact operational context for product, engineering, gov
 ## Structure
 
 - `00-current-state.md`: compact bootstrap snapshot for the latest decision id, current `P0` focus, next step, latest relevant part files, and active cross-cutting constraints.
-- `product/`: product scope, priorities, glossary, NFR, and risks.
+- `product/`: product scope, priorities, glossary, NFR, and canonical active risk register.
 - `engineering/`: stack, architecture, quality rules, tests, API contracts, and operational runbooks.
 - `governance/`: decisions, traceability, and rolling session memory.
 - `handoff/`: cross-chat sync protocol, executor automation runbook, active task template, and historical task-request log.
@@ -26,7 +26,7 @@ This folder stores the compact operational context for product, engineering, gov
 - `product/next-epic-queue.md`: short ordered queue for the next epics after review boundary.
 - `product/glossary.md`: domain terms and definitions.
 - `product/non-functional-requirements.md`: performance, reliability, security, and operability targets.
-- `product/risk-log.md`: current risks with mitigation and owners.
+- `product/risk-log.md`: канонический реестр активных product/delivery/technical/security risks с mitigation, owners и status.
 - `engineering/tooling-stack.md`: approved and planned technology stack.
 - `engineering/engineering-standards.md`: mandatory architecture, MVI, governance-memory, and commenting rules.
 - `engineering/quality-rules.md`: DoD, quality gates, test minimums, and engineering constraints.
@@ -41,6 +41,7 @@ This folder stores the compact operational context for product, engineering, gov
 - `governance/decision-traceability.md`: split mapping from decisions to code and tests.
 - `governance/context-integrity-checklist.md`: pre-merge context consistency checks.
 - `handoff/context-protocol.md`: standard for reading, updating, and handing off context across chats.
+- `handoff/active-run.md`: crash-safe recovery checkpoint for the current executor run or the latest interrupted implementation chat.
 - `handoff/automation-executor-prompt.md`: canonical runbook for scheduled `InComedy Executor` automations and automation-governance prompt rules.
 - `handoff/executor-checklist.md`: short executor startup/finish checklist.
 - `handoff/executor-policy.md`: detailed executor policy and edge-case rules.
@@ -56,6 +57,7 @@ This folder stores the compact operational context for product, engineering, gov
 - Repeated technical problems and confirmed repair paths should be recorded in `engineering/issue-resolution-log.md`.
 - Перед новой диагностикой blocker-а сначала проверяй `engineering/issue-resolution-log.md` на уже существующие записи с теми же симптомами.
 - Для iOS simulator / Xcode destination проблем первым repair step считай запуск Xcode или его перезапуск, если приложение зависло.
+- Если `completed`/`docs_only` task оставил dirty worktree, это считается незакрытой commit boundary: до локального commit нельзя переключать active recovery на следующий task.
 - Product owner responsibility:
   - keep priorities in `product/backlog.md` clear (`P0`/`P1`/`P2`),
   - provide free-form task requests.
@@ -64,7 +66,7 @@ This folder stores the compact operational context for product, engineering, gov
   - maintain decisions/session/traceability records,
   - keep `00-current-state.md` aligned with the latest decision id, current `P0` focus, next step, and active cross-cutting constraints,
   - use `handoff/task-request-template.md` to structure major tasks and record outcomes in `handoff/task-request-log.md`,
-  - immediately communicate discovered security vulnerabilities and maintain remediation records in `product/risk-log.md`,
+  - maintain `product/risk-log.md` as the single active register for product/delivery/technical/security risks and immediately communicate discovered vulnerabilities,
   - remind product owner to refresh priorities in `product/backlog.md` when context is stale.
 - Update `product/product-brief.md` only when strategy, roles, or core scope changes.
 - Add a new entry to the latest part referenced by `governance/decisions-log.md` for every architectural or product-level decision.
@@ -82,7 +84,7 @@ This folder stores the compact operational context for product, engineering, gov
 ## Operating Rule
 
 - For all future product and implementation tasks, treat files in `docs/context/` as the primary project context.
-- Start every new chat from `00-current-state.md`, then continue with the deeper read order from `handoff/context-protocol.md`.
+- Start every new chat from `handoff/active-run.md` when it exists, then `00-current-state.md`, then continue with the deeper read order from `handoff/context-protocol.md`.
 - When implementation requires detailed feature/domain clarification, use `docs/standup-platform-ru/` as the primary detailed specification layer and keep `docs/context/` as the compact memory/index layer.
 - When reconciling target-state specs with the current repository, check `../standup-platform-ru/11-статус-реализации-на-2026-03-10.md` first.
 - If new input conflicts with these docs, update the docs first, then proceed with implementation.

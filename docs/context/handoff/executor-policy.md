@@ -25,6 +25,7 @@
 Локальные simulator/emulator, build/test-harness, toolchain, cache и device-set проблемы не считаются true external blocker сами по себе: следующий bounded run должен продолжать их repair в рамках того же `TASK`.
 Блокерами являются лишь решения по выбору внешних провайдеров, непопулярных и не состоящих в списках рекомендаций Google библиотек, изменение архитектурных решений и ключевых правил разработки.
 Если блокер является внешним и требует вмешательства пользователя, нужно зафиксировать конкретное указание пользователю  (`Выбрать ...`, `Обновить ...`, `Перезагрузить ...` и т.д.).
+Для `completed` и `docs_only` подзадачи closure sequence обязателен и не может быть сокращен: `verification -> security verdict -> docs sync -> ready_to_commit -> local commit -> switch next task`.
 
 ## AutomationState
 
@@ -81,6 +82,7 @@
 - Для значимой задачи сначала используй [task-request-template.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/handoff/task-request-template.md) как структуру постановки, а outcome/history фиксируй в [task-request-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/handoff/task-request-log.md).
 - Если задача требует server diagnostics или production triage, используй [server-diagnostics-runbook.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/server-diagnostics-runbook.md).
 - Если по задаче найден повторяемый technical blocker или неочевидный repair path, зафиксируй его в [issue-resolution-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/issue-resolution-log.md).
+- Если meaningful task создаёт, меняет или снимает активный product/delivery/technical/security risk, обнови [product/risk-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/product/risk-log.md) в том же work block. Commit message section `Ограничения и риски` используется как локальный summary, но не заменяет канонический risk register.
 - Перед новой диагностикой blocker-а сначала проверь [issue-resolution-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/issue-resolution-log.md), нет ли там уже существующей записи с теми же симптомами и известным repair path.
 - Для iOS simulator / Xcode destination симптомов уровня `CoreSimulatorService`, `showdestinations`, placeholder destinations и похожих первым repair step считай запуск Xcode; если Xcode уже открыт, но завис или не отвечает, перезапусти его.
 - В [session-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/governance/session-log.md) оставляй только короткую аналитическую сводку в формате `Context / Changes / Decisions / Next`.
@@ -94,17 +96,23 @@
 - Verification должна быть достаточной для закрытия текущей bounded подзадачи в этом же запуске.
 - Историю конкретных прогонов и coverage memory веди в [verification-memory.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/verification-memory.md).
 - Перед закрытием meaningful task выполни обязательный security review, соразмерный измененному scope, и кратко зафиксируй результат в governance/task memory.
+- Если после task-а остаются активные residual limitations или rollout risks, зафиксируй их в `product/risk-log.md` с mitigation, owner, status и связанными артефактами.
 - Если запуск был только docs/process sync и security-impacting surface не менялся, явно зафиксируй этот нулевой security verdict вместо пропуска проверки.
 
 ## Commit Rules
 
-Локальный git commit разрешен только для `completed` или `docs_only` подзадачи.
+Локальный git commit обязателен для `completed` или `docs_only` подзадачи в том же run. До создания этого commit нельзя переводить recovery state на следующий active `TASK`.
+
+Статус `ready_to_commit` означает, что verification, security review и обязательный docs sync уже завершены, но commit boundary для текущей bounded подзадачи еще не закрыт.
 
 Правила commit:
 
 - не более одного commit на подзадачу;
 - только в `active_branch`;
 - без `push`, если пользователь явно не запросил отправку в remote.
+- пока локальный commit текущей `completed`/`docs_only` подзадачи не создан, нельзя менять `active_subtask_id`, `Active Subtask` или recovery `Next` на следующий task; можно фиксировать только будущий следующий шаг после commit;
+- если `git status` все еще dirty изменениями уже закрытой подзадачи, recovery posture должен оставаться на commit boundary (`ready_to_commit`), а не на следующем task.
+- если commit message содержит `Ограничения и риски`, все still-active ограничения из этого блока должны быть уже отражены в `product/risk-log.md` или явно сняты в том же work block.
 
 Commit message делай подробным, на русском, с `TASK-ID` и `EPIC-ID`, в структуре:
 

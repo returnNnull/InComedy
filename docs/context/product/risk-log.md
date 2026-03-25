@@ -1,207 +1,31 @@
-# Risk Log
+# Реестр рисков
 
-Use this file to track active product/technical risks, including current security vulnerabilities.
+Канонический реестр активных product/delivery/technical/security risks проекта.
 
-## Template
+Используй этот документ как входную точку, если нужно:
 
-- ID:
-- Date:
-- Risk:
-- Impact:
-- Probability:
-- Mitigation:
-- Owner:
-- Status:
+- быстро увидеть, где хранится актуальный risk register;
+- понять, что automation обязана обновлять его в том же work block при изменении risk posture;
+- не смешивать active risks с issue-resolution playbooks, session history или recovery checkpoint.
 
-## Security Vulnerability Template
+## Правила
 
-- ID:
-- Date discovered:
-- Vulnerability:
-- Affected components:
-- Severity:
-- Exploitability:
-- Current exposure:
-- Immediate containment:
-- Remediation plan:
-- Target fix date:
-- Owner:
-- Status:
+- Активные риски, residual limitations и security vulnerabilities веди здесь, а не только в commit messages, session log или task memory.
+- Если meaningful task создал, изменил или снял активный риск, обнови latest part этого реестра в том же work block.
+- Если commit message содержит раздел `Ограничения и риски`, все still-active пункты из него должны быть отражены в latest part этого реестра или явно сняты в той же change.
+- Не используй этот реестр вместо:
+  - `../engineering/issue-resolution-log.md` для повторяемых technical problems и repair path;
+  - `../governance/session-log.md` для хронологии сессий;
+  - `../handoff/active-run.md` для crash-safe recovery checkpoint.
 
----
+## Части (точный порядок)
 
-## R-001
+1. `risk-log/risk-log-part-01.md` (шаблоны и активные риски `R-001` -> `R-007`)
+2. `risk-log/risk-log-part-02.md` (активные риски `R-008` -> `R-013`)
+3. `risk-log/risk-log-part-03.md` (security vulnerabilities `V-001` -> `V-004`)
+4. `risk-log/risk-log-part-04.md` (новые и обновленные entries после split `D-080`)
 
-- Date: 2026-02-23
-- Risk: Payment provider integration delays MVP ticketing and donations.
-- Impact: High
-- Probability: Medium
-- Mitigation: Select provider early, integrate sandbox flow first, keep fallback manual refund process.
-- Owner: TBD
-- Status: open
+## Правило добавления
 
-## R-002
-
-- Date: 2026-02-23
-- Risk: Event feed or future user-generated communication features may create abuse/spam risk without baseline moderation controls.
-- Impact: High
-- Probability: Medium
-- Mitigation: Keep broad public chat out of MVP, add baseline moderation/reporting controls for announcements and future community features before rollout.
-- Owner: TBD
-- Status: open
-
-## R-003
-
-- Date: 2026-03-06
-- Risk: iOS release may be blocked if third-party login is shipped without Sign in with Apple or if donation flow conflicts with App Review expectations.
-- Impact: High
-- Probability: High
-- Mitigation: Include Sign in with Apple in MVP scope, review donation UX against current App Store guidelines early, and keep iOS donation flow compatible with pass-through/web-checkout fallback.
-- Owner: Product + Engineering
-- Status: open
-
-## R-004
-
-- Date: 2026-03-06
-- Risk: Seat oversell or inconsistent inventory state during concurrent checkout damages trust and creates refund/support cost.
-- Impact: High
-- Probability: Medium
-- Mitigation: Model sellable inventory explicitly, use row-level locking/transactional holds, enforce idempotent order/payment handling, and add concurrency integration tests.
-- Owner: Engineering
-- Status: open
-
-## R-005
-
-- Date: 2026-03-06
-- Risk: Donation payout model may fail legal/compliance review for comedians without verified payout identity.
-- Impact: High
-- Probability: High
-- Mitigation: Require payout profile verification before enabling donations, keep manual settlement fallback, and lock donation launch behind approved legal/financial scheme.
-- Owner: Product + Finance
-- Status: open
-
-## R-006
-
-- Date: 2026-03-06
-- Risk: Hall builder scope grows too large and delays MVP if treated like a generic CAD editor.
-- Impact: High
-- Probability: Medium
-- Mitigation: Keep hall builder v1 limited to 2D templates, rows/seats/tables/zones/stage/blocking only, and defer advanced freeform editing.
-- Owner: Product + Engineering
-- Status: open
-
-## R-007
-
-- Date: 2026-03-06
-- Risk: Over-scoped MVP (public chat, complex payouts, advanced recommendations) delays delivery of the operational core that creates value.
-- Impact: High
-- Probability: High
-- Mitigation: Prioritize organizer operations, ticketing, lineup, check-in, and live stage status; defer broad social/community scope to P1/P2.
-- Owner: Product
-- Status: open
-
-## R-008
-
-- Date: 2026-03-10
-- Risk: Live stage-status updates may behave unreliably under poor venue connectivity, damaging organizer and comedian trust during active shows.
-- Impact: High
-- Probability: Medium
-- Mitigation: Design live state with WebSocket plus push/polling fallback, keep state transitions idempotent, and test degraded-network behavior before rollout.
-- Owner: Engineering
-- Status: open
-
-## R-009
-
-- Date: 2026-03-10
-- Risk: Incorrect role or workspace permission modeling may expose organizer financial data or allow unauthorized operational actions.
-- Impact: Critical
-- Probability: Medium
-- Mitigation: Implement explicit permission matrix, shared authorization checks, audit logging, and permission-focused automated tests before organizer/ticketing rollout.
-- Owner: Engineering
-- Status: open
-
-## R-010
-
-- Date: 2026-03-10
-- Risk: Refund and cancellation flows may create heavy support load if policies and operator tooling are not defined before ticketing launch.
-- Impact: High
-- Probability: Medium
-- Mitigation: Lock refund/cancel policy before ticketing implementation, keep manual recovery tooling available, and track post-payment recovery incidents explicitly.
-- Owner: Product + Engineering
-- Status: open
-
-## R-011
-
-- Date: 2026-03-14
-- Risk: Auth-strategy pivot away from Telegram/Google can leave stale legacy provider entry points exposed in docs, runtime config, or app UI, creating product confusion and unsupported login attempts.
-- Impact: Critical
-- Probability: Medium
-- Mitigation: Remove Telegram/Google/phone-OTP assumptions from the active app surface and supported runtime contract in the same change as the decision pivot, keep provider abstractions intact for extension, and treat login + password plus VK ID as the only planned next auth slice.
-- Owner: Product + Engineering
-- Status: in-progress
-
-## R-012
-
-- Date: 2026-03-15
-- Risk: The project currently has no Apple Developer Program account and no Google Play developer account, so platform-console-only capabilities, store rollout, and some provider/integration validations can be planned as if they are available when they are not.
-- Impact: High
-- Probability: High
-- Mitigation: Treat Apple/Google developer-account access as an explicit dependency in every task that touches mobile distribution, store compliance, paid Apple entitlements, universal-link/device validation, Play Console setup, or provider flows requiring platform-console metadata; prefer local/device-testable and backend/web-verifiable paths until the accounts are provisioned.
-- Owner: Product + Engineering
-- Status: open
-
-## V-001
-
-- Date discovered: 2026-02-24
-- Vulnerability: Mobile auth/session token persisted in plain local storage (`SharedPreferences`/`UserDefaults`).
-- Affected components: `composeApp` auth wrapper, `iosApp` auth wrapper.
-- Severity: High
-- Exploitability: Medium
-- Current exposure: Mitigated in code by migration to secure storage; requires rollout on client updates.
-- Immediate containment: Do not log tokens; force secure storage for new writes.
-- Remediation plan: Complete release rollout with secure storage migration and verify migration telemetry on Android/iOS.
-- Target fix date: 2026-02-26
-- Owner: Engineering
-- Status: in-progress
-
-## V-002
-
-- Date discovered: 2026-03-06
-- Vulnerability: Legacy Telegram auth payloads can be replayed for up to the accepted auth-age window because backend verification has no one-time nonce/state binding or replay cache.
-- Affected components: `server/auth/telegram/TelegramAuthVerifier`, `server/auth/telegram/TelegramAuthRoutes`, Telegram mobile callback completion flow.
-- Severity: High
-- Exploitability: Medium
-- Current exposure: Contained only if Telegram auth is removed from the active app/runtime surface; the legacy slice should not be treated as a supported product entry point anymore.
-- Immediate containment: Keep Telegram auth disabled in the active app surface and avoid re-enabling the legacy route family without a dedicated decision.
-- Remediation plan: Remove or archive the legacy Telegram auth slice from supported runtime/docs while the new login/password + VK auth path is implemented.
-- Target fix date: 2026-03-10
-- Owner: Engineering
-- Status: superseded
-
-## V-003
-
-- Date discovered: 2026-03-06
-- Vulnerability: Auth rate limiting trusts caller-controlled `X-Forwarded-For`, allowing client fingerprint spoofing and limiter bypass.
-- Affected components: `server/security/AuthRateLimiter`, `server/auth/telegram/TelegramAuthRoutes`, `server/auth/session/SessionRoutes`.
-- Severity: High
-- Exploitability: High
-- Current exposure: Mitigated in code by removing raw `X-Forwarded-For` trust from rate limiting; pending deployment of updated server build.
-- Immediate containment: Deploy updated server build and keep direct access to the app container blocked.
-- Remediation plan: Keep direct-peer/auth-identity based limiting as default and introduce trusted-proxy-aware client IP resolution only if explicitly needed later.
-- Target fix date: 2026-03-10
-- Owner: Engineering
-- Status: in-progress
-
-## V-004
-
-- Date discovered: 2026-03-06
-- Vulnerability: Public auth endpoints do not enforce request body size limits, leaving Telegram verify and refresh endpoints exposed to oversized-request DoS attempts.
-- Affected components: `server/Application`, `server/auth/telegram/TelegramAuthRoutes`, `server/auth/session/SessionRoutes`.
-- Severity: Medium
-- Exploitability: Medium
-- Current exposure: Mitigated in code with route-level body caps; pending deployment of updated server build. Proxy-side caps are still recommended as defense in depth.
-- Immediate containment: Deploy updated server build and keep conservative reverse-proxy body-size limits in front of the server.
-- Remediation plan: Keep application-level caps, add proxy-level caps in deploy infrastructure, and preserve oversized-payload regression tests.
-- Target fix date: 2026-03-12
-- Owner: Engineering
-- Status: in-progress
+- Append new or updated active risks to `risk-log/risk-log-part-04.md`.
+- If the latest part grows above ~8,000 characters, create `risk-log/risk-log-part-05.md`, update this index, and continue appending there.

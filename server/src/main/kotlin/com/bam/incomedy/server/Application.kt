@@ -28,6 +28,8 @@ import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
 import com.bam.incomedy.server.observability.isValidRequestId
 import com.bam.incomedy.server.organizer.WorkspaceRoutes
 import com.bam.incomedy.server.payments.yookassa.YooKassaCheckoutGateway
+import com.bam.incomedy.server.realtime.EventLiveChannelBroadcaster
+import com.bam.incomedy.server.realtime.EventLiveChannelRoutes
 import com.bam.incomedy.server.ticketing.TicketingRoutes
 import com.bam.incomedy.server.venues.VenueRoutes
 import com.bam.incomedy.server.security.AuthRateLimiter
@@ -48,6 +50,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import io.ktor.server.websocket.WebSockets
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
@@ -68,6 +71,7 @@ fun Application.module() {
     val comedianApplicationRepository = PostgresComedianApplicationRepository(dataSource)
     val lineupRepository = PostgresLineupRepository(dataSource)
     val ticketingRepository = PostgresTicketingRepository(dataSource)
+    val eventLiveChannelBroadcaster = EventLiveChannelBroadcaster()
     val tokenService = JwtSessionTokenService(config.jwt)
     val passwordHasher = Argon2PasswordHasher()
     val credentialsAuthService = CredentialsAuthService(
@@ -127,6 +131,7 @@ fun Application.module() {
     install(ContentNegotiation) {
         json()
     }
+    install(WebSockets)
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             logger.error(
@@ -218,6 +223,7 @@ fun Application.module() {
             eventRepository = eventRepository,
             comedianApplicationRepository = comedianApplicationRepository,
             lineupRepository = lineupRepository,
+            eventLiveChannelBroadcaster = eventLiveChannelBroadcaster,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )
@@ -228,8 +234,16 @@ fun Application.module() {
             workspaceRepository = repository,
             eventRepository = eventRepository,
             lineupRepository = lineupRepository,
+            eventLiveChannelBroadcaster = eventLiveChannelBroadcaster,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
+        )
+        EventLiveChannelRoutes.register(
+            route = this,
+            eventRepository = eventRepository,
+            lineupRepository = lineupRepository,
+            broadcaster = eventLiveChannelBroadcaster,
+            rateLimiter = rateLimiter,
         )
         TicketingRoutes.register(
             route = this,

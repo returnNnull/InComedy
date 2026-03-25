@@ -11,7 +11,7 @@
 
 Не используй этот журнал вместо:
 
-- `product/risk-log.md` для продуктовых/безопасностных рисков и уязвимостей;
+- `product/risk-log.md` для активных product/delivery/technical/security risks, residual limitations и уязвимостей;
 - `governance/session-log.md` для хронологии сессий;
 - `handoff/active-run.md` для crash-safe текущего recovery checkpoint.
 

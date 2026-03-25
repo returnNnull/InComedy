@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.lineup.ComedianApplication
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
@@ -57,6 +61,8 @@ internal data class LineupTabBindings(
     val onReorderLineup: (String, List<String>) -> Unit = { _, _ -> },
     /** Команда смены live-stage статуса записи lineup. */
     val onUpdateLineupEntryStatus: (String, String, LineupEntryStatus) -> Unit = { _, _, _ -> },
+    /** Команда включения/выключения realtime feed по lifecycle вкладки. */
+    val onSetLiveUpdatesActive: (Boolean) -> Unit = {},
     /** Команда очистки верхнеуровневой lineup-ошибки. */
     val onClearError: () -> Unit = {},
 )
@@ -76,6 +82,8 @@ internal fun LineupManagementTab(
     lineupBindings: LineupTabBindings,
     modifier: Modifier = Modifier,
 ) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     /** Хранит выбранное organizer event для review/reorder context. */
     var selectedOrganizerEventId by rememberSaveable { mutableStateOf("") }
     /** Хранит event id для comedian submit формы. */
@@ -96,6 +104,27 @@ internal fun LineupManagementTab(
         }
         if (submitEventId.isBlank()) {
             submitEventId = firstEventId
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, lineupBindings.onSetLiveUpdatesActive) {
+        val lifecycle = lifecycleOwner.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> lineupBindings.onSetLiveUpdatesActive(true)
+                Lifecycle.Event.ON_STOP -> lineupBindings.onSetLiveUpdatesActive(false)
+                else -> Unit
+            }
+        }
+
+        lifecycle.addObserver(observer)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lineupBindings.onSetLiveUpdatesActive(true)
+        }
+
+        onDispose {
+            lifecycle.removeObserver(observer)
+            lineupBindings.onSetLiveUpdatesActive(false)
         }
     }
 

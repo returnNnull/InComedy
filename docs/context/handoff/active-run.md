@@ -10,38 +10,37 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-25T15:23:45+03:00`
+- Timestamp: `2026-03-25T17:49:44+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `EPIC-068`
-- Active Subtask: `TASK-083`
-- Branch: `codex/epic-068-live-stage-status-foundation`
-- Epic Status: `awaiting_user_review`
-- Run Status: `docs_only`
+- Active Epic: `none`
+- Active Subtask: `none`
+- Branch: `main`
+- Epic Status: `done`
+- Run Status: `completed`
 
 ## Цель
 
-- `Рефакторинг структуры docs/context для ускорения bootstrap: разделить checklist/policy/status/history и убрать лишний контекст из snapshot/recovery файлов.`
+- `Зафиксировать явное user confirmation для EPIC-069, закрыть epic в context docs, затем merge-нуть ветку в main и push-нуть origin/main.`
 
 ## Итог
 
-- `Созданы отдельные executor checklist/policy, implementation-status, verification-memory и next-epic-queue.`
-- `00-current-state.md` сжат до bootstrap snapshot; active-run.md сжат до recovery checkpoint.`
-- `test-strategy.md` и `architecture-overview.md` очищены от delivery/verification history в пользу новых специализированных документов.`
-- `issue-resolution-log.md` получил symptom index.`
-- `EPIC-068` остаётся в awaiting_user_review; product scope не менялся.`
+- `User review confirmation received: EPIC-069 / TASK-086 больше не находится в posture awaiting_user_review; epic переведён в status done.`
+- Delivered realtime slice остаётся прежним и принятым: public `/ws/events/{eventId}` feed, lifecycle-gated Android/iOS consumption, audience-safe live summary и organizer refresh после `application_approved` уже verified и зафиксированы в branch history.
+- После merge/push default branch снова `main`; EPIC-069 больше не является active delivery epic, а `R-013` остаётся open как residual rollout limitation profile для будущего follow-up scope.
 
 ## Возобновление
 
-- `Если чат оборвется, не выбирать новую product-задачу: EPIC-068 уже завершён технически и ждёт user review. Оставаться на той же ветке и не стартовать новый epic, пока пользователь явно не подтвердит review. Для повторяющихся blocker-ов сначала смотреть issue log; для Xcode/simulator симптомов первым делом запускать или перезапускать Xcode.`
+- `Если чат оборвется, сверить branch и git status. Если merge main + push уже завершены, оставить EPIC-069 закрытым; если нет — довести интеграцию до merged main + pushed origin/main без переоткрытия epic-а.`
 
 ## Если сессия оборвётся
 
 - Check `git status`.
-- Confirm branch is still `codex/epic-068-live-stage-status-foundation`.
-- Treat active recovery state as `EPIC-068 awaiting_user_review`; do not pick a new epic or task.
-- Keep the branch checked out and wait for explicit user confirmation before moving to the next `P0` epic.
+- Check whether `main` already contains merge commit for `codex/epic-069-live-stage-realtime-delivery`.
+- Keep `EPIC-069` closed if merge/push is already complete.
+- Do not start `EPIC-070` автоматически только потому, что EPIC-069 завершён.
+- Reopen `EPIC-069` only for a concrete post-merge regression or explicit follow-up request.
 
 ## Следующий шаг
 
-- `Ровно одна следующая подзадача после этого запуска: получить явное user review/confirmation по EPIC-068; только после этого выбирать следующий P0 epic (первый кандидат — realtime/WebSocket delivery для live stage updates).`
+- `Ровно один следующий шаг после merge/push: при новом запросе выбрать следующий highest-priority unfinished epic из next-epic-queue; EPIC-069 не трогать без follow-up/regression.`

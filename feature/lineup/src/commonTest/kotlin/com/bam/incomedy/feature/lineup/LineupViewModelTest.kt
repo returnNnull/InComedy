@@ -5,13 +5,20 @@ import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
 import com.bam.incomedy.domain.lineup.LineupEntryStatus
+import com.bam.incomedy.domain.lineup.LineupLiveEntry
+import com.bam.incomedy.domain.lineup.LineupLiveSummary
+import com.bam.incomedy.domain.lineup.LineupLiveUpdate
+import com.bam.incomedy.domain.lineup.LineupLiveUpdateType
 import com.bam.incomedy.domain.lineup.LineupManagementService
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Unit-тесты shared lineup feature model.
@@ -161,6 +168,166 @@ class LineupViewModelTest {
         assertEquals("entry-1", viewModel.state.value.currentPerformer?.id)
         assertEquals("entry-2", viewModel.state.value.nextUpPerformer?.id)
     }
+
+    /** Проверяет, что lifecycle activation подключает realtime feed и применяет public summary. */
+    @Test
+    fun activateLiveUpdatesAfterContextLoadAppliesIncomingSummary() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeLineupManagementService(
+            initialLineup = mutableListOf(
+                defaultLineupEntry(id = "entry-1", orderIndex = 1, status = LineupEntryStatus.DRAFT),
+                defaultLineupEntry(id = "entry-2", orderIndex = 2, status = LineupEntryStatus.UP_NEXT),
+            ),
+        )
+        val viewModel = LineupViewModel(
+            lineupManagementService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadOrganizerContext("event-1")
+        advanceUntilIdle()
+        viewModel.setLiveUpdatesActive(true)
+        advanceUntilIdle()
+
+        service.emitLiveUpdate(
+            LineupLiveUpdate(
+                type = LineupLiveUpdateType.STAGE_CURRENT_CHANGED,
+                eventId = "event-1",
+                occurredAtIso = "2026-03-25T17:20:00+03:00",
+                reason = "live_state_changed",
+                summary = LineupLiveSummary(
+                    currentPerformer = LineupLiveEntry(
+                        id = "entry-1",
+                        comedianDisplayName = "Иван Смехов",
+                        orderIndex = 1,
+                        status = LineupEntryStatus.ON_STAGE,
+                    ),
+                    nextUp = null,
+                    lineup = listOf(
+                        LineupLiveEntry(
+                            id = "entry-1",
+                            comedianDisplayName = "Иван Смехов",
+                            orderIndex = 1,
+                            status = LineupEntryStatus.ON_STAGE,
+                        ),
+                        LineupLiveEntry(
+                            id = "entry-2",
+                            comedianDisplayName = "Мария Сетова",
+                            orderIndex = 2,
+                            status = LineupEntryStatus.DRAFT,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(LineupEntryStatus.ON_STAGE, viewModel.state.value.lineup.first { it.id == "entry-1" }.status)
+        assertEquals("entry-1", viewModel.state.value.currentPerformer?.id)
+        assertNull(viewModel.state.value.nextUpPerformer)
+    }
+
+    /** Проверяет, что approval live update подтягивает organizer applications поверх public summary. */
+    @Test
+    fun applicationApprovedLiveUpdateRefreshesApplications() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeLineupManagementService(
+            initialLineup = mutableListOf(),
+        )
+        val viewModel = LineupViewModel(
+            lineupManagementService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadOrganizerContext("event-1")
+        advanceUntilIdle()
+        viewModel.setLiveUpdatesActive(true)
+        advanceUntilIdle()
+
+        service.approveApplicationForLiveUpdate(
+            applicationId = "application-1",
+            entryId = "entry-approved",
+        )
+        service.emitLiveUpdate(
+            LineupLiveUpdate(
+                type = LineupLiveUpdateType.LINEUP_CHANGED,
+                eventId = "event-1",
+                occurredAtIso = "2026-03-25T17:21:00+03:00",
+                reason = "application_approved",
+                summary = LineupLiveSummary(
+                    currentPerformer = null,
+                    nextUp = null,
+                    lineup = listOf(
+                        LineupLiveEntry(
+                            id = "entry-approved",
+                            comedianDisplayName = "Иван Смехов",
+                            orderIndex = 1,
+                            status = LineupEntryStatus.DRAFT,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(ComedianApplicationStatus.APPROVED, viewModel.state.value.applications.single().status)
+        assertEquals(listOf("entry-approved"), viewModel.state.value.lineup.map(LineupEntry::id))
+    }
+
+    /** Проверяет, что lifecycle deactivation останавливает применение новых realtime payload-ов. */
+    @Test
+    fun deactivateLiveUpdatesStopsApplyingIncomingEvents() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeLineupManagementService(
+            initialLineup = mutableListOf(
+                defaultLineupEntry(id = "entry-1", orderIndex = 1, status = LineupEntryStatus.DRAFT),
+            ),
+        )
+        val viewModel = LineupViewModel(
+            lineupManagementService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadOrganizerContext("event-1")
+        advanceUntilIdle()
+        viewModel.setLiveUpdatesActive(true)
+        advanceUntilIdle()
+        viewModel.setLiveUpdatesActive(false)
+        advanceUntilIdle()
+
+        service.emitLiveUpdate(
+            LineupLiveUpdate(
+                type = LineupLiveUpdateType.STAGE_CURRENT_CHANGED,
+                eventId = "event-1",
+                occurredAtIso = "2026-03-25T17:22:00+03:00",
+                reason = "live_state_changed",
+                summary = LineupLiveSummary(
+                    currentPerformer = LineupLiveEntry(
+                        id = "entry-1",
+                        comedianDisplayName = "Иван Смехов",
+                        orderIndex = 1,
+                        status = LineupEntryStatus.ON_STAGE,
+                    ),
+                    nextUp = null,
+                    lineup = listOf(
+                        LineupLiveEntry(
+                            id = "entry-1",
+                            comedianDisplayName = "Иван Смехов",
+                            orderIndex = 1,
+                            status = LineupEntryStatus.ON_STAGE,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(LineupEntryStatus.DRAFT, viewModel.state.value.lineup.single().status)
+        assertNull(viewModel.state.value.currentPerformer)
+    }
 }
 
 /**
@@ -175,6 +342,9 @@ private class FakeLineupManagementService(
 
     /** Хранимый список lineup entries для тестовых сценариев. */
     private val lineupEntries: MutableList<LineupEntry> = initialLineup
+
+    /** Per-event live update buses для shared realtime tests. */
+    private val liveUpdates = mutableMapOf<String, MutableSharedFlow<LineupLiveUpdate>>()
 
     override suspend fun submitApplication(
         accessToken: String,
@@ -252,6 +422,44 @@ private class FakeLineupManagementService(
             updatedAtIso = "2026-03-24T18:30:00+03:00",
         )
         return Result.success(lineupEntries.sortedBy(LineupEntry::orderIndex))
+    }
+
+    override fun observeEventLiveUpdates(eventId: String): Flow<LineupLiveUpdate> {
+        return liveUpdates.getOrPut(eventId) {
+            MutableSharedFlow(extraBufferCapacity = 8)
+        }
+    }
+
+    /** Публикует тестовый realtime payload в flow соответствующего события. */
+    fun emitLiveUpdate(update: LineupLiveUpdate) {
+        liveUpdates.getOrPut(update.eventId) {
+            MutableSharedFlow(extraBufferCapacity = 8)
+        }.tryEmit(update)
+    }
+
+    /** Подготавливает service state к внешнему approval, который затем придет по live channel. */
+    fun approveApplicationForLiveUpdate(
+        applicationId: String,
+        entryId: String,
+    ) {
+        val index = applications.indexOfFirst { it.id == applicationId }
+        val updated = applications[index].copy(
+            status = ComedianApplicationStatus.APPROVED,
+            reviewedByUserId = "owner-1",
+            reviewedByDisplayName = "Организатор",
+            updatedAtIso = "2026-03-25T17:21:00+03:00",
+            statusUpdatedAtIso = "2026-03-25T17:21:00+03:00",
+        )
+        applications[index] = updated
+        if (lineupEntries.none { it.id == entryId }) {
+            lineupEntries.add(
+                defaultLineupEntry(
+                    id = entryId,
+                    applicationId = applicationId,
+                    orderIndex = lineupEntries.size + 1,
+                ),
+            )
+        }
     }
 }
 
