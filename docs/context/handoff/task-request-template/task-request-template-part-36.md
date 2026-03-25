@@ -20,9 +20,9 @@
 1. `TASK-084` — backend WebSocket live-event channel `/ws/events/{eventId}` для audience-safe lineup/live-stage updates, включая event envelope, server-local broadcaster и route coverage.
    - Status: `completed`
 2. `TASK-085` — shared/data realtime subscription contract и transport integration для lineup live updates в KMP-слоях.
-   - Status: `in_progress`
+   - Status: `completed`
 3. `TASK-086` — Android/iOS wiring на новый realtime feed и executable verification delivered live-update behavior.
-   - Status: `planned`
+   - Status: `in_progress`
 
 ### Scope Rules
 
@@ -32,15 +32,15 @@
 
 ### Current Next
 
-- `Ровно одна следующая продуктовая подзадача: TASK-085 — shared/data realtime subscription contract для lineup live updates, без Android/iOS wiring в том же bounded шаге.`
+- `Ровно одна следующая продуктовая подзадача: TASK-086 — Android/iOS wiring на новый realtime feed и executable verification delivered live-update behavior, без staff/private channel, push fallback или durable outbox в том же bounded шаге.`
 
 ### Current Recovery State
 
-- `Локальная commit boundary TASK-084 закрыта commit-ом ecb5b96, поэтому active recovery checkpoint переключён на TASK-085 в статусе in_progress.`
+- `Локальная commit boundary TASK-085 закрыта текущим локальным commit-ом, поэтому active recovery checkpoint переключён на TASK-086 в статусе in_progress.`
 
 ### Recovery Guardrail
 
-- `Если новая сессия увидит dirty worktree после already-completed TASK-084 или другой completed/docs_only подзадачи, она обязана сначала закрыть local commit boundary и только потом продолжать TASK-085. Переключать active recovery на новый TASK до commit нельзя.`
+- `Если новая сессия увидит dirty worktree после already-completed TASK-085 или другой completed/docs_only подзадачи, она обязана сначала закрыть local commit boundary и только потом продолжать TASK-086. Переключать active recovery на новый TASK до commit нельзя.`
 
 ## Implementation Outcome (EPIC-069 TASK-084 Backend Live Event WebSocket Channel)
 
@@ -88,3 +88,45 @@
 ### Next
 
 - `Ровно одна следующая продуктовая подзадача — TASK-085: shared/data realtime subscription contract для lineup live updates, без Android/iOS wiring в том же bounded шаге.`
+
+## Implementation Outcome (EPIC-069 TASK-085 Shared/Data Realtime Subscription Contract)
+
+### Epic
+
+- `EPIC-069` — realtime/WebSocket delivery для live stage updates.
+
+### Task
+
+- `TASK-085` — shared/data realtime subscription contract и transport integration для lineup live updates в KMP-слоях.
+
+### Status
+
+- `completed`
+
+### Delivered
+
+- В `:domain:lineup` добавлен отдельный public live-update contract:
+  - `LineupLiveUpdate`
+  - `LineupLiveUpdateType`
+  - `LineupLiveSummary`
+  - `LineupLiveEntry`
+- `LineupManagementService` получил `observeEventLiveUpdates(eventId)` как transport-agnostic KMP seam для подписки на published public event channel без access token.
+- `:data:lineup` теперь содержит Ktor WebSocket transport adapter, который:
+  - строит `ws/wss` URL из текущего backend base URL;
+  - читает text frames public `/ws/events/{eventId}` feed-а;
+  - поднимает явную ошибку при non-normal close reason от backend-а.
+- JSON envelope `lineup.changed` / `stage.current_changed` маппится в новые доменные модели без утечки transport DTO за пределы data-слоя.
+- Добавлен test seam для realtime transport-а, чтобы KMP data tests могли проверять contract mapping без реального сокета.
+
+### Verification
+
+- `Passed: ./gradlew :data:lineup:allTests :feature:lineup:allTests :shared:compileKotlinMetadata :composeApp:compileDebugKotlin`
+
+### Notes
+
+- Security review verdict: новый client-side realtime surface остаётся read-only и public-only, не использует access token и продолжает потреблять только audience-safe payload published public event channel-а без organizer/private данных.
+- Android/iOS lifecycle wiring, runtime subscription start/stop и executable platform verification намеренно оставлены следующей bounded подзадаче `TASK-086`.
+
+### Next
+
+- `Ровно одна следующая продуктовая подзадача — TASK-086: Android/iOS wiring на новый realtime feed и executable verification delivered live-update behavior, без staff/private channel, push fallback или durable outbox в том же bounded шаге.`

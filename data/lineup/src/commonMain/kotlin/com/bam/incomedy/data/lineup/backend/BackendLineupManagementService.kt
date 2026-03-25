@@ -5,7 +5,9 @@ import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
 import com.bam.incomedy.domain.lineup.LineupEntryStatus
+import com.bam.incomedy.domain.lineup.LineupLiveUpdate
 import com.bam.incomedy.domain.lineup.LineupManagementService
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Backend-реализация `LineupManagementService`.
@@ -92,5 +94,10 @@ class BackendLineupManagementService(
             entryId = entryId,
             status = status,
         )
+    }
+
+    /** Подписывает consumer-ов на public live-event updates опубликованного события. */
+    override fun observeEventLiveUpdates(eventId: String): Flow<LineupLiveUpdate> {
+        return lineupBackendApi.observeEventLiveUpdates(eventId = eventId)
     }
 }

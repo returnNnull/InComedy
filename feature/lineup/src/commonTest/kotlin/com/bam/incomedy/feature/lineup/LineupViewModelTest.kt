@@ -5,7 +5,10 @@ import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
 import com.bam.incomedy.domain.lineup.LineupEntryStatus
+import com.bam.incomedy.domain.lineup.LineupLiveUpdate
 import com.bam.incomedy.domain.lineup.LineupManagementService
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -253,6 +256,8 @@ private class FakeLineupManagementService(
         )
         return Result.success(lineupEntries.sortedBy(LineupEntry::orderIndex))
     }
+
+    override fun observeEventLiveUpdates(eventId: String): Flow<LineupLiveUpdate> = emptyFlow()
 }
 
 /** Собирает дефолтную заявку для тестов. */

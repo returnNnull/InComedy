@@ -10,6 +10,10 @@ import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
 import com.bam.incomedy.domain.lineup.LineupEntryStatus
+import com.bam.incomedy.domain.lineup.LineupLiveEntry
+import com.bam.incomedy.domain.lineup.LineupLiveSummary
+import com.bam.incomedy.domain.lineup.LineupLiveUpdate
+import com.bam.incomedy.domain.lineup.LineupLiveUpdateType
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -18,6 +22,8 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -32,11 +38,25 @@ import kotlinx.serialization.json.Json
  * @property parser JSON-парсер transport-DTO.
  * @property httpClient Настроенный HTTP-клиент backend surface.
  */
-class LineupBackendApi(
-    private val baseUrl: String = BackendEnvironment.baseUrl,
-    private val parser: Json = backendJson,
-    private val httpClient: HttpClient = createBackendHttpClient(parser),
+class LineupBackendApi private constructor(
+    private val baseUrl: String,
+    private val parser: Json,
+    private val httpClient: HttpClient,
+    private val liveUpdatesTransport: LineupLiveUpdatesTransport,
 ) {
+    constructor(
+        baseUrl: String = BackendEnvironment.baseUrl,
+        parser: Json = backendJson,
+        httpClient: HttpClient = createBackendHttpClient(parser),
+    ) : this(
+        baseUrl = baseUrl,
+        parser = parser,
+        httpClient = httpClient,
+        liveUpdatesTransport = KtorLineupLiveUpdatesTransport(
+            httpClient = createLineupLiveUpdatesHttpClient(parser),
+        ),
+    )
+
     /** Отправляет comedian application на событие. */
     suspend fun submitApplication(
         accessToken: String,
@@ -143,6 +163,55 @@ class LineupBackendApi(
             response.body<LineupListResponse>().entries.map(LineupEntryResponse::toDomain)
         }
     }
+
+    /** Подписывает consumer-ов на public live-event updates опубликованного события. */
+    fun observeEventLiveUpdates(eventId: String): Flow<LineupLiveUpdate> {
+        val normalizedEventId = eventId.trim()
+        require(normalizedEventId.isNotEmpty()) { "Не выбран event для live updates" }
+
+        return liveUpdatesTransport.observe(buildEventLiveUpdatesUrl(normalizedEventId)).map { payload ->
+            parser.decodeFromString(LineupLiveUpdateResponse.serializer(), payload).toDomain()
+        }
+    }
+
+    /** Собирает ws/wss URL для public live-event channel-а. */
+    private fun buildEventLiveUpdatesUrl(eventId: String): String {
+        val normalizedBaseUrl = baseUrl.trimEnd('/')
+        return when {
+            normalizedBaseUrl.startsWith("https://") -> {
+                "wss://${normalizedBaseUrl.removePrefix("https://")}/ws/events/$eventId"
+            }
+
+            normalizedBaseUrl.startsWith("http://") -> {
+                "ws://${normalizedBaseUrl.removePrefix("http://")}/ws/events/$eventId"
+            }
+
+            normalizedBaseUrl.startsWith("wss://") || normalizedBaseUrl.startsWith("ws://") -> {
+                "$normalizedBaseUrl/ws/events/$eventId"
+            }
+
+            else -> {
+                "wss://$normalizedBaseUrl/ws/events/$eventId"
+            }
+        }
+    }
+
+    companion object {
+        /** Создает test-friendly API с подмененным transport seam для realtime сценариев. */
+        internal fun createForTesting(
+            baseUrl: String = BackendEnvironment.baseUrl,
+            parser: Json = backendJson,
+            httpClient: HttpClient = createBackendHttpClient(parser),
+            liveUpdatesTransport: LineupLiveUpdatesTransport,
+        ): LineupBackendApi {
+            return LineupBackendApi(
+                baseUrl = baseUrl,
+                parser = parser,
+                httpClient = httpClient,
+                liveUpdatesTransport = liveUpdatesTransport,
+            )
+        }
+    }
 }
 
 /** DTO списка organizer applications. */
@@ -156,6 +225,69 @@ private data class ComedianApplicationListResponse(
 private data class LineupListResponse(
     val entries: List<LineupEntryResponse>,
 )
+
+/** DTO public live-event envelope-а. */
+@Serializable
+private data class LineupLiveUpdateResponse(
+    val type: String,
+    @SerialName("event_id")
+    val eventId: String,
+    @SerialName("occurred_at")
+    val occurredAtIso: String,
+    val reason: String,
+    val summary: LineupLiveSummaryResponse,
+) {
+    /** Маппит public realtime envelope в доменную модель. */
+    fun toDomain(): LineupLiveUpdate {
+        return LineupLiveUpdate(
+            type = requireNotNull(LineupLiveUpdateType.fromWireName(type)),
+            eventId = eventId,
+            occurredAtIso = occurredAtIso,
+            reason = reason,
+            summary = summary.toDomain(),
+        )
+    }
+}
+
+/** DTO audience-safe summary из public live-event channel-а. */
+@Serializable
+private data class LineupLiveSummaryResponse(
+    @SerialName("current_performer")
+    val currentPerformer: LineupLiveEntryResponse? = null,
+    @SerialName("next_up")
+    val nextUp: LineupLiveEntryResponse? = null,
+    val lineup: List<LineupLiveEntryResponse> = emptyList(),
+) {
+    /** Маппит audience-safe summary в доменную модель. */
+    fun toDomain(): LineupLiveSummary {
+        return LineupLiveSummary(
+            currentPerformer = currentPerformer?.toDomain(),
+            nextUp = nextUp?.toDomain(),
+            lineup = lineup.map(LineupLiveEntryResponse::toDomain),
+        )
+    }
+}
+
+/** DTO audience-safe lineup entry из public live-event channel-а. */
+@Serializable
+private data class LineupLiveEntryResponse(
+    val id: String,
+    @SerialName("comedian_display_name")
+    val comedianDisplayName: String,
+    @SerialName("order_index")
+    val orderIndex: Int,
+    val status: String,
+) {
+    /** Маппит audience-safe lineup entry в доменную модель. */
+    fun toDomain(): LineupLiveEntry {
+        return LineupLiveEntry(
+            id = id,
+            comedianDisplayName = comedianDisplayName,
+            orderIndex = orderIndex,
+            status = requireNotNull(LineupEntryStatus.fromWireName(status)),
+        )
+    }
+}
 
 /** DTO submit request-а для comedian application. */
 @Serializable

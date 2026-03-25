@@ -1,5 +1,7 @@
 package com.bam.incomedy.domain.lineup
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Контракт comedian applications и organizer lineup management slice-а.
  *
@@ -49,6 +51,9 @@ interface LineupManagementService {
         entryId: String,
         status: LineupEntryStatus,
     ): Result<List<LineupEntry>>
+
+    /** Подписывает shared/platform слои на public live-event updates опубликованного события. */
+    fun observeEventLiveUpdates(eventId: String): Flow<LineupLiveUpdate>
 }
 
 /**

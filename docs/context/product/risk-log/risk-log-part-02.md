@@ -62,11 +62,11 @@
 
 - Дата: 2026-03-25
 - Категория: `delivery/technical`
-- Риск: Первый realtime slice для live stage пока не является end-to-end rollout-ready: backend fanout работает только внутри одного backend process-а, а shared/data subscription contract и platform consumption ещё не реализованы.
-- Текущая экспозиция / триггер: `/ws/events/{eventId}` уже публикует audience-safe lineup/live-stage updates, но при multi-instance deployment без durable outbox/fanout и на текущих mobile clients live updates не гарантированы end-to-end.
+- Риск: Первый realtime slice для live stage пока не является end-to-end rollout-ready: backend fanout работает только внутри одного backend process-а, а Android/iOS product flows ещё не потребляют новый realtime feed.
+- Текущая экспозиция / триггер: `/ws/events/{eventId}` и KMP subscription contract уже доставлены, но текущие mobile clients ещё не стартуют этот feed в runtime, а при multi-instance deployment без durable outbox/fanout live updates не гарантированы end-to-end.
 - Влияние: High
 - Вероятность: Medium
-- Смягчение / следующий шаг: Держать ограничение явно зафиксированным в `EPIC-069`, закрыть `TASK-085` для shared/data realtime subscription contract, затем `TASK-086` для Android/iOS wiring и только отдельным bounded шагом проектировать durable outbox/multi-instance fanout перед rollout-ready verdict.
+- Смягчение / следующий шаг: Держать ограничение явно зафиксированным в `EPIC-069`, закрыть `TASK-086` для Android/iOS wiring и executable verification delivered live-update behavior, затем только отдельным bounded шагом проектировать durable outbox/multi-instance fanout перед rollout-ready verdict.
 - Владелец: Engineering
-- Связанные артефакты: `D-078`, `TASK-084`, `TASK-085`, commit `ecb5b96`
+- Связанные артефакты: `D-078`, `TASK-084`, `TASK-085`, `TASK-086`, commit `ecb5b96`
 - Статус: open
