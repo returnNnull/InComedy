@@ -91,6 +91,13 @@ interface LineupRepository {
         notes: String?,
     ): StoredLineupEntry
 
+    /** Обновляет live-stage статус одной записи lineup и возвращает актуальный lineup события. */
+    fun updateLineupEntryStatus(
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): List<StoredLineupEntry>
+
     /** Перезаписывает порядок всего lineup события атомарно. */
     fun reorderEventLineup(
         eventId: String,

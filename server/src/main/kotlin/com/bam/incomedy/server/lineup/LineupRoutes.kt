@@ -20,6 +20,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.slf4j.LoggerFactory
 import java.util.UUID
@@ -27,8 +28,9 @@ import java.util.UUID
 /**
  * HTTP surface backend lineup foundation slice-а.
  *
- * Роуты отдают organizer/host список lineup entries и позволяют безопасно переставлять полный
- * lineup события. Live-state и comedian-facing read surfaces остаются вне этого шага.
+ * Роуты отдают organizer/host список lineup entries, позволяют безопасно переставлять полный
+ * lineup события и переводить отдельную запись между live-stage статусами. Realtime delivery и
+ * comedian-facing read surfaces остаются вне этого шага.
  */
 object LineupRoutes {
     /** Структурированный logger lineup surface. */
@@ -36,6 +38,9 @@ object LineupRoutes {
 
     /** Максимальный размер request body для reorder lineup. */
     private const val MAX_REORDER_LINEUP_REQUEST_BYTES = 8 * 1024
+
+    /** Максимальный размер request body для live-state mutation. */
+    private const val MAX_LIVE_STATE_REQUEST_BYTES = 4 * 1024
 
     /** Регистрирует protected organizer lineup routes. */
     fun register(
@@ -184,6 +189,100 @@ object LineupRoutes {
                         )
                     }
                 }
+
+                post("/events/{eventId}/lineup/live-state") {
+                    val principal = call.requireSessionPrincipal()
+                    if (!rateLimiter.allow(key = "organizer_lineup_live_state:${principal.user.id}", limit = 60, windowMs = 60_000L)) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.lineup.live_state.rate_limited",
+                            status = HttpStatusCode.TooManyRequests.value,
+                            safeErrorCode = "rate_limited",
+                        )
+                        call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("rate_limited", "Too many requests"))
+                        return@post
+                    }
+                    val eventId = call.parameters["eventId"]
+                    if (!eventId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.lineup.live_state.invalid_event_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid event id"))
+                        return@post
+                    }
+                    val request = call.receiveJsonBodyLimited<UpdateLineupLiveStateRequest>(
+                        json = lineupJson,
+                        maxBytes = MAX_LIVE_STATE_REQUEST_BYTES,
+                    ).getOrElse { error ->
+                        call.respondLineupLiveStateDecodeError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                        )
+                        return@post
+                    }
+                    if (!request.entryId.isUuid()) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.lineup.live_state.invalid_entry_id",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid lineup entry id"))
+                        return@post
+                    }
+                    val targetStatus = request.toTargetStatusOrNull()
+                    if (targetStatus == null) {
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.lineup.live_state.invalid_status",
+                            status = HttpStatusCode.BadRequest.value,
+                            safeErrorCode = "bad_request",
+                        )
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid lineup live-state status"))
+                        return@post
+                    }
+
+                    try {
+                        val lineup = service.updateLineupEntryStatus(
+                            actorUserId = principal.user.id,
+                            eventId = eventId.orEmpty(),
+                            entryId = request.entryId,
+                            status = targetStatus,
+                        )
+                        logger.info(
+                            "organizer.lineup.live_state.success requestId={} userId={} eventId={} entryId={} status={}",
+                            call.callId ?: "n/a",
+                            principal.user.id,
+                            eventId,
+                            request.entryId,
+                            targetStatus.wireName,
+                        )
+                        diagnosticsStore?.recordCall(
+                            call = call,
+                            stage = "organizer.lineup.live_state.success",
+                            status = HttpStatusCode.OK.value,
+                            metadata = mapOf(
+                                "entryId" to request.entryId,
+                                "status" to targetStatus.wireName,
+                            ),
+                        )
+                        call.respond(
+                            HttpStatusCode.OK,
+                            LineupListResponse(
+                                entries = lineup.map(LineupEntryResponse::fromStored),
+                            ),
+                        )
+                    } catch (error: Throwable) {
+                        call.respondLineupError(
+                            error = error,
+                            diagnosticsStore = diagnosticsStore,
+                            flow = "organizer.lineup.live_state",
+                        )
+                    }
+                }
             }
         }
     }
@@ -212,6 +311,30 @@ object LineupRoutes {
         respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid lineup reorder request"))
     }
 
+    /** Единообразно обрабатывает decode/payload ошибки live-state route-а. */
+    private suspend fun io.ktor.server.application.ApplicationCall.respondLineupLiveStateDecodeError(
+        error: Throwable,
+        diagnosticsStore: DiagnosticsStore?,
+    ) {
+        if (error is PayloadTooLargeException) {
+            diagnosticsStore?.recordCall(
+                call = this,
+                stage = "organizer.lineup.live_state.payload_too_large",
+                status = HttpStatusCode.PayloadTooLarge.value,
+                safeErrorCode = "payload_too_large",
+            )
+            respond(HttpStatusCode.PayloadTooLarge, ErrorResponse("payload_too_large", "Request body is too large"))
+            return
+        }
+        diagnosticsStore?.recordCall(
+            call = this,
+            stage = "organizer.lineup.live_state.invalid_payload",
+            status = HttpStatusCode.BadRequest.value,
+            safeErrorCode = "bad_request",
+        )
+        respond(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Invalid lineup live-state request"))
+    }
+
     /** Маппит domain/service ошибки lineup slice-а в безопасные HTTP responses. */
     private suspend fun io.ktor.server.application.ApplicationCall.respondLineupError(
         error: Throwable,
@@ -227,6 +350,16 @@ object LineupRoutes {
                     safeErrorCode = "event_not_found",
                 )
                 respond(HttpStatusCode.NotFound, ErrorResponse("event_not_found", "Event not found"))
+            }
+
+            is LineupEntryNotFoundException -> {
+                diagnosticsStore?.recordCall(
+                    call = this,
+                    stage = "$flow.entry_not_found",
+                    status = HttpStatusCode.NotFound.value,
+                    safeErrorCode = "lineup_entry_not_found",
+                )
+                respond(HttpStatusCode.NotFound, ErrorResponse("lineup_entry_not_found", "Lineup entry not found"))
             }
 
             is LineupScopeNotFoundException -> {

@@ -30,7 +30,7 @@
 - Status: accepted
 - Decision: Every meaningful user-assistant work session must leave a concise, sanitized trace in `docs/context/governance/session-log.md`, summarizing the course of the conversation and implementation rather than only the final result.
 - Rationale: The repository already depends on compact governance memory for continuity across chats, but later analysis of why work moved in a certain direction is weak if only final outcomes are stored. A short per-session trace makes scope changes, intermediate decisions, and next steps auditable without needing raw transcript storage.
-- Consequences: Engineering standards, quality rules, and the new-chat handoff template must explicitly require session-log updates in `Context / Changes / Decisions / Next` form; raw transcript dumping is not allowed; secrets and sensitive values must remain excluded from those summaries.
+- Consequences: Engineering standards, quality rules, and the surviving handoff/bootstrap guidance must explicitly require session-log updates in `Context / Changes / Decisions / Next` form; raw transcript dumping is not allowed; secrets and sensitive values must remain excluded from those summaries.
 
 ## D-059
 
@@ -54,7 +54,7 @@
 - Status: accepted
 - Decision: Repository code comments required by the standing documentation rule must be written in Russian, with English allowed only for exact technical terms that do not have a stable local equivalent.
 - Rationale: The repository context, user communication, and handoff process are now explicitly Russian-first, so mixed-language comments create avoidable friction for future chats and code review. Making Russian the default comment language keeps new code documentation consistent across Android, iOS, shared, and server modules.
-- Consequences: `engineering-standards.md`, `quality-rules.md`, and the new-chat handoff template must explicitly require Russian-language code comments; future implementation work should treat non-Russian repository comments in touched scope as documentation debt to normalize when those areas are materially edited.
+- Consequences: `engineering-standards.md`, `quality-rules.md`, and the surviving handoff/bootstrap guidance must explicitly require Russian-language code comments; future implementation work should treat non-Russian repository comments in touched scope as documentation debt to normalize when those areas are materially edited.
 
 ## D-062
 
@@ -70,7 +70,7 @@
 - Status: accepted
 - Decision: Use `docs/context/00-current-state.md` as the bootstrap entry point for every new chat, keep `handoff/task-request-template.md` as the reusable task-intake template only, move historical formalized requests into a dedicated task-request log, and keep live diagnostics instructions in a dedicated engineering runbook instead of embedding them in the chat handoff message.
 - Rationale: The context system already preserves decisions and delivery history well, but cross-chat sync cost kept growing because the handoff layer mixed bootstrap snapshot, reusable template, historical archive, and operational runbook concerns in the same documents. A compact current-state snapshot plus clearer document roles reduces onboarding cost without losing governance memory.
-- Consequences: New chats must start from `00-current-state.md`; `handoff/task-request-log.md` becomes the historical request/outcome index while `handoff/task-request-template.md` remains reusable; server diagnostics instructions move to `engineering/server-diagnostics-runbook.md`; and `context-protocol.md`, `chat-handoff-template.md`, `docs/context/README.md`, and `docs/README.md` must stay aligned with this document-role split.
+- Consequences: New chats must start from `00-current-state.md`; `handoff/task-request-log.md` becomes the historical request/outcome index while `handoff/task-request-template.md` remains reusable; server diagnostics instructions move to `engineering/server-diagnostics-runbook.md`; and `context-protocol.md`, `automation-executor-prompt.md`, `docs/context/README.md`, and `docs/README.md` must stay aligned with this document-role split.
 
 ## D-064
 

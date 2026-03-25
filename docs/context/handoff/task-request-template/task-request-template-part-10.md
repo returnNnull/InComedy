@@ -445,12 +445,12 @@
   - `docs/context/handoff/task-request-template.md`
   - `docs/context/governance/session-log.md`
 
-## Formalized Documentation Request (Add Server Log Retrieval To New Chat Handoff Template)
+## Formalized Documentation Request (Add Server Log Retrieval To Context Bootstrap Guidance)
 
 ## Context
 
 - Related docs/decisions:
-  - `docs/context/handoff/chat-handoff-template.md`
+  - `docs/context/handoff/context-protocol.md`
   - `server/README.md`
   - `D-019`, `D-052`
 - Current constraints:
@@ -460,7 +460,7 @@
 ## Goal
 
 - What should be delivered:
-  - Extend the new-chat handoff template with concrete instructions for fetching server diagnostics/logs.
+  - Extend the context bootstrap guidance with concrete instructions for fetching server diagnostics/logs.
   - Keep the instructions safe: no secret values copied into docs, but exact file paths and commands should be included.
 
 ## Scope
@@ -479,16 +479,16 @@
 
 - Tech/business constraints:
   - Never persist the diagnostics token itself in docs.
-  - Keep the handoff template concise enough to stay usable as a copy-paste starter.
+  - Keep the bootstrap guidance concise enough to stay usable as a copy-paste starter.
 
 ## Definition of Done
 
 - Functional result:
-  - future chats can fetch server diagnostics/logs directly from the handoff message
-  - the template points to both sanitized and raw log paths
+  - future chats can fetch server diagnostics/logs directly from the bootstrap guidance
+  - the guidance points to both sanitized and raw log paths
 - Required tests:
   - docs-only change
 - Required docs updates:
-  - `docs/context/handoff/chat-handoff-template.md`
+  - `docs/context/handoff/context-protocol.md`
   - `docs/context/handoff/task-request-template.md`
   - `docs/context/governance/session-log.md`

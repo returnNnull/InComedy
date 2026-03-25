@@ -77,6 +77,10 @@ struct AuthRootView: View {
     }
 }
 
-#Preview {
-    AuthRootView()
+/// Preview-обертка auth root view без macro-based `#Preview`.
+private struct AuthRootView_Previews: PreviewProvider {
+    /// Возвращает preview-конфигурацию auth-экрана.
+    static var previews: some View {
+        AuthRootView()
+    }
 }

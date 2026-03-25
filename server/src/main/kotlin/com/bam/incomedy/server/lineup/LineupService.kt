@@ -11,10 +11,11 @@ import com.bam.incomedy.server.db.WorkspacePermissionRole
 import com.bam.incomedy.server.db.WorkspaceRepository
 
 /**
- * Backend orchestration для lineup foundation slice-а.
+ * Backend orchestration для lineup foundation и live-stage mutation slice-а.
  *
  * Сервис отвечает за idempotent bridge `approved application -> draft lineup entry`, organizer/host
- * access checks и валидацию reorder payload до обращения к persistence.
+ * access checks, live-stage transition rules и валидацию mutation payload до обращения к
+ * persistence.
  */
 class LineupService(
     private val workspaceRepository: WorkspaceRepository,
@@ -77,6 +78,32 @@ class LineupService(
         )
     }
 
+    /** Меняет live-stage статус одной записи lineup после organizer/host access и transition checks. */
+    fun updateLineupEntryStatus(
+        actorUserId: String,
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): List<StoredLineupEntry> {
+        val event = eventRepository.findEvent(eventId) ?: throw LineupEventNotFoundException(eventId)
+        requireManageLineupAccess(
+            actorUserId = actorUserId,
+            workspaceId = event.workspaceId,
+        )
+        val existing = lineupRepository.listEventLineup(eventId)
+        val target = existing.firstOrNull { it.id == entryId } ?: throw LineupEntryNotFoundException(entryId)
+        validateLiveStateTransition(
+            existing = existing,
+            target = target,
+            targetStatus = status,
+        )
+        return lineupRepository.updateLineupEntryStatus(
+            eventId = eventId,
+            entryId = entryId,
+            status = status,
+        )
+    }
+
     /** Проверяет доступ owner/manager/host к organizer lineup surface. */
     private fun requireManageLineupAccess(
         actorUserId: String,
@@ -125,12 +152,67 @@ class LineupService(
             throw LineupValidationException("Lineup reorder request must reference the current lineup entries exactly")
         }
     }
+
+    /** Проверяет допустимость перехода между live-stage статусами и uniqueness live slots. */
+    private fun validateLiveStateTransition(
+        existing: List<StoredLineupEntry>,
+        target: StoredLineupEntry,
+        targetStatus: LineupEntryStatus,
+    ) {
+        if (target.status == targetStatus) {
+            throw LineupValidationException("Lineup entry already has the requested live-state status")
+        }
+        if (target.status == LineupEntryStatus.DONE || target.status == LineupEntryStatus.DROPPED) {
+            throw LineupValidationException("Terminal lineup entry cannot transition to another status")
+        }
+        when (targetStatus) {
+            LineupEntryStatus.DRAFT -> Unit
+            LineupEntryStatus.UP_NEXT -> {
+                ensureSingleLiveSlot(
+                    existing = existing,
+                    target = target,
+                    status = LineupEntryStatus.UP_NEXT,
+                    errorMessage = "Only one lineup entry can be up_next at a time",
+                )
+            }
+
+            LineupEntryStatus.ON_STAGE -> {
+                ensureSingleLiveSlot(
+                    existing = existing,
+                    target = target,
+                    status = LineupEntryStatus.ON_STAGE,
+                    errorMessage = "Only one lineup entry can be on_stage at a time",
+                )
+            }
+
+            LineupEntryStatus.DONE -> Unit
+            LineupEntryStatus.DELAYED -> Unit
+            LineupEntryStatus.DROPPED -> Unit
+        }
+    }
+
+    /** Проверяет, что у события не появится второй live slot того же типа. */
+    private fun ensureSingleLiveSlot(
+        existing: List<StoredLineupEntry>,
+        target: StoredLineupEntry,
+        status: LineupEntryStatus,
+        errorMessage: String,
+    ) {
+        if (existing.any { it.id != target.id && it.status == status }) {
+            throw LineupValidationException(errorMessage)
+        }
+    }
 }
 
 /** Ошибка отсутствующего события для lineup slice-а. */
 class LineupEventNotFoundException(
     val eventId: String,
 ) : IllegalStateException("Event was not found for lineup")
+
+/** Ошибка отсутствующей записи lineup внутри выбранного события. */
+class LineupEntryNotFoundException(
+    val entryId: String,
+) : IllegalStateException("Lineup entry was not found")
 
 /** Ошибка отсутствующего organizer workspace scope для lineup slice-а. */
 class LineupScopeNotFoundException(

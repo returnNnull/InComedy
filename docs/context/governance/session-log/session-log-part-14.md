@@ -44,7 +44,7 @@
 
 ## 2026-03-17 00:49
 
-- Context: A new chat started from the handoff template, and the first request was to synchronize repository context before any further implementation work.
+- Context: A new chat started from the context bootstrap checklist, and the first request was to synchronize repository context before any further implementation work.
 - Changes: Read the required product, engineering, and governance documents in the requested order; followed the split indexes into the latest `decisions-log`, `session-log`, and `decision-traceability` parts; confirmed `D-061` as the current decision head, the carried-over `P0` implementation focus as the organizer `events` slice under `Event creation/editing/publication and sales lifecycle states`, the latest recorded `Next` step as `event price/availability overrides foundation`, and the current traceability statuses for `D-058`/`D-059`/`D-060`/`D-061`; and formalized this sync step in a new task-request part because the previous part was near the context-size threshold.
 - Decisions: Treat the repository baseline as unchanged during sync: no new ADR was introduced, `D-058` and `D-061` remain done, `D-059` and `D-060` remain in-progress, and implementation should continue only from the already recorded `events` override path unless the user reprioritizes backlog scope.
 - Next: Use this synchronized baseline for the next user task; if implementation continues on the active organizer `P0` stream, start with backend event override persistence/routes and then propagate the change through shared/mobile UI and doc/test sync.

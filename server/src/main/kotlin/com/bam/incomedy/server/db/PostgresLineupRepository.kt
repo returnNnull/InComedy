@@ -9,8 +9,8 @@ import javax.sql.DataSource
 /**
  * PostgreSQL-реализация persistence для lineup entries.
  *
- * Репозиторий держит атомарное создание draft slot-а и перестановку `order_index`, чтобы service
- * слой оперировал доменными инвариантами, а не SQL-деталями.
+ * Репозиторий держит атомарное создание draft slot-а, live-state mutation и перестановку
+ * `order_index`, чтобы service слой оперировал доменными инвариантами, а не SQL-деталями.
  */
 class PostgresLineupRepository(
     private val dataSource: DataSource,
@@ -113,6 +113,57 @@ class PostgresLineupRepository(
                 val entry = requireNotNull(loadLineupEntry(connection, eventId, entryId))
                 connection.commit()
                 return entry
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
+    /** Меняет live-stage статус одной записи lineup под блокировкой строк события. */
+    override fun updateLineupEntryStatus(
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): List<StoredLineupEntry> {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                connection.prepareStatement(
+                    """
+                    SELECT id
+                    FROM lineup_entries
+                    WHERE event_id = ?
+                    FOR UPDATE
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setObject(1, UUID.fromString(eventId))
+                    statement.executeQuery().use { result ->
+                        while (result.next()) {
+                            // Row locks удерживаются до конца транзакции и сериализуют параллельные mutation-ы.
+                        }
+                    }
+                }
+                val updatedRows = connection.prepareStatement(
+                    """
+                    UPDATE lineup_entries
+                    SET status = ?,
+                        updated_at = NOW()
+                    WHERE event_id = ?
+                      AND id = ?
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, status.wireName)
+                    statement.setObject(2, UUID.fromString(eventId))
+                    statement.setObject(3, UUID.fromString(entryId))
+                    statement.executeUpdate()
+                }
+                check(updatedRows == 1) { "Lineup entry was not found for status update" }
+                val lineup = loadEventLineup(connection, eventId)
+                connection.commit()
+                return lineup
             } catch (error: Throwable) {
                 connection.rollback()
                 throw error

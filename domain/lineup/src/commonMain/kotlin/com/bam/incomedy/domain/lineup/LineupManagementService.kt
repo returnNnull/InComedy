@@ -41,6 +41,14 @@ interface LineupManagementService {
         eventId: String,
         entries: List<LineupEntryOrderUpdate>,
     ): Result<List<LineupEntry>>
+
+    /** Меняет live-stage статус конкретной записи lineup и возвращает актуальный lineup события. */
+    suspend fun updateLineupEntryStatus(
+        accessToken: String,
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): Result<List<LineupEntry>>
 }
 
 /**
@@ -128,7 +136,7 @@ data class LineupEntry(
 )
 
 /**
- * Поддерживаемые статусы lineup entry в текущем MVP slice-е.
+ * Поддерживаемые статусы lineup entry для organizer reorder и live-stage потока.
  *
  * @property wireName Значение статуса в backend API.
  */
@@ -136,6 +144,11 @@ enum class LineupEntryStatus(
     val wireName: String,
 ) {
     DRAFT("draft"),
+    UP_NEXT("up_next"),
+    ON_STAGE("on_stage"),
+    DONE("done"),
+    DELAYED("delayed"),
+    DROPPED("dropped"),
     ;
 
     companion object {

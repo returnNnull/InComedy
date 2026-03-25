@@ -6,12 +6,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 import com.bam.incomedy.feature.main.ui.ComposeUiTestActivity
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import org.junit.Rule
@@ -139,6 +141,55 @@ class LineupManagementTabContentTest {
 
         assertEquals("event-1", reorderedEventId)
         assertEquals(listOf("entry-2", "entry-1"), reorderedIds)
+    }
+
+    /** Проверяет summary current/next performer и organizer live control callback. */
+    @Test
+    fun liveStageSummaryAndActionsUseSharedStatusContract() {
+        var updatedEventId: String? = null
+        var updatedEntryId: String? = null
+        var updatedStatus: LineupEntryStatus? = null
+
+        setLineupContent(
+            bindings = LineupTabBindings(
+                state = AndroidUiStateFactory.lineupState(
+                    lineup = listOf(
+                        AndroidUiStateFactory.lineupEntry(
+                            id = "entry-1",
+                            orderIndex = 1,
+                            status = LineupEntryStatus.ON_STAGE,
+                            comedianDisplayName = "Иван Смехов",
+                        ),
+                        AndroidUiStateFactory.lineupEntry(
+                            id = "entry-2",
+                            orderIndex = 2,
+                            status = LineupEntryStatus.UP_NEXT,
+                            comedianDisplayName = "Мария Сетова",
+                        ),
+                    ),
+                ),
+                organizerEvents = AndroidUiStateFactory.eventState().events,
+                onUpdateLineupEntryStatus = { eventId, entryId, status ->
+                    updatedEventId = eventId
+                    updatedEntryId = entryId
+                    updatedStatus = status
+                },
+            ),
+        )
+
+        composeRule.onNodeWithTag(LineupScreenTags.CURRENT_PERFORMER)
+            .assertTextEquals("Сейчас на сцене: Иван Смехов")
+        composeRule.onNodeWithTag(LineupScreenTags.NEXT_UP_PERFORMER)
+            .assertTextEquals("Следующий: Мария Сетова")
+
+        composeRule.onNodeWithTag("lineup.entry.statusAction.entry-2.on_stage")
+            .performScrollTo()
+            .performClick()
+        composeRule.waitForIdle()
+
+        assertEquals("event-1", updatedEventId)
+        assertEquals("entry-2", updatedEntryId)
+        assertEquals(LineupEntryStatus.ON_STAGE, updatedStatus)
     }
 
     /** Поднимает вкладку в Material-теме для проверки UI-поведения. */

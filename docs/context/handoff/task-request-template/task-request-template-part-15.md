@@ -196,14 +196,14 @@
   - `local.properties` contains safe placeholders that do not enable the SDK until real values are added
   - repository documentation points contributors to the project-local ignored setup
 
-## Formalized Documentation Request (Require Russian-Language Code Comments In Rules And New-Chat Handoff)
+## Formalized Documentation Request (Require Russian-Language Code Comments In Rules And Bootstrap Guidance)
 
 ## Context
 
 - Related docs/decisions:
   - `docs/context/engineering/engineering-standards.md`
   - `docs/context/engineering/quality-rules.md`
-  - `docs/context/handoff/chat-handoff-template.md`
+  - `docs/context/handoff/context-protocol.md`
   - `docs/context/governance/decisions-log.md`
 - Current constraints:
   - The repository already requires code comments for new and materially changed code, but the comment language itself is not yet fixed as a standing rule.
@@ -213,14 +213,14 @@
 
 - What should be delivered:
   - make Russian the explicit default language for mandatory repository code comments
-  - surface that requirement in the new-chat handoff template so the next chat sees it immediately
+  - surface that requirement in the bootstrap guidance so the next chat sees it immediately
   - synchronize governance records so the rule change is traceable
 
 ## Scope
 
 - In scope:
   - engineering and quality rule updates for comment language
-  - new-chat handoff template update
+  - bootstrap-guidance update
   - decision log, traceability, and session-log synchronization for the new standing rule
 - Out of scope:
   - repository-wide backfill of all historical comments in untouched code
@@ -237,7 +237,7 @@
 
 - Functional result:
   - engineering rules explicitly require Russian-language code comments
-  - the new-chat handoff template passes that rule into future chats
+  - the bootstrap guidance passes that rule into future chats
   - governance records capture the accepted rule change and its traceability
 
 ## Formalized Investigation Request (Analyze Live Android VK SDK Success Followed By failed_oauth_state)

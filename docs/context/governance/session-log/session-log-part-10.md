@@ -17,7 +17,7 @@
 ## 2026-03-15 04:01
 
 - Context: The user asked to strengthen the standing collaboration rules so future work and new chats require repository code comments to be written in Russian.
-- Changes: Updated engineering standards and quality rules to require Russian-language repository comments, updated the new-chat handoff template so future chats inherit the same rule before implementation, and recorded the change as accepted decision `D-061` with traceability.
+- Changes: Updated engineering standards and quality rules to require Russian-language repository comments, updated the bootstrap guidance so future chats inherit the same rule before implementation, and recorded the change as accepted decision `D-061` with traceability.
 - Decisions: Treat Russian as the mandatory default language for required repository code comments, while allowing exact English technical terms only when they are needed for precision inside otherwise Russian explanations.
 - Next: Apply the new Russian-comment rule to all future touched code and normalize older non-Russian comments opportunistically when those areas are materially edited.
 
@@ -37,7 +37,7 @@
 
 ## 2026-03-15 04:35
 
-- Context: A new chat started from the handoff template and requested a full context resync before any further implementation.
+- Context: A new chat started from the context bootstrap checklist and requested a full context resync before any further implementation.
 - Changes: Re-read the primary context documents in the required order, then opened the latest parts for `decisions-log`, `session-log`, and `decision-traceability` to confirm the active auth/governance baseline and the most recent unresolved VK Android work item.
 - Decisions: Treat `D-061` as the latest accepted decision, keep the current P0 auth baseline as `login + password` plus `VK ID`, and carry forward the latest recorded next step from the session log instead of inventing a new implementation direction during sync.
 - Next: Wait for the next concrete task, then formalize it in `task-request-template`, keep docs aligned if scope changes, and for VK Android continuation start from the bounded remediation path recorded in the latest session entry.

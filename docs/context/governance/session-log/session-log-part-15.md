@@ -23,7 +23,7 @@
 
 ## 2026-03-17 01:41
 
-- Context: The user requested a detailed newcomer-friendly repository documentation package as styled HTML pages under `docs/`, explicitly asking for links across modules and features, diagrams, code references, and context sync through `chat-handoff-template.md`.
+- Context: The user requested a detailed newcomer-friendly repository documentation package as styled HTML pages under `docs/`, explicitly asking for links across modules and features, diagrams, code references, and context sync through the repository bootstrap guidance.
 - Changes: Re-read the current repository graph, Android/iOS entry points, shared DI/bridge layer, backend route registration, CI/CD assets, and Flyway migrations; identified that ticketing is already partially present in the working tree (`domain/data/server repository + V8 migration`) but is still not mounted in server runtime routes; then created a static HTML documentation site in `docs/project-reference/` with linked pages for overview, architecture, modules, features, backend, and quality/process guidance plus shared CSS/JS, diagrams, source links, and representative code snippets.
 - Decisions: Document active runtime scope as `credentials + VK`, session/workspaces, venues, and events; document ticketing as an in-progress foundation rather than a shipped feature; explicitly call out legacy/dormant auth leftovers so newcomers do not mistake repository residue for supported surface.
 - Next: Keep the new HTML site in sync whenever module boundaries, route registration, migrations, or supported product surface change; update it together with `docs/context/*` on future architecture or feature milestones.

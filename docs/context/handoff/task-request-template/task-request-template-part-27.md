@@ -187,8 +187,8 @@
 - Add a root `docs/README.md` that explains the roles of `context/`, `standup-platform-ru/`, and `project-reference/`.
 - Keep `handoff/task-request-template.md` as the reusable template only.
 - Introduce a dedicated `handoff/task-request-log.md` index for historical formalized requests while preserving existing part-file paths.
-- Move server diagnostics operational instructions out of the handoff template into a dedicated engineering runbook.
-- Update context protocol, chat handoff template, governance rules, and decision traceability to match the new document roles.
+- Move server diagnostics operational instructions out of the bootstrap guidance into a dedicated engineering runbook.
+- Update context protocol, bootstrap guidance, governance rules, and decision traceability to match the new document roles.
 
 ## Explicitly Out Of Scope
 
@@ -206,7 +206,7 @@
 
 - A new chat can start from one compact current-state file before reading deeper context.
 - The active task template is no longer an archive index.
-- The handoff message points to a dedicated diagnostics runbook instead of embedding the full server-ops procedure inline.
+- The bootstrap guidance points to a dedicated diagnostics runbook instead of embedding the full server-ops procedure inline.
 - Top-level docs navigation makes the three documentation layers explicit.
 
 ## Implementation Outcome
@@ -214,13 +214,13 @@
 ## Delivered
 
 - Added `docs/README.md` as the root documentation map and `docs/context/00-current-state.md` as the bootstrap snapshot for new chats.
-- Added `docs/context/engineering/server-diagnostics-runbook.md` and removed the embedded diagnostics runbook from `handoff/chat-handoff-template.md`.
+- Added `docs/context/engineering/server-diagnostics-runbook.md` and removed the embedded diagnostics runbook from the bootstrap guidance carried by `handoff/context-protocol.md`.
 - Reworked `docs/context/handoff/task-request-template.md` into a reusable task-intake template and added `docs/context/handoff/task-request-log.md` as the historical formalized-request index.
 - Updated `docs/context/README.md`, `docs/context/handoff/context-protocol.md`, governance rules/checklists, and decision traceability; accepted `D-063` to record the new document-role split.
 
 ## Verification
 
-- Manual context-link review across `docs/README.md`, `docs/context/00-current-state.md`, `docs/context/handoff/context-protocol.md`, `docs/context/handoff/chat-handoff-template.md`, and `docs/context/handoff/task-request-log.md`
+- Manual context-link review across `docs/README.md`, `docs/context/00-current-state.md`, `docs/context/handoff/context-protocol.md`, and `docs/context/handoff/task-request-log.md`
 
 ## Remaining Follow-Up
 

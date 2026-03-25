@@ -34,6 +34,31 @@ export GRADLE_USER_HOME
 
 cd "$PROJECT_ROOT"
 
+# Для Kotlin/Native сначала bootstrap-им writable compiler bundle в локальный cache.
+# Иначе sandbox может упираться либо в lock внутри `~/.konan`, либо в duplicate
+# platform KLIB-ы, если Gradle частично смешивает глобальный и redirected cache.
+KOTLIN_NATIVE_BOOTSTRAP_ROOT="${INCOMEDY_KONAN_BOOTSTRAP_ROOT:-$GRADLE_USER_HOME/konan-bootstrap}"
+KOTLIN_NATIVE_HOME="${INCOMEDY_KOTLIN_NATIVE_HOME:-}"
+
+mkdir -p "$GRADLE_USER_HOME" "$KOTLIN_NATIVE_BOOTSTRAP_ROOT"
+
+if [ -z "$KOTLIN_NATIVE_HOME" ]; then
+  KOTLIN_NATIVE_HOME="$(find "$KOTLIN_NATIVE_BOOTSTRAP_ROOT" -maxdepth 1 -type d -name 'kotlin-native-prebuilt-*' -print -quit 2>/dev/null || true)"
+fi
+
+if [ -z "$KOTLIN_NATIVE_HOME" ] || [ ! -d "$KOTLIN_NATIVE_HOME/klib/platform" ]; then
+  # Первый прогон может скачать/распаковать bundle, но не должен заходить в compile.
+  ./gradlew --no-daemon --console=plain -Pkonan.data.dir="$KOTLIN_NATIVE_BOOTSTRAP_ROOT" :core:common:downloadKotlinNativeDistribution
+  KOTLIN_NATIVE_HOME="$(find "$KOTLIN_NATIVE_BOOTSTRAP_ROOT" -maxdepth 1 -type d -name 'kotlin-native-prebuilt-*' -print -quit 2>/dev/null || true)"
+fi
+
+if [ -z "$KOTLIN_NATIVE_HOME" ] || [ ! -d "$KOTLIN_NATIVE_HOME/klib/platform" ]; then
+  echo "Writable Kotlin/Native bundle bootstrap failed for Xcode build."
+  exit 1
+fi
+
+export KOTLIN_NATIVE_HOME
+
 # В Xcode script phase daemon не нужен: отдельный одноразовый запуск снижает риск
 # зависших background-процессов и повторного конфликта между retry-попытками.
-./gradlew --no-daemon --console=plain :shared:embedAndSignAppleFrameworkForXcode
+./gradlew --no-daemon --console=plain -Pkonan.data.dir="$KOTLIN_NATIVE_BOOTSTRAP_ROOT" -Pkotlin.native.home="$KOTLIN_NATIVE_HOME" :shared:embedAndSignAppleFrameworkForXcode

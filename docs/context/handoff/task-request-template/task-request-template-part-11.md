@@ -130,10 +130,10 @@
   - `docs/context/engineering/engineering-standards.md`
   - `docs/context/engineering/quality-rules.md`
   - `docs/context/governance/session-log.md`
-  - `docs/context/handoff/chat-handoff-template.md`
+  - `docs/context/handoff/context-protocol.md`
 - Current constraints:
   - The repository already stores implementation history in governance docs, but the requirement to preserve a brief analyzable trace of user-assistant conversation flow is not explicit enough yet.
-  - Future chats should inherit this rule from the handoff template instead of relying on ad-hoc reminders.
+  - Future chats should inherit this rule from the bootstrap guidance instead of relying on ad-hoc reminders.
 
 ## Goal
 
@@ -146,7 +146,7 @@
 - In scope:
   - add the rule to engineering standards
   - add the rule to quality/DoD expectations
-  - update the new-chat handoff template with explicit session-log instructions
+  - update the bootstrap guidance with explicit session-log instructions
   - record the governance decision and current session outcome in governance docs
 - Out of scope:
   - storing raw full chat transcripts
@@ -163,12 +163,12 @@
 
 - Functional result:
   - repository standards explicitly require concise conversation-trace logging in governance docs
-  - new chat handoff template explicitly instructs the next assistant to maintain that trace
+  - the bootstrap guidance explicitly instructs the next assistant to maintain that trace
   - governance docs record the decision so the rule is durable across chats
 - Required docs updates:
   - `docs/context/engineering/engineering-standards.md`
   - `docs/context/engineering/quality-rules.md`
-  - `docs/context/handoff/chat-handoff-template.md`
+  - `docs/context/handoff/context-protocol.md`
   - `docs/context/governance/decisions-log.md`
   - `docs/context/governance/session-log.md`
   - `docs/context/governance/decision-traceability.md`

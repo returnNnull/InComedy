@@ -4,6 +4,7 @@ import com.bam.incomedy.domain.lineup.ComedianApplication
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 import com.bam.incomedy.domain.lineup.LineupManagementService
 
 /**
@@ -75,6 +76,21 @@ class BackendLineupManagementService(
             accessToken = accessToken,
             eventId = eventId,
             entries = entries,
+        )
+    }
+
+    /** Меняет live-stage статус lineup entry через backend API. */
+    override suspend fun updateLineupEntryStatus(
+        accessToken: String,
+        eventId: String,
+        entryId: String,
+        status: LineupEntryStatus,
+    ): Result<List<LineupEntry>> {
+        return lineupBackendApi.updateLineupEntryStatus(
+            accessToken = accessToken,
+            eventId = eventId,
+            entryId = entryId,
+            status = status,
         )
     }
 }

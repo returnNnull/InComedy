@@ -52,9 +52,9 @@
 ## 2026-02-23 13:15
 
 - Context: Need guaranteed consistency of cross-chat transfer template.
-- Changes: Added explicit auto-sync rule between `context-protocol.md` and `chat-handoff-template.md`.
+- Changes: Added explicit auto-sync rule between `context-protocol.md` and the surviving bootstrap guidance.
 - Decisions: Accepted template auto-sync policy in `D-019`.
-- Next: On every protocol change, update handoff template in the same commit.
+- Next: On every protocol change, update the bootstrap guidance in the same commit.
 
 ## 2026-02-23 13:18
 
@@ -73,7 +73,7 @@
 ## 2026-02-23 13:23
 
 - Context: Need cleaner folder structure for split context files.
-- Changes: Moved session-log parts into dedicated folder `governance/session-log/`; updated links/rules in context protocol, handoff template, session-log index, and context README.
+- Changes: Moved session-log parts into dedicated folder `governance/session-log/`; updated links/rules in context protocol, bootstrap guidance, session-log index, and context README.
 - Decisions: Accepted folder-based split storage policy in `D-021`.
 - Next: Apply the same folder-based split format to any future oversized context document.
 

@@ -110,6 +110,13 @@ final class iosAppUITests: XCTestCase {
         let loadButton = app.buttons["lineup.organizer.load"]
         let approveButton = app.buttons["lineup.application.action.application-1.approved"]
         let moveDownButton = app.buttons["lineup.entry.moveDown.entry-1"]
+        let currentPerformer = app.descendants(matching: .any)
+            .matching(identifier: "lineup.live.current")
+            .firstMatch
+        let nextPerformer = app.descendants(matching: .any)
+            .matching(identifier: "lineup.live.next")
+            .firstMatch
+        let onStageButton = app.buttons["lineup.entry.statusAction.entry-2.on_stage"]
         let applicationStatus = app.descendants(matching: .any)
             .matching(identifier: "lineup.application.status.application-1")
             .firstMatch
@@ -120,12 +127,19 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(lineupRoot.waitForExistence(timeout: 2))
         XCTAssertTrue(applicationCount.waitForExistence(timeout: 2))
         XCTAssertTrue(lineupCount.waitForExistence(timeout: 2))
+        XCTAssertTrue(currentPerformer.waitForExistence(timeout: 2))
+        XCTAssertEqual(currentPerformer.label, "Сейчас на сцене: Иван Смехов")
+        XCTAssertTrue(nextPerformer.waitForExistence(timeout: 2))
+        XCTAssertEqual(nextPerformer.label, "Следующий: Мария Сетова")
         XCTAssertTrue(scrollUntilVisible(loadButton))
         loadButton.tap()
         XCTAssertTrue(scrollUntilVisible(approveButton))
         approveButton.tap()
         XCTAssertTrue(applicationStatus.waitForExistence(timeout: 2))
         XCTAssertEqual(applicationStatus.label, "Статус: Одобрена")
+        XCTAssertTrue(scrollUntilVisible(onStageButton))
+        onStageButton.tap()
+        XCTAssertEqual(nextPerformer.label, "Следующий: еще не выбран")
         XCTAssertTrue(scrollUntilVisible(moveDownButton))
         moveDownButton.tap()
         XCTAssertTrue(orderLabel.waitForExistence(timeout: 2))

@@ -1,66 +1,47 @@
-# Active Run
+# Активный запуск
 
 Crash-safe recovery checkpoint for the current automation run or the latest interrupted chat.
 
-Use this file as a short overwrite-only state snapshot.
-Do not append history here. Historical context belongs in:
+Используй этот файл как короткий overwrite-only snapshot.
+Не добавляй сюда историю. Исторический контекст хранится в:
 
 - `../governance/session-log.md`
 - `task-request-log.md`
 
-## Current State
+## Снимок
 
-- Timestamp: `2026-03-24T14:27:47+03:00`
-- Cycle ID: `2026-03-22-10-04`
+- Timestamp: `2026-03-25T15:23:45+03:00`
+- Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `none`
-- Active Subtask: `none`
-- Branch: `main`
-- Epic Status: `done`
-- Run Status: `completed`
+- Active Epic: `EPIC-068`
+- Active Subtask: `TASK-083`
+- Branch: `codex/epic-068-live-stage-status-foundation`
+- Epic Status: `awaiting_user_review`
+- Run Status: `docs_only`
 
-## Goal
+## Цель
 
-- `Зафиксировать явное user confirmation для EPIC-067, завершить epic в контексте, затем merge-нуть ветку в main и push-нуть результат.`
+- `Рефакторинг структуры docs/context для ускорения bootstrap: разделить checklist/policy/status/history и убрать лишний контекст из snapshot/recovery файлов.`
 
-## Current Outcome
+## Итог
 
-- User review confirmation received: `EPIC-067` / `TASK-070` больше не находится в `awaiting_user_review`; статус переведен в `done`.
-- Android lineup shell, iOS lineup shell, Xcode/KMP bridge hardening и targeted executable verification остаются delivered и зафиксированы в feature-branch history.
-- Final iOS runtime fix set остается прежним и уже verified: `iosAppUITests.xcscheme` не использует unstable cloned-device parallel path, `LineupManagementView.swift` сохраняет child accessibility identifiers, `LineupScreenModel.swift` явно публикует fixture updates, а `build-shared.sh` держит stable repo-local Gradle bridge.
-- Task memory closed: completed-подзадач в текущем cycle теперь четыре (`TASK-067`..`TASK-070`), и этот epic больше не активен для дальнейшего implementation work.
+- `Созданы отдельные executor checklist/policy, implementation-status, verification-memory и next-epic-queue.`
+- `00-current-state.md` сжат до bootstrap snapshot; active-run.md сжат до recovery checkpoint.`
+- `test-strategy.md` и `architecture-overview.md` очищены от delivery/verification history в пользу новых специализированных документов.`
+- `issue-resolution-log.md` получил symptom index.`
+- `EPIC-068` остаётся в awaiting_user_review; product scope не менялся.`
 
-## Files Touched
+## Возобновление
 
-- `docs/context/00-current-state.md`
-- `docs/context/governance/session-log/session-log-part-17.md`
-- `docs/context/handoff/active-run.md`
-- `docs/context/handoff/task-request-log.md`
-- `docs/context/handoff/task-request-template/task-request-template-part-31.md`
+- `Если чат оборвется, не выбирать новую product-задачу: EPIC-068 уже завершён технически и ждёт user review. Оставаться на той же ветке и не стартовать новый epic, пока пользователь явно не подтвердит review. Для повторяющихся blocker-ов сначала смотреть issue log; для Xcode/simulator симптомов первым делом запускать или перезапускать Xcode.`
 
-## Verification
-
-- `Previously passed and accepted: ./gradlew :feature:lineup:allTests :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' --tests 'com.bam.incomedy.feature.lineup.ui.LineupManagementTabContentTest' :composeApp:compileDebugKotlin`
-- `Previously passed and accepted: xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'id=5EC0AE38-9521-40C0-B43F-874924578A0F' -only-testing:iosAppUITests/iosAppUITests/testLineupTabShowsApplicationsAndReorderSurface test CODE_SIGNING_ALLOWED=NO`
-
-## Uncommitted Changes Expected
-
-- `no after merge/push finalization`
-
-## Last Safe Checkpoint
-
-- `EPIC-067 is complete and explicitly user-confirmed; next repo state should be merged main + pushed origin/main.`
-
-## Resume From
-
-- `Не возобновлять EPIC-067 как активный epic. После merge/push выбирать новый epic только из актуального backlog, если пользователь даст новую задачу или automation возьмет следующий приоритетный item.`
-
-## If Crash
+## Если сессия оборвётся
 
 - Check `git status`.
-- Check whether `main` already contains merge commit for `codex/epic-067-comedian-applications-foundation`.
-- If merge/push is already complete, keep `EPIC-067` closed and do not reopen it.
+- Confirm branch is still `codex/epic-068-live-stage-status-foundation`.
+- Treat active recovery state as `EPIC-068 awaiting_user_review`; do not pick a new epic or task.
+- Keep the branch checked out and wait for explicit user confirmation before moving to the next `P0` epic.
 
-## Next
+## Следующий шаг
 
-- `Ровно одна следующая подзадача: после merge/push выбрать следующий highest-priority unfinished epic из backlog; EPIC-067 не трогать без нового запроса.`
+- `Ровно одна следующая подзадача после этого запуска: получить явное user review/confirmation по EPIC-068; только после этого выбирать следующий P0 epic (первый кандидат — realtime/WebSocket delivery для live stage updates).`

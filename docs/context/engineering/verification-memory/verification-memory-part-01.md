@@ -1,0 +1,28 @@
+# Verification Memory Part 01
+
+## Current Mobile UI Coverage
+
+- Android root auth/main navigation is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/navigation/AppNavHostContentTest.kt`, including `unauthorized -> auth`, `authorized -> main`, and `state reset/logout -> auth`.
+- Android post-auth main shell is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including happy path, empty state, loading indicator, disabled actions, fallback-profile rendering, dismissible error state, workspace invitation inbox actions, workspace invite form, and membership permission-role updates.
+- Android organizer venue management tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/venue/ui/VenueManagementTabContentTest.kt` plus bottom-tab reachability coverage in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`.
+- Android organizer event management tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/event/ui/EventManagementTabContentTest.kt` plus bottom-tab reachability coverage in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including create-form wiring, publish/open/pause/cancel actions, and text-based override-editor save flow.
+- Android lineup management tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/lineup/ui/LineupManagementTabContentTest.kt` plus bottom-tab reachability coverage in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including organizer context load, comedian submit form, review actions, lineup reorder controls, live-stage summary (`current performer` / `next up`) and organizer live control callbacks.
+- Android audience/staff ticketing tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including ticket-tab reachability and checker scan callback wiring, while shared ticketing state transitions are covered by `feature/ticketing/src/commonTest/kotlin/com/bam/incomedy/feature/ticketing/TicketingViewModelTest.kt`.
+- Backend public event discovery route is covered by `server/src/test/kotlin/com/bam/incomedy/server/events/EventRoutesTest.kt`.
+- Backend comedian applications and lineup routes are covered by `server/src/test/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsRoutesTest.kt`.
+- Android auth entry UI is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/auth/ui/AuthScreenContentTest.kt`.
+- iOS post-auth main shell is covered by the real `iosAppUITests` XCUITest target using the `--ui-test-main` launch fixture.
+- iOS organizer venue tab is covered by `iosApp/iosAppUITests/iosAppUITests.swift` through `testVenueTabShowsVenueManagementSurface`.
+- iOS organizer event tab is covered by `iosApp/iosAppUITests/iosAppUITests.swift` through `testEventTabShowsEventManagementSurface`.
+- iOS lineup tab is covered by `iosApp/iosAppUITests/iosAppUITests.swift` through `testLineupTabShowsApplicationsAndReorderSurface`.
+- iOS audience/staff ticketing tab is covered by `iosApp/iosAppUITests/iosAppUITests.swift` through `testTicketTabShowsWalletAndCheckInSurface`.
+
+## Recent Verification Outcomes
+
+- Venue foundation automation includes `:feature:venue:allTests`, `:server:test --tests 'com.bam.incomedy.server.venues.VenueRoutesTest' --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest'`, generic iOS simulator build, and the targeted venue XCUITest run.
+- Event lifecycle/override automation includes `:domain:event:jvmTest`, `:feature:event:allTests`, `:composeApp:testDebugUnitTest`, `:composeApp:compileDebugKotlin`, `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.events.EventRoutesTest'`, generic iOS simulator build, and the targeted event XCUITest run.
+- Ticketing foundation automation includes `:domain:ticketing:allTests`, `:feature:ticketing:allTests`, `:data:ticketing:compileKotlinMetadata`, `:shared:compileKotlinMetadata`, `:composeApp:compileDebugKotlin`, `:composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest'`, `:server:test --tests 'com.bam.incomedy.server.db.DatabaseMigrationRunnerTest' --tests 'com.bam.incomedy.server.ticketing.TicketingRoutesTest' --tests 'com.bam.incomedy.server.payments.yookassa.YooKassaCheckoutGatewayTest'`, generic iOS simulator build, and the targeted ticketing XCUITest run.
+- Shared comedian applications + lineup foundation automation includes `:feature:lineup:allTests` and `:data:lineup:compileKotlinMetadata :shared:compileKotlinMetadata`.
+- Live-stage shared/data/feature lineup integration relies on `:feature:lineup:allTests :data:lineup:compileKotlinMetadata :shared:compileKotlinMetadata :composeApp:compileDebugKotlin`.
+- Comedian applications + lineup platform UI automation includes `:composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' --tests 'com.bam.incomedy.feature.lineup.ui.LineupManagementTabContentTest'`, `:composeApp:compileDebugKotlin`, and the targeted iOS lineup XCUITest path.
+- After the earlier same-day simulator instability, the rerun on `2026-03-25 15:10-15:15 MSK` again returned real destinations from `simctl` / `xcodebuild -showdestinations`, and the targeted XCUITest on `iPhone 17 Pro (iOS 26.2)` passed successfully. `TASK-073` is completed.

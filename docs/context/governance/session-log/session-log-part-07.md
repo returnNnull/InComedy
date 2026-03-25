@@ -17,7 +17,7 @@
 ## 2026-03-14 20:31
 
 - Context: The user requested that repository docs preserve a brief analyzable trace of the conversation/work path with the assistant, so future analysis can reconstruct not just outcomes but also how the work progressed.
-- Changes: Formalized the request in `docs/context/handoff/task-request-template/task-request-template-part-11.md`, updated engineering standards and quality rules to require concise per-session conversation summaries in governance docs, updated the new-chat handoff template to instruct every future chat to maintain this trace in `Context / Changes / Decisions / Next` form, and synchronized governance decision/traceability docs around the new rule.
+- Changes: Formalized the request in `docs/context/handoff/task-request-template/task-request-template-part-11.md`, updated engineering standards and quality rules to require concise per-session conversation summaries in governance docs, updated the bootstrap guidance to instruct every future chat to maintain this trace in `Context / Changes / Decisions / Next` form, and synchronized governance decision/traceability docs around the new rule.
 - Decisions: Accepted `D-058`: every meaningful work session must leave a concise sanitized trace in `docs/context/governance/session-log.md`; raw transcript dumping remains out of scope.
 - Next: Apply the new rule in all subsequent chats by keeping session-log summaries current whenever a task, direction, or decision materially changes.
 
