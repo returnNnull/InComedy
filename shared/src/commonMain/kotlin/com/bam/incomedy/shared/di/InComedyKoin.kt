@@ -1,6 +1,7 @@
 package com.bam.incomedy.shared.di
 
 import com.bam.incomedy.data.auth.di.authDataModule
+import com.bam.incomedy.data.donations.di.donationsDataModule
 import com.bam.incomedy.data.event.di.eventDataModule
 import com.bam.incomedy.data.lineup.di.lineupDataModule
 import com.bam.incomedy.data.session.di.sessionDataModule
@@ -33,6 +34,7 @@ object InComedyKoin {
         eventDataModule,
         ticketingDataModule,
         lineupDataModule,
+        donationsDataModule,
         authFeatureModule,
         module {
             single {

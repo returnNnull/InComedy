@@ -64,9 +64,9 @@
 1. `TASK-087` — backend foundation для comedian payout profile и donation intents с verified-payout gate, protected self-service routes и server coverage.
    - Status: `completed`
 2. `TASK-088` — shared/data donation service contract и transport integration для payout profile, donation history и intent creation без platform UI.
-   - Status: `in_progress`
+   - Status: `completed`
 3. `TASK-089` — Android/iOS donation и comedian payout surfaces с executable verification для delivered foundation.
-   - Status: `planned`
+   - Status: `in_progress`
 
 ### Scope Rules
 
@@ -76,11 +76,11 @@
 
 ### Current Next
 
-- `Ровно одна текущая продуктовая подзадача — TASK-088: shared/data donation transport integration поверх уже delivered backend foundation, без platform UI и без активации конкретного PSP.`
+- `Ровно одна текущая продуктовая подзадача — TASK-089: Android/iOS donation и comedian payout surfaces поверх уже delivered shared/data foundation, с executable verification и без активации конкретного PSP.`
 
 ### Current Recovery State
 
-- `EPIC-070 открыт по явному user request на ветке codex/epic-070-donations-payout-foundation; TASK-087 уже закрыт, а текущий active bounded step — TASK-088.`
+- `EPIC-070 открыт по явному user request на ветке codex/epic-070-donations-payout-foundation; TASK-087` и `TASK-088` уже закрыты, а текущий active bounded step — `TASK-089`.`
 
 ### Recovery Guardrail
 
