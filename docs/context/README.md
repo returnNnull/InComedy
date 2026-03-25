@@ -32,6 +32,7 @@ This folder stores the compact operational context for product, engineering, gov
 - `engineering/architecture-overview.md`: high-level module and data-flow map.
 - `engineering/test-strategy.md`: test levels, ownership, and CI expectations.
 - `engineering/server-diagnostics-runbook.md`: operator-only diagnostics retrieval and correlation workflow.
+- `engineering/issue-resolution-log.md`: журнал повторяемых технических проблем, симптомов и известных путей решения.
 - `governance/decisions-log.md`: decisions-log index with links to part files.
 - `governance/session-log.md`: session-log index with links to part files.
 - `governance/decision-traceability.md`: split mapping from decisions to code and tests.
@@ -46,6 +47,8 @@ This folder stores the compact operational context for product, engineering, gov
 ## Update Rules
 
 - Keep files in the proper subfolder; avoid creating many unrelated files in one directory.
+- New and materially updated project documentation in `docs/context/*` and adjacent `docs/` navigation/index files should be written in Russian; untouched historical text can be normalized when the file is next edited.
+- Repeated technical problems and confirmed repair paths should be recorded in `engineering/issue-resolution-log.md`.
 - Product owner responsibility:
   - keep priorities in `product/backlog.md` clear (`P0`/`P1`/`P2`),
   - provide free-form task requests.
@@ -66,6 +69,8 @@ This folder stores the compact operational context for product, engineering, gov
 - If any context file becomes too large (about 8,000+ characters), split it using the rule in `handoff/context-protocol.md`.
 - Store split parts in a dedicated subfolder named after the index file (example: `session-log/session-log-part-01.md`).
 - If `handoff/context-protocol.md` or `handoff/automation-executor-prompt.md` changes, sync `00-current-state.md`, relevant README/navigation references, and governance docs in the same update.
+- If the active executor recovery posture changes for the current task (for example, from `blocked_external` back to same-task local repair), sync `00-current-state.md`, `handoff/active-run.md`, and the relevant governance/task memory in the same update.
+- If the ordered subtask plan for the active epic changes, sync `handoff/task-request-log.md`, the latest task-request part, `00-current-state.md`, and `handoff/active-run.md` in the same update.
 
 ## Operating Rule
 

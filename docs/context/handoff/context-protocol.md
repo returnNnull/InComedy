@@ -8,9 +8,10 @@ This protocol defines how to use and transfer project context between chats.
 - `handoff/automation-executor-prompt.md` is the mandatory runbook for scheduled `InComedy Executor` automations; automation TOML prompts should reference it instead of duplicating long process rules.
 - Every new chat must start from `active-run.md` when it exists, then continue from `../00-current-state.md`.
 - If chat discussion conflicts with these docs, update docs first, then continue implementation.
-- Verification/test-runtime issues found while finishing the active task stay inside that same task by default; do not split them into a new task or blocker unless an external/user-confirmation boundary is actually reached.
+- Verification/test-runtime issues found while finishing the active task stay inside that same task by default; the next bounded run must resume the recorded local repair path for that blocker before reclassifying it as `blocked_external` or redirecting the work to another host.
 - Mandatory security review remains part of DoD for every meaningful task, including automation-delivered and docs-only governance/process sync work.
 - Legacy `awaiting_verification` / `partial` labels in older memory are recovery aliases only: interpret them through the current status model and normalize them when the same task is resumed.
+- Active epics should follow a documented ordered subtask plan; future product subtasks should come from that plan unless the plan itself is explicitly updated in governance/task memory.
 
 ## Read Order (for any new chat/session)
 
@@ -36,7 +37,9 @@ Any cross-chat handoff/bootstrap message must preserve these rules up front:
 
 - `docs/context/*` stays the primary source of truth; if new input conflicts with the docs, update docs first, then continue implementation.
 - New and materially changed repository code comments must stay in Russian and explain responsibility/flow rather than restating syntax.
+- New and materially updated project documentation in `docs/context/*`, `docs/README.md`, and adjacent governance/handoff indexes must stay in Russian; untouched historical text may remain in English until that document is edited.
 - Backend production-significant flows must use structured logging through the sanitized diagnostics system; raw host/container logs are a fallback path, not the primary observability layer.
+- Repeated technical problems and confirmed repair paths should be written into `../engineering/issue-resolution-log.md` so future sessions can resume troubleshooting without replaying the same diagnostics from scratch.
 - External auth/payment/push/PSP providers may be implemented in code, but they become active/default/confirmed only after explicit user confirmation; assistant inference, existing code, and config/examples do not count as approval.
 - Every meaningful work session must leave a concise sanitized `Context / Changes / Decisions / Next` entry in `../governance/session-log.md`; raw transcript dumping and secrets are forbidden.
 - Every meaningful task still requires a proportional security review; docs/process-only sync must explicitly record a zero-impact verdict when no security surface changed.
@@ -52,7 +55,10 @@ Any cross-chat handoff/bootstrap message must preserve these rules up front:
 - After each major work block -> append short entry to the latest session-log part referenced by `../governance/session-log.md`.
 - For major implementation changes -> update `../governance/decision-traceability.md`.
 - For major tasks -> structure the request through `task-request-template.md` and record historical request/outcome context in `task-request-log.md`.
+- For active epics -> keep an ordered subtask plan in `task-request-log.md` / latest task-request part, and update that plan explicitly when order or scope changes.
+- For repeated technical blockers / non-obvious repair playbooks -> update `../engineering/issue-resolution-log.md`.
 - Maintain `active-run.md` as a short overwrite-only recovery checkpoint for the current run; do not use it as a historical log.
+- If the active task recovery posture changes between local repair and `blocked_external`, synchronize `active-run.md`, `../00-current-state.md`, and the relevant governance/task memory in the same change.
 - External-provider selections may be recorded as active/default/confirmed only after explicit user confirmation; assistant inference, existing code, or sample config/docs do not count as approval.
 - Before major tasks, assistant must remind to refresh:
   - `../product/backlog.md` (current priorities),

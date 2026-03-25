@@ -70,3 +70,37 @@
 ### Next
 
 - `Ровно одна следующая подзадача не меняется: продолжить тот же TASK-073 и пере-запустить targeted iOS XCUITest verification для lineup live-stage UI на unrestricted host с рабочим CoreSimulatorService; новый epic/task не выбирать.`
+
+## Documentation Outcome (EPIC-068 TASK-076 Blocker Repair Posture Realignment)
+
+### Epic
+
+- `EPIC-068` — live stage status foundation.
+
+### Task
+
+- `TASK-076` — docs-only executor recovery sync: перевести текущий `TASK-073` из standing `blocked_external` posture обратно в same-task local repair posture.
+
+### Status
+
+- `docs_only`
+
+### Delivered
+
+- `docs/context/handoff/automation-executor-prompt.md`, `docs/context/handoff/context-protocol.md`, `docs/context/00-current-state.md`, `docs/context/engineering/quality-rules.md` и `docs/context/engineering/test-strategy.md` синхронизированы так, чтобы следующий bounded run не отправлял `TASK-073` на “unrestricted host” по умолчанию, а начинал с local repair текущего simulator/XCUITest blocker на этом host.
+- Recovery snapshot (`active-run.md`) и task/governance memory теперь снова держат `EPIC-068` в `in_progress`, а `TASK-073` описывают как активный local-repair target для `CoreSimulatorService` / simulator destination path.
+- Принят `D-072`, который закрепляет это recovery posture как актуальное process rule для текущего blocker class.
+
+### Verification
+
+- `Passed: current bootstrap/recovery surfaces now describe the next bounded step for TASK-073 as local repair of the current host's simulator/XCUITest path followed by targeted rerun`
+- `Passed: docs-only security review recorded for this recovery-posture sync; no security-impacting runtime surface changed in this run`
+
+### Notes
+
+- Продуктовый код не менялся; речь только о process/recovery alignment для уже реализованного `TASK-073`.
+- Если следующий repair run не успеет полностью устранить blocker за bounded window, он должен зафиксировать новый recovery checkpoint так, чтобы очередной запуск продолжил repair, а не возвращался к старой формулировке про “unrestricted host” без локальной попытки.
+
+### Next
+
+- `Ровно одна следующая подзадача: продолжить тот же TASK-073 и починить current-host iOS simulator/XCUITest blocker, затем пере-запустить targeted testLineupTabShowsApplicationsAndReorderSurface; новый epic/task не выбирать.`

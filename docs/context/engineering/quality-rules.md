@@ -10,7 +10,8 @@ This document defines mandatory delivery and quality controls for InComedy.
 - CI checks for the changed scope must pass before merge.
 - Mandatory security review is part of DoD for every task, even if the change is not explicitly security-related.
 - Verification, test harness, simulator/runtime, and analogous execution issues discovered while completing the current task are part of that same task by default; they must not be reclassified as a separate blocker/task/epic unless a true external blocker or explicit user decision boundary is reached.
-- New automation-driven implementation runs must not end with `partial`; after bounded local repair attempts, the run must finish either with a completed outcome or with a finished `docs_only` blocker record that states the exact external blocker, evidence, and next action.
+- New automation-driven implementation runs must not end with `partial`; simulator/runtime/toolchain blockers must stay on the same `TASK`, and the next bounded run must resume the recorded local repair path before the issue is classified as a true external blocker or redirected to another host.
+- When a repeated technical problem or non-obvious repair path is discovered, the issue and the current solution path must be captured in `docs/context/engineering/issue-resolution-log.md` in the same work block.
 
 ## Error Handling
 
@@ -81,6 +82,8 @@ This document defines mandatory delivery and quality controls for InComedy.
 
 - The repository must preserve a short analyzable history of collaboration decisions, not just final artifacts.
 - `docs/context/00-current-state.md` is the mandatory bootstrap snapshot for new chats and must stay aligned with the latest decisions and active delivery focus.
+- New and materially updated project documentation in `docs/context/*`, `docs/README.md`, and adjacent governance/handoff indexes must be written in Russian; legacy English text is normalized when the corresponding document is touched.
+- `docs/context/engineering/issue-resolution-log.md` is the durable memory for recurring technical problems, their symptoms, and known repair paths.
 - External provider choices must not be promoted to confirmed/default runtime status without explicit user confirmation; until then they should stay documented as candidate or disabled-by-default implementations.
 - Existing code, sample config, or earlier assistant guidance must not be interpreted as evidence that the user approved a provider choice.
 - `docs/context/governance/session-log.md` is the mandatory place for a concise per-task/per-session summary of:
