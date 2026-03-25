@@ -25,6 +25,7 @@
 Локальные simulator/emulator, build/test-harness, toolchain, cache и device-set проблемы не считаются true external blocker сами по себе: следующий bounded run должен продолжать их repair в рамках того же `TASK`.
 Блокерами являются лишь решения по выбору внешних провайдеров, непопулярных и не состоящих в списках рекомендаций Google библиотек, изменение архитектурных решений и ключевых правил разработки.
 Если блокер является внешним и требует вмешательства пользователя, нужно зафиксировать конкретное указание пользователю  (`Выбрать ...`, `Обновить ...`, `Перезагрузить ...` и т.д.).
+Для `completed` и `docs_only` подзадачи closure sequence обязателен и не может быть сокращен: `verification -> security verdict -> docs sync -> ready_to_commit -> local commit -> switch next task`.
 
 ## AutomationState
 
@@ -98,13 +99,17 @@
 
 ## Commit Rules
 
-Локальный git commit разрешен только для `completed` или `docs_only` подзадачи.
+Локальный git commit обязателен для `completed` или `docs_only` подзадачи в том же run. До создания этого commit нельзя переводить recovery state на следующий active `TASK`.
+
+Статус `ready_to_commit` означает, что verification, security review и обязательный docs sync уже завершены, но commit boundary для текущей bounded подзадачи еще не закрыт.
 
 Правила commit:
 
 - не более одного commit на подзадачу;
 - только в `active_branch`;
 - без `push`, если пользователь явно не запросил отправку в remote.
+- пока локальный commit текущей `completed`/`docs_only` подзадачи не создан, нельзя менять `active_subtask_id`, `Active Subtask` или recovery `Next` на следующий task; можно фиксировать только будущий следующий шаг после commit;
+- если `git status` все еще dirty изменениями уже закрытой подзадачи, recovery posture должен оставаться на commit boundary (`ready_to_commit`), а не на следующем task.
 
 Commit message делай подробным, на русском, с `TASK-ID` и `EPIC-ID`, в структуре:
 

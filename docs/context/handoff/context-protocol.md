@@ -10,12 +10,14 @@ This protocol defines how to use and transfer project context between chats.
 - If chat discussion conflicts with these docs, update docs first, then continue implementation.
 - Verification/test-runtime issues found while finishing the active task stay inside that same task by default; the next bounded run must resume the recorded local repair path for that blocker before reclassifying it as `blocked_external` or redirecting the work to another host.
 - Mandatory security review remains part of DoD for every meaningful task, including automation-delivered and docs-only governance/process sync work.
+- `completed` и `docs_only` bounded tasks не считаются recovery-closed, пока не закрыта local commit boundary; до этого recovery state должен оставаться на текущей подзадаче в posture `ready_to_commit`, а не переключаться на следующий `TASK`.
 - Legacy `awaiting_verification` / `partial` labels in older memory are recovery aliases only: interpret them through the current status model and normalize them when the same task is resumed.
 - Active epics should follow a documented ordered subtask plan; future product subtasks should come from that plan unless the plan itself is explicitly updated in governance/task memory.
 
 ## Read Order (for any new chat/session)
 
 0. `active-run.md` when it exists, then compare it with `git status` and the current branch before choosing work
+0b. If docs already point to the next `TASK`, but `git status` is still dirty with changes from a previously `completed`/`docs_only` task, treat the previous task as `ready_to_commit` and close that commit boundary before any new implementation work
 0a. `automation-executor-prompt.md` for scheduled `InComedy Executor` automation runs; from there read `executor-checklist.md`, and open `executor-policy.md` only when the short checklist is not enough
 1. `../00-current-state.md`
 2. `../product/product-brief.md`
@@ -48,6 +50,7 @@ Any cross-chat handoff/bootstrap message must preserve these rules up front:
 - External auth/payment/push/PSP providers may be implemented in code, but they become active/default/confirmed only after explicit user confirmation; assistant inference, existing code, and config/examples do not count as approval.
 - Every meaningful work session must leave a concise sanitized `Context / Changes / Decisions / Next` entry in `../governance/session-log.md`; raw transcript dumping and secrets are forbidden.
 - Every meaningful task still requires a proportional security review; docs/process-only sync must explicitly record a zero-impact verdict when no security surface changed.
+- Dirty worktree после `completed`/`docs_only` task по умолчанию трактуется как незакрытая commit boundary, а не как разрешение двигаться к следующему active task; новую подзадачу можно начинать только после локального commit.
 - Server diagnostics or production triage must use `../engineering/server-diagnostics-runbook.md`.
 
 ## Update Policy
@@ -64,6 +67,7 @@ Any cross-chat handoff/bootstrap message must preserve these rules up front:
 - For repeated technical blockers / non-obvious repair playbooks -> update `../engineering/issue-resolution-log.md`.
 - Maintain `active-run.md` as a short overwrite-only recovery checkpoint for the current run; do not use it as a historical log.
 - If the active task recovery posture changes between local repair and `blocked_external`, synchronize `active-run.md`, `../00-current-state.md`, and the relevant governance/task memory in the same change.
+- Не переключай `active-run.md`, `../00-current-state.md` и task memory на следующий active `TASK`, пока локальный commit текущей `completed`/`docs_only` подзадачи не создан; до этого фиксируй состояние как `ready_to_commit`.
 - External-provider selections may be recorded as active/default/confirmed only after explicit user confirmation; assistant inference, existing code, or sample config/docs do not count as approval.
 - Before major tasks, assistant must remind to refresh:
   - `../product/backlog.md` (current priorities),
@@ -111,6 +115,7 @@ Template sync rule:
 Before considering context synchronized in a new chat:
 
 - `active-run.md` is checked when it exists and reconciled with the current git state,
+- commit-boundary статус между recovery docs и `git status` reconciled, so the chat is not starting a new `TASK` on top of uncommitted changes from a closed one,
 - bootstrap snapshot is read,
 - read order is completed,
 - latest decision ID is acknowledged,

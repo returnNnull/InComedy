@@ -18,6 +18,8 @@ class InMemoryLineupRepository(
 ) : LineupRepository {
     /** Mutable lineup entries по их id. */
     private val recordsById = linkedMapOf<String, MutableLineupEntryRecord>()
+    /** Отдельная память отображаемых данных пользователя, чтобы bind работал и до создания entry. */
+    private val boundUsers = mutableMapOf<String, BoundUserDisplay>()
 
     override fun listEventLineup(eventId: String): List<StoredLineupEntry> {
         return recordsById.values
@@ -52,8 +54,8 @@ class InMemoryLineupRepository(
             id = UUID.randomUUID().toString(),
             eventId = eventId,
             comedianUserId = comedianUserId,
-            comedianDisplayName = comedianUserId,
-            comedianUsername = null,
+            comedianDisplayName = boundUsers[comedianUserId]?.displayName ?: comedianUserId,
+            comedianUsername = boundUsers[comedianUserId]?.username,
             applicationId = applicationId,
             orderIndex = nextOrderIndex,
             status = status,
@@ -104,6 +106,10 @@ class InMemoryLineupRepository(
         displayName: String,
         username: String?,
     ) {
+        boundUsers[userId] = BoundUserDisplay(
+            displayName = displayName,
+            username = username,
+        )
         recordsById.values.forEach { record ->
             if (record.comedianUserId == userId) {
                 record.comedianDisplayName = displayName
@@ -111,6 +117,12 @@ class InMemoryLineupRepository(
             }
         }
     }
+
+    /** Храним display metadata пользователя для новых lineup entries. */
+    private data class BoundUserDisplay(
+        val displayName: String,
+        val username: String?,
+    )
 
     /** Mutable запись lineup entry. */
     private data class MutableLineupEntryRecord(

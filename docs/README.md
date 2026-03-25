@@ -4,7 +4,7 @@
 
 ## Start Here
 
-- For any new chat or onboarding pass, read `context/00-current-state.md` first.
+- For any new chat or onboarding pass, read `context/handoff/active-run.md` first when it exists, then `context/00-current-state.md`.
 - `context/*` is the primary source of truth for ongoing product and engineering work.
 - If a task needs detailed target-state clarification, continue into `standup-platform-ru/*`.
 - `project-reference/*` is a derived repository handbook for faster human navigation; it does not override `context/*` or code.
@@ -28,4 +28,5 @@
 - Repeated technical problems and their known repair paths should be accumulated in `context/engineering/issue-resolution-log.md`.
 - Before new blocker diagnostics, first check `context/engineering/issue-resolution-log.md` for an existing matching entry.
 - For iOS simulator / Xcode destination failures, first launch Xcode or restart it if it is hung.
+- Dirty worktree после `completed`/`docs_only` task не означает старт следующей задачи: сначала должен быть закрыт локальный commit boundary.
 - Executor runbook is split into a short checklist and a detailed policy under `context/handoff/`.

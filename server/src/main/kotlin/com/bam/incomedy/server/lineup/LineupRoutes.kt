@@ -12,6 +12,7 @@ import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.observability.DiagnosticsStore
 import com.bam.incomedy.server.observability.recordCall
+import com.bam.incomedy.server.realtime.EventLiveChannelBroadcaster
 import com.bam.incomedy.server.security.AuthRateLimiter
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -50,6 +51,7 @@ object LineupRoutes {
         workspaceRepository: WorkspaceRepository,
         eventRepository: EventRepository,
         lineupRepository: LineupRepository,
+        eventLiveChannelBroadcaster: EventLiveChannelBroadcaster? = null,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {
@@ -175,6 +177,11 @@ object LineupRoutes {
                             status = HttpStatusCode.OK.value,
                             metadata = mapOf("count" to lineup.size.toString()),
                         )
+                        eventLiveChannelBroadcaster?.publishLineupChanged(
+                            eventId = eventId.orEmpty(),
+                            lineup = lineup,
+                            reason = "lineup_reordered",
+                        )
                         call.respond(
                             HttpStatusCode.OK,
                             LineupListResponse(
@@ -268,6 +275,16 @@ object LineupRoutes {
                                 "entryId" to request.entryId,
                                 "status" to targetStatus.wireName,
                             ),
+                        )
+                        eventLiveChannelBroadcaster?.publishLineupChanged(
+                            eventId = eventId.orEmpty(),
+                            lineup = lineup,
+                            reason = "live_state_changed",
+                        )
+                        eventLiveChannelBroadcaster?.publishStageChanged(
+                            eventId = eventId.orEmpty(),
+                            lineup = lineup,
+                            reason = "live_state_changed",
                         )
                         call.respond(
                             HttpStatusCode.OK,

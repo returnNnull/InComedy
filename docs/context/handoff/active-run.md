@@ -10,38 +10,38 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-25T15:23:45+03:00`
+- Timestamp: `2026-03-25T16:29:41+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `EPIC-068`
-- Active Subtask: `TASK-083`
-- Branch: `codex/epic-068-live-stage-status-foundation`
-- Epic Status: `awaiting_user_review`
-- Run Status: `docs_only`
+- Active Epic: `EPIC-069`
+- Active Subtask: `TASK-084`
+- Branch: `codex/epic-069-live-stage-realtime-delivery`
+- Epic Status: `in_progress`
+- Run Status: `ready_to_commit`
 
 ## Цель
 
-- `Рефакторинг структуры docs/context для ускорения bootstrap: разделить checklist/policy/status/history и убрать лишний контекст из snapshot/recovery файлов.`
+- `Закрыть local commit boundary для уже завершённого TASK-084; только после локального commit переключить recovery на TASK-085 — shared/data realtime subscription contract для lineup live updates.`
 
 ## Итог
 
-- `Созданы отдельные executor checklist/policy, implementation-status, verification-memory и next-epic-queue.`
-- `00-current-state.md` сжат до bootstrap snapshot; active-run.md сжат до recovery checkpoint.`
-- `test-strategy.md` и `architecture-overview.md` очищены от delivery/verification history в пользу новых специализированных документов.`
-- `issue-resolution-log.md` получил symptom index.`
-- `EPIC-068` остаётся в awaiting_user_review; product scope не менялся.`
+- `User confirmation по EPIC-068 получен, поэтому epic закрыт как done и работа продолжена без review boundary.`
+- `TASK-084 завершён: backend live-event channel `/ws/events/{eventId}` доставлен вместе с initial snapshot, audience-safe realtime payload-ами, server-local broadcaster и publish hooks из approve/reorder/live-state path-ов.`
+- `Targeted server verification green и docs sync завершён, но локальный commit для TASK-084 ещё не создан, поэтому recovery остаётся на commit boundary этого task-а в статусе ready_to_commit.`
+- `Принят D-079: dirty worktree после completed/docs_only task считается незакрытой commit boundary; до локального commit recovery нельзя переключать на новый TASK.`
 
 ## Возобновление
 
-- `Если чат оборвется, не выбирать новую product-задачу: EPIC-068 уже завершён технически и ждёт user review. Оставаться на той же ветке и не стартовать новый epic, пока пользователь явно не подтвердит review. Для повторяющихся blocker-ов сначала смотреть issue log; для Xcode/simulator симптомов первым делом запускать или перезапускать Xcode.`
+- `Если чат оборвется, сначала сверить recovery docs с git status: текущий активный checkpoint остаётся на TASK-084/ready_to_commit. Нужно сначала создать локальный commit для TASK-084 и только потом переключать recovery на TASK-085. После этого не перепрыгивать к Android/iOS wiring, staff channel, push fallback или durable outbox, пока shared/data слой не закрыт.`
 
 ## Если сессия оборвётся
 
 - Check `git status`.
-- Confirm branch is still `codex/epic-068-live-stage-status-foundation`.
-- Treat active recovery state as `EPIC-068 awaiting_user_review`; do not pick a new epic or task.
-- Keep the branch checked out and wait for explicit user confirmation before moving to the next `P0` epic.
+- Confirm branch is still `codex/epic-069-live-stage-realtime-delivery`.
+- Treat active recovery state as `EPIC-069/TASK-084` in posture `ready_to_commit`.
+- Close the local commit boundary for `TASK-084` before any new implementation step.
+- Start from the delivered backend WebSocket foundation; do not reopen `TASK-084` unless a concrete regression is found.
 
 ## Следующий шаг
 
-- `Ровно одна следующая подзадача после этого запуска: получить явное user review/confirmation по EPIC-068; только после этого выбирать следующий P0 epic (первый кандидат — realtime/WebSocket delivery для live stage updates).`
+- `Ровно один следующий шаг после этого запуска: сначала создать локальный commit для TASK-084, затем переключить active recovery на TASK-085 — shared/data realtime subscription contract для lineup live updates.`

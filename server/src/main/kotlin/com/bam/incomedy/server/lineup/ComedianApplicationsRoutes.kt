@@ -14,6 +14,7 @@ import com.bam.incomedy.server.http.PayloadTooLargeException
 import com.bam.incomedy.server.http.receiveJsonBodyLimited
 import com.bam.incomedy.server.observability.DiagnosticsStore
 import com.bam.incomedy.server.observability.recordCall
+import com.bam.incomedy.server.realtime.EventLiveChannelBroadcaster
 import com.bam.incomedy.server.security.AuthRateLimiter
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -52,6 +53,7 @@ object ComedianApplicationsRoutes {
         eventRepository: EventRepository,
         comedianApplicationRepository: ComedianApplicationRepository,
         lineupRepository: LineupRepository,
+        eventLiveChannelBroadcaster: EventLiveChannelBroadcaster? = null,
         rateLimiter: AuthRateLimiter,
         diagnosticsStore: DiagnosticsStore? = null,
     ) {
@@ -273,6 +275,13 @@ object ComedianApplicationsRoutes {
                             status = HttpStatusCode.OK.value,
                             metadata = mapOf("status" to application.status.wireName),
                         )
+                        if (application.status == ComedianApplicationStatus.APPROVED) {
+                            eventLiveChannelBroadcaster?.publishLineupChanged(
+                                eventId = eventId.orEmpty(),
+                                lineup = lineupRepository.listEventLineup(eventId.orEmpty()),
+                                reason = "application_approved",
+                            )
+                        }
                         call.respond(HttpStatusCode.OK, ComedianApplicationResponse.fromStored(application))
                     } catch (error: Throwable) {
                         call.respondComedianApplicationError(

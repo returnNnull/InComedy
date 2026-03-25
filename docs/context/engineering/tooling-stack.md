@@ -24,6 +24,7 @@ Status labels:
 - Password hashing: `Argon2id`
 - Android release signing: Gradle-managed release signing with a local ignored keystore/properties file
 - iOS deep-linking: custom scheme + associated domains for production auth return flows
+- Real-time transport: `Ktor WebSockets` for live lineup/stage/event updates
 
 ## Candidate
 
@@ -34,8 +35,6 @@ Status labels:
 - Push notifications provider:
   - Firebase Cloud Messaging
   - Apple Push Notification service
-- Real-time transport:
-  - Ktor WebSockets for live lineup/stage/event updates
 - Object storage:
   - S3-compatible storage for media/assets if comedian media or venue assets expand
 - Analytics stack: TBD

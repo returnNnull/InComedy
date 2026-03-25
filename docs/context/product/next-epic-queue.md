@@ -10,15 +10,18 @@
 
 ## Текущая очередь
 
-1. `EPIC-069` — realtime/WebSocket delivery для live stage updates
+1. `EPIC-070` — donations/payout foundation
    - Status: `planned`
-   - Why next: это ближайший оставшийся `P0` gap после уже доставленного live-stage foundation и platform UI.
-2. `EPIC-070` — donations/payout foundation
+   - Why next: donations остаются следующим `P0` слоем после завершения текущего realtime epic-а.
+2. `EPIC-071` — notifications / announcements delivery foundation
    - Status: `planned`
-   - Why after EPIC-069: donations остаются `P0`, но зависят меньше от текущего live-stage continuity, чем realtime delivery.
-3. `EPIC-071` — notifications / announcements delivery foundation
-   - Status: `planned`
-   - Why after EPIC-070: важный `P0` слой, но не следующий immediate gap после EPIC-068.
+   - Why after EPIC-070: важный `P0` слой, но идёт после donations/payout foundation.
+
+## Активированный epic
+
+- `EPIC-069` — realtime/WebSocket delivery для live stage updates
+  - Status: `in_progress`
+  - Activated because: пользователь явно подтвердил review `EPIC-068`, поэтому очередь продвинулась к ближайшему `P0` gap.
 
 ## Правило
 

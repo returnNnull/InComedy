@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.ktor.server.call.logging.jvm)
     implementation(libs.ktor.server.call.id.jvm)
     implementation(libs.ktor.server.content.negotiation.jvm)
+    implementation(libs.ktor.server.websockets.jvm)
     implementation(libs.ktor.serialization.kotlinx.json.jvm)
     implementation(libs.ktor.server.status.pages.jvm)
     implementation(libs.ktor.server.cors.jvm)
@@ -32,6 +33,7 @@ dependencies {
     implementation(libs.argon2.jvm)
 
     testImplementation(libs.ktor.server.tests.jvm)
+    testImplementation(libs.ktor.client.websockets)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.h2)
 }

@@ -10,6 +10,7 @@
 - Android audience/staff ticketing tab is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/main/ui/MainScreenContentTest.kt`, including ticket-tab reachability and checker scan callback wiring, while shared ticketing state transitions are covered by `feature/ticketing/src/commonTest/kotlin/com/bam/incomedy/feature/ticketing/TicketingViewModelTest.kt`.
 - Backend public event discovery route is covered by `server/src/test/kotlin/com/bam/incomedy/server/events/EventRoutesTest.kt`.
 - Backend comedian applications and lineup routes are covered by `server/src/test/kotlin/com/bam/incomedy/server/lineup/ComedianApplicationsRoutesTest.kt`.
+- Backend public live-event WebSocket channel is covered by `server/src/test/kotlin/com/bam/incomedy/server/lineup/EventLiveChannelRoutesTest.kt`.
 - Android auth entry UI is covered by Robolectric Compose UI tests in `composeApp/src/test/kotlin/com/bam/incomedy/feature/auth/ui/AuthScreenContentTest.kt`.
 - iOS post-auth main shell is covered by the real `iosAppUITests` XCUITest target using the `--ui-test-main` launch fixture.
 - iOS organizer venue tab is covered by `iosApp/iosAppUITests/iosAppUITests.swift` through `testVenueTabShowsVenueManagementSurface`.
@@ -26,3 +27,4 @@
 - Live-stage shared/data/feature lineup integration relies on `:feature:lineup:allTests :data:lineup:compileKotlinMetadata :shared:compileKotlinMetadata :composeApp:compileDebugKotlin`.
 - Comedian applications + lineup platform UI automation includes `:composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' --tests 'com.bam.incomedy.feature.lineup.ui.LineupManagementTabContentTest'`, `:composeApp:compileDebugKotlin`, and the targeted iOS lineup XCUITest path.
 - After the earlier same-day simulator instability, the rerun on `2026-03-25 15:10-15:15 MSK` again returned real destinations from `simctl` / `xcodebuild -showdestinations`, and the targeted XCUITest on `iPhone 17 Pro (iOS 26.2)` passed successfully. `TASK-073` is completed.
+- `EPIC-069 TASK-084` backend realtime kickoff now relies on `./gradlew :server:test --tests 'com.bam.incomedy.server.lineup.EventLiveChannelRoutesTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`, which passed on `2026-03-25 16:02 MSK`.

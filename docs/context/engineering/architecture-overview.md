@@ -72,6 +72,7 @@
 - The canonical public VK callback contract remains `https://incomedy.ru/auth/vk/callback`; it is still used for browser/public-callback completion and for non-SDK fallback flows. Android now prefers official VK OneTap in documented auth-code mode when both the app and backend have dedicated Android VK client config: the Android client generates `state`, `codeVerifier`, and `codeChallenge` locally, passes them to VK SDK/OneTap, then sends `code + deviceId + state + codeVerifier` to backend `/verify`, while browser/public-callback completion continues to use backend-issued signed state. This keeps the app session model unchanged while separating browser and Android SDK VK lifecycles the way VK documents them.
 - Treat seat inventory, ticketing, lineup live state, and donations as separate bounded contexts even when implemented in one backend app.
 - Prefer REST for CRUD and WebSocket/push for live event updates.
+- Первый доставленный realtime slice использует public `/ws/events/{eventId}` и server-local in-memory broadcaster для lineup/live-stage событий; durable outbox и multi-instance fanout остаются следующими архитектурными шагами.
 - For PSP/push/payout side effects, prefer transactional outbox + background workers once those domains are introduced.
 - Cross-cutting diagnostics infrastructure must stay sanitized and operator-only; client-visible correlation should use request ids rather than exposing raw server logs.
 - Update this file when introducing major modules or cross-cutting infrastructure.
