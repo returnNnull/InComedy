@@ -105,4 +105,9 @@ class LineupAndroidViewModel(
     fun clearError() {
         sharedViewModel.clearError()
     }
+
+    /** Переключает runtime-подписку на public live feed в зависимости от screen lifecycle. */
+    fun setLiveUpdatesActive(isActive: Boolean) {
+        sharedViewModel.setLiveUpdatesActive(isActive)
+    }
 }

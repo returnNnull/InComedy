@@ -8,7 +8,7 @@
 
 ### Status
 
-- `in_progress`
+- `awaiting_user_review`
 
 ### Why Now
 
@@ -22,7 +22,7 @@
 2. `TASK-085` — shared/data realtime subscription contract и transport integration для lineup live updates в KMP-слоях.
    - Status: `completed`
 3. `TASK-086` — Android/iOS wiring на новый realtime feed и executable verification delivered live-update behavior.
-   - Status: `in_progress`
+   - Status: `completed`
 
 ### Scope Rules
 
@@ -32,15 +32,15 @@
 
 ### Current Next
 
-- `Ровно одна следующая продуктовая подзадача: TASK-086 — Android/iOS wiring на новый realtime feed и executable verification delivered live-update behavior, без staff/private channel, push fallback или durable outbox в том же bounded шаге.`
+- `Ordered plan полностью выполнен; ровно один следующий шаг — дождаться явного user review/confirmation по EPIC-069 и не открывать новый epic до этого подтверждения.`
 
 ### Current Recovery State
 
-- `Локальная commit boundary TASK-085 закрыта текущим локальным commit-ом, поэтому active recovery checkpoint переключён на TASK-086 в статусе in_progress.`
+- `Локальная commit boundary TASK-086 закрыта текущим локальным commit-ом; после completion всего ordered plan epic удерживается в posture awaiting_user_review.`
 
 ### Recovery Guardrail
 
-- `Если новая сессия увидит dirty worktree после already-completed TASK-085 или другой completed/docs_only подзадачи, она обязана сначала закрыть local commit boundary и только потом продолжать TASK-086. Переключать active recovery на новый TASK до commit нельзя.`
+- `Если новая сессия возобновит этот epic, она обязана сохранить review boundary EPIC-069 и не открывать новый epic/task без explicit user confirmation. Если обнаружится dirty worktree после completed/docs_only подзадачи, сначала нужно закрыть local commit boundary.`
 
 ## Implementation Outcome (EPIC-069 TASK-084 Backend Live Event WebSocket Channel)
 

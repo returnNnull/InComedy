@@ -18,7 +18,8 @@
   - session restore/refresh/logout backend contract;
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
   - shared/mobile backend error correlation via surfaced backend request ids in failure messages;
-  - public live-event channel `/ws/events/{eventId}` with audience-safe `lineup.changed` / `stage.current_changed` payloads and server-local in-memory broadcaster wired to comedian application approval plus lineup reorder/live-state mutations.
+  - public live-event channel `/ws/events/{eventId}` with audience-safe `lineup.changed` / `stage.current_changed` payloads and server-local in-memory broadcaster wired to comedian application approval plus lineup reorder/live-state mutations;
+  - Android/iOS lineup surfaces now consume the public live-event feed through lifecycle-scoped runtime activation, shared lineup-state application of audience-safe live summaries, and organizer application refresh after `application_approved` realtime events.
 - Partial:
   - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
@@ -26,12 +27,12 @@
   - event foundation now includes `create/list/get/update/publish`, sales open/pause/cancel controls, frozen hall snapshots, event-local price/availability overrides, and a public audience discovery route for published public events with bounded `city/date/price` filtering plus audience-safe summaries;
   - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers, public and authenticated inventory routes, protected hold lifecycle, provider-agnostic checkout order creation, authenticated order-status reads, issued-ticket persistence and QR delivery, checker scan flow, shared `:feature:ticketing` state, Android `Билеты` tab wiring, and iOS `TicketWalletView`; `sold_out` automation, complimentary issuance, refund/cancel ticket lifecycle, wallet pass/export, and check-in stats/offline buffering are still missing;
   - comedian applications and lineup backend foundation now includes submit/review/list/reorder/live-stage mutation plus public WebSocket live-event delivery for audience-safe lineup/live-stage updates; staff/private channels, durable outbox/multi-instance fanout, and non-lineup live event types are still missing;
-  - comedian applications and lineup shared/mobile foundation now includes dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules, Android/iOS live-stage UI surfaces, and a KMP realtime subscription contract over the public `/ws/events/{eventId}` channel; explicit Android/iOS lifecycle wiring and product consumption of the new feed are still missing;
+  - comedian applications and lineup shared/mobile foundation now includes dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules, Android/iOS live-stage UI surfaces, a KMP realtime subscription contract over the public `/ws/events/{eventId}` channel, and lifecycle-gated product consumption of that feed; reconnect/push fallback, durable outbox/multi-instance fanout, and richer organizer-private synchronization beyond approval-triggered application refresh are still missing;
   - current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet and check-in surfaces, but deeper organizer operational flows beyond workspaces, venues, events, and ticketing foundations are still missing.
 
 ## Next Bounded Contexts
 
-1. Android/iOS realtime wiring and executable verification
+1. `EPIC-069` user review / acceptance boundary
 2. donations/payouts
 3. notifications
 4. analytics

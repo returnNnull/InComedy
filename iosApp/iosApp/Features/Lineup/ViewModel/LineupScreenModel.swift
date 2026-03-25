@@ -242,6 +242,13 @@ final class LineupScreenModel: ObservableObject {
         }
     }
 
+    /// Переключает runtime-подписку на public live feed в зависимости от видимости экрана.
+    ///
+    /// - Parameter isActive: `true`, когда lineup surface активен и приложение на переднем плане.
+    func setLiveUpdatesActive(_ isActive: Bool) {
+        bridge?.setLiveUpdatesActive(isActive: isActive)
+    }
+
     /// Подписывается на Kotlin state flow и применяет snapshots к SwiftUI-полям.
     private func bind() {
         guard let bridge else { return }

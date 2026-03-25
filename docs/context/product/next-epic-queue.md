@@ -20,8 +20,8 @@
 ## Активированный epic
 
 - `EPIC-069` — realtime/WebSocket delivery для live stage updates
-  - Status: `in_progress`
-  - Activated because: пользователь явно подтвердил review `EPIC-068`, поэтому очередь продвинулась к ближайшему `P0` gap.
+  - Status: `awaiting_user_review`
+  - Activated because: пользователь явно подтвердил review `EPIC-068`, а после completion всего ordered realtime plan этот epic теперь ждёт явного user confirmation перед продвижением очереди к `EPIC-070`.
 
 ## Правило
 

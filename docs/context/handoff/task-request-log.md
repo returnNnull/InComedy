@@ -11,12 +11,12 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 ## Current Active Request
 
 - `EPIC-068` is now `done`: пользователь явно подтвердил review после успешной targeted iOS verification и docs-only sync, поэтому live stage status foundation закрыт как принятый delivery slice.
-- `EPIC-069` is now `in_progress`: стартовал следующий `P0` epic — realtime/WebSocket delivery для live stage updates.
+- `EPIC-069` is now `awaiting_user_review`: ordered realtime/WebSocket delivery plan для live stage updates полностью выполнен, а следующий epic нельзя открывать до явного user confirmation.
 - Ordered plan для `EPIC-069` зафиксирован в `task-request-template/task-request-template-part-36.md`:
   - `TASK-084` — backend WebSocket live-event channel для lineup/live-stage updates. Status: `completed`.
   - `TASK-085` — shared/data realtime subscription contract для lineup live updates. Status: `completed`.
-  - `TASK-086` — Android/iOS realtime wiring и executable verification. Status: `in_progress` и является текущим active recovery checkpoint.
-- Текущий active recovery posture для `EPIC-069`: локальная commit boundary `TASK-085` закрыта текущим локальным commit-ом, active recovery переключён на `TASK-086/in_progress`.
+  - `TASK-086` — Android/iOS realtime wiring и executable verification. Status: `completed`.
+- Текущий active recovery posture для `EPIC-069`: локальная commit boundary `TASK-086` закрыта текущим локальным commit-ом, epic находится на review boundary `awaiting_user_review`, и нового product task-а до user confirmation нет.
 - Process guardrail sync: recovery больше не может переключаться на следующий active `TASK`, пока локальный commit предыдущей `completed`/`docs_only` подзадачи не создан. Если новая сессия видит dirty worktree в такой ситуации, она сначала закрывает commit boundary, а не продолжает новый task.
 - `TASK-074` is now `docs_only`: executor process rules were centralized in `docs/context/handoff/automation-executor-prompt.md`, related context/governance docs were synchronized, all `InComedy Executor` automation TOML prompts now reference that runbook instead of carrying divergent inline copies, the daily cycle limit is consistently documented as `run slots` with `AutomationState.run_slots_used_in_cycle`, legacy `awaiting_verification` / `partial` aliases are mapped to the current status model, the mandatory security-review step is now explicit in executor/handoff guidance, and the recorded verdict for this docs-only sync is `no security-impacting runtime surface change`.
 - `TASK-075` is now `docs_only`: the standalone bootstrap document was removed, its non-duplicated rules were folded into `docs/context/handoff/automation-executor-prompt.md`, `docs/context/handoff/context-protocol.md` became the only general cross-chat bootstrap checklist, and all repo/task/governance references were replaced accordingly; the recorded security verdict for this docs-only sync is `no security-impacting runtime surface change`.
@@ -30,7 +30,8 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 - `TASK-082` is now `docs_only`: process memory tightened so every repeated blocker must first check `engineering/issue-resolution-log.md`, and entry `I-001` now explicitly says that for iOS simulator / Xcode destination symptoms the first repair action is to launch Xcode or restart it if hung. The recorded security verdict for this docs-only process sync is `no security-impacting runtime surface change`.
 - `TASK-083` is now `docs_only`: docs/context structure refactored for faster bootstrap. Executor rules split into `executor-checklist.md` and `executor-policy.md`, `00-current-state.md` and `active-run.md` compressed to snapshot/recovery roles, delivery/verification history moved into `implementation-status.md` and `verification-memory.md`, `issue-resolution-log.md` gained a symptom index, and `product/next-epic-queue.md` now holds the next-epic order after review boundary. The recorded security verdict for this docs-only structure sync is `no security-impacting runtime surface change`.
 - `TASK-084` is now `completed`: backend realtime kickoff для `EPIC-069` доставил public `/ws/events/{eventId}` live channel с initial snapshot, audience-safe `lineup.changed` / `stage.current_changed` payload-ами, server-local in-memory broadcaster и fanout из approve/reorder/live-state mutation path-ов. Локальная commit boundary закрыта commit-ом `ecb5b96`, а forced rerun targeted server verification добавил явное regression coverage для rejection недоступного event channel-а. The recorded security verdict for this realtime backend slice is `published-public-event gating + peer rate limiting + audience-safe payload only`.
-- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-36.md`.
+- `TASK-086` is now `completed`: Android/iOS lineup surfaces now activate/deactivate the public live-event feed with platform lifecycle, shared lineup state consumes audience-safe realtime summaries, and organizer applications are refreshed after `application_approved` live updates. Verification is green across shared/data/Android Gradle checks, generic iOS simulator build, and targeted iOS lineup XCUITest on `iPhone 17 Pro (iOS 26.2)`. The recorded security verdict for this client realtime slice is `public read-only feed + lifecycle-scoped subscription + authenticated organizer refresh only on approval, without staff/private payload or new write surface`.
+- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-37.md`.
 
 ## Parts (Exact Order)
 
@@ -70,8 +71,9 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 34. `task-request-template/task-request-template-part-34.md` (EPIC-068 ordered subtask plan governance sync from 2026-03-25)
 35. `task-request-template/task-request-template-part-35.md` (EPIC-068 sandbox-bounded simulator repair verdict from 2026-03-25)
 36. `task-request-template/task-request-template-part-36.md` (EPIC-069 realtime/WebSocket delivery request and outcomes from 2026-03-25)
+37. `task-request-template/task-request-template-part-37.md` (EPIC-069 TASK-086 Android/iOS realtime wiring outcome from 2026-03-25)
 
 ## Append Rule
 
-- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-36.md`.
+- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-37.md`.
 - If the latest part grows above ~8,000 characters, create the next sequential part file, update this index, and continue appending there.

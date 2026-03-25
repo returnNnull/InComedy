@@ -2,6 +2,7 @@ package com.bam.incomedy.feature.lineup.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -190,6 +191,45 @@ class LineupManagementTabContentTest {
         assertEquals("event-1", updatedEventId)
         assertEquals("entry-2", updatedEntryId)
         assertEquals(LineupEntryStatus.ON_STAGE, updatedStatus)
+    }
+
+    /** Проверяет, что вкладка включает realtime feed при старте и выключает его при dispose. */
+    @Test
+    fun lifecycleActivationTogglesLiveUpdatesCallback() {
+        val activationEvents = mutableListOf<Boolean>()
+        val showLineup = mutableStateOf(true)
+
+        composeRule.setContent {
+            MaterialTheme {
+                if (showLineup.value) {
+                    Column(
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        LineupManagementTab(
+                            lineupBindings = LineupTabBindings(
+                                state = AndroidUiStateFactory.lineupState(),
+                                organizerEvents = AndroidUiStateFactory.eventState().events,
+                                onSetLiveUpdatesActive = { activationEvents += it },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertEquals(true, activationEvents.isNotEmpty())
+        assertEquals(true, activationEvents.all { it })
+
+        composeRule.runOnUiThread {
+            showLineup.value = false
+        }
+        composeRule.waitForIdle()
+
+        assertEquals(true, activationEvents.first())
+        assertEquals(false, activationEvents.last())
     }
 
     /** Поднимает вкладку в Material-теме для проверки UI-поведения. */

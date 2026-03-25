@@ -5,10 +5,13 @@ import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryOrderUpdate
 import com.bam.incomedy.domain.lineup.LineupEntryStatus
+import com.bam.incomedy.domain.lineup.LineupLiveEntry
+import com.bam.incomedy.domain.lineup.LineupLiveUpdate
 import com.bam.incomedy.domain.lineup.LineupManagementService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +41,15 @@ class LineupViewModel(
 
     /** Mutable backing state feature-а. */
     private val _state = MutableStateFlow(LineupState())
+
+    /** Хранит флаг platform lifecycle, который разрешает держать realtime feed активным. */
+    private var liveUpdatesActive: Boolean = false
+
+    /** Текущий event id для активной realtime-подписки. */
+    private var liveUpdatesEventId: String? = null
+
+    /** Активная realtime job для public live-event feed-а. */
+    private var liveUpdatesJob: Job? = null
 
     /** Публичный immutable state feature-а. */
     val state: StateFlow<LineupState> = _state.asStateFlow()
@@ -70,6 +82,9 @@ class LineupViewModel(
         if (eventId.isBlank()) {
             _state.update { it.copy(errorMessage = "Не выбран event для загрузки lineup context") }
             return
+        }
+        if (liveUpdatesEventId != null && liveUpdatesEventId != eventId) {
+            stopLiveUpdatesCollection()
         }
         scope.launch {
             val accessToken = requireAccessToken() ?: return@launch
@@ -116,6 +131,7 @@ class LineupViewModel(
                     errorMessage = null,
                 )
             }
+            ensureLiveUpdatesSubscription(eventId)
         }
     }
 
@@ -292,6 +308,20 @@ class LineupViewModel(
         _state.update { it.copy(errorMessage = null) }
     }
 
+    /** Включает или выключает runtime-подписку на public live updates для активного экрана. */
+    fun setLiveUpdatesActive(isActive: Boolean) {
+        liveUpdatesActive = isActive
+        if (!isActive) {
+            stopLiveUpdatesCollection()
+            return
+        }
+        val eventId = state.value.selectedEventId
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?: return
+        ensureLiveUpdatesSubscription(eventId)
+    }
+
     /** Возвращает текущий access token или пишет понятную ошибку в state. */
     private fun requireAccessToken(): String? {
         val accessToken = accessTokenProvider()
@@ -338,6 +368,96 @@ class LineupViewModel(
         }
     }
 
+    /** Запускает realtime feed только для активного platform lifecycle и выбранного события. */
+    private fun ensureLiveUpdatesSubscription(eventId: String) {
+        if (!liveUpdatesActive) return
+        if (liveUpdatesEventId == eventId && liveUpdatesJob?.isActive == true) return
+
+        stopLiveUpdatesCollection()
+        liveUpdatesEventId = eventId
+        liveUpdatesJob = scope.launch {
+            lineupManagementService.observeEventLiveUpdates(eventId).collect { update ->
+                if (update.eventId != eventId) return@collect
+                if (state.value.selectedEventId != eventId) return@collect
+
+                applyLiveUpdate(update)
+                if (update.reason == "application_approved") {
+                    refreshApplicationsAfterLiveApproval(eventId)
+                }
+            }
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (liveUpdatesJob === job) {
+                    liveUpdatesJob = null
+                }
+                if (liveUpdatesEventId == eventId) {
+                    liveUpdatesEventId = null
+                }
+            }
+        }
+    }
+
+    /** Останавливает realtime feed при уходе экрана со сцены или смене event context-а. */
+    private fun stopLiveUpdatesCollection() {
+        liveUpdatesJob?.cancel()
+        liveUpdatesJob = null
+        liveUpdatesEventId = null
+    }
+
+    /** Применяет audience-safe live payload к текущему organizer lineup state. */
+    private fun applyLiveUpdate(update: LineupLiveUpdate) {
+        _state.update { currentState ->
+            if (currentState.selectedEventId != update.eventId) {
+                return@update currentState
+            }
+
+            currentState.copy(
+                lineup = mergeLiveSummaryIntoLineup(
+                    eventId = update.eventId,
+                    occurredAtIso = update.occurredAtIso,
+                    existingEntries = currentState.lineup,
+                    liveEntries = update.summary.lineup,
+                ),
+                errorMessage = null,
+            )
+        }
+    }
+
+    /**
+     * При approval live channel знает про новый lineup entry, но organizer applications требуют
+     * обычный authenticated reload.
+     */
+    private suspend fun refreshApplicationsAfterLiveApproval(eventId: String) {
+        val accessToken = currentAccessToken() ?: return
+        lineupManagementService.listEventApplications(
+            accessToken = accessToken,
+            eventId = eventId,
+        ).fold(
+            onSuccess = { applications ->
+                _state.update { currentState ->
+                    if (currentState.selectedEventId != eventId) {
+                        return@update currentState
+                    }
+                    currentState.copy(
+                        applications = sortApplications(applications),
+                        errorMessage = null,
+                    )
+                }
+            },
+            onFailure = { error ->
+                _state.update { currentState ->
+                    if (currentState.selectedEventId != eventId) {
+                        return@update currentState
+                    }
+                    currentState.copy(
+                        errorMessage = error.message?.take(200)
+                            ?: "Не удалось синхронизировать заявки после live update",
+                    )
+                }
+            },
+        )
+    }
+
     /** Стабильно сортирует заявки по моменту изменения статуса и созданию. */
     private fun sortApplications(applications: List<ComedianApplication>): List<ComedianApplication> {
         return applications.sortedWith(
@@ -351,5 +471,48 @@ class LineupViewModel(
         return entries.sortedWith(
             compareBy<LineupEntry>({ it.orderIndex }, { it.createdAtIso }),
         )
+    }
+
+    /** Достает токен без записи ошибки в UI, когда это всего лишь best-effort синхронизация. */
+    private fun currentAccessToken(): String? {
+        return accessTokenProvider()
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+    }
+
+    /** Накладывает public live summary на organizer lineup, сохраняя уже известные поля записи. */
+    private fun mergeLiveSummaryIntoLineup(
+        eventId: String,
+        occurredAtIso: String,
+        existingEntries: List<LineupEntry>,
+        liveEntries: List<LineupLiveEntry>,
+    ): List<LineupEntry> {
+        val existingById = existingEntries.associateBy(LineupEntry::id)
+        val merged = liveEntries.map { liveEntry ->
+            val existing = existingById[liveEntry.id]
+            if (existing != null) {
+                existing.copy(
+                    comedianDisplayName = liveEntry.comedianDisplayName,
+                    orderIndex = liveEntry.orderIndex,
+                    status = liveEntry.status,
+                    updatedAtIso = occurredAtIso,
+                )
+            } else {
+                LineupEntry(
+                    id = liveEntry.id,
+                    eventId = eventId,
+                    comedianUserId = "",
+                    comedianDisplayName = liveEntry.comedianDisplayName,
+                    comedianUsername = null,
+                    applicationId = null,
+                    orderIndex = liveEntry.orderIndex,
+                    status = liveEntry.status,
+                    notes = null,
+                    createdAtIso = occurredAtIso,
+                    updatedAtIso = occurredAtIso,
+                )
+            }
+        }
+        return sortLineup(merged)
     }
 }
