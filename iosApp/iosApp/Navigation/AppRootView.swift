@@ -33,6 +33,10 @@ struct AppRootView: View {
     }
 }
 
-#Preview {
-    AppRootView()
+/// Preview-обертка корневого графа для Xcode canvas без macro-based `#Preview`.
+private struct AppRootView_Previews: PreviewProvider {
+    /// Возвращает базовую preview-конфигурацию корневого контейнера.
+    static var previews: some View {
+        AppRootView()
+    }
 }

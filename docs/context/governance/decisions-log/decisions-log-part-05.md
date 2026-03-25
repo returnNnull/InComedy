@@ -31,3 +31,27 @@
 - Decision: Verification, test harness, simulator/runtime, and analogous execution problems discovered while finishing an active task must be resolved inside that same task by default and must not be promoted into a separate blocker/task/epic unless they require explicit user confirmation, destructive or irreversible action, or work outside the allowed task boundary.
 - Rationale: Reclassifying every verification/runtime issue as a new blocker fragments delivery history, hides the real completion state of the active slice, and encourages unfinished work to accumulate across multiple pseudo-tasks even when the failure is tightly coupled to the current implementation.
 - Consequences: active context docs and handoff rules must treat these issues as part of the current task's completion path; such issues may keep the task in `partial`, but they should not trigger a new task selection by default; and future chats should continue the same epic/subtask until the terminal verification issue is resolved or a true external blocker is reached.
+
+## D-069
+
+- Date: 2026-03-25
+- Status: accepted
+- Decision: All scheduled `InComedy Executor` automations must use a dedicated repository runbook at `docs/context/handoff/automation-executor-prompt.md`, and new automation-driven implementation runs must not finish with `partial`; after bounded local repair attempts they must end either as a completed outcome or as a finished `docs_only` blocker verdict with evidence and the exact next action.
+- Rationale: The previous executor prompt was duplicated inline across multiple automation TOML files and had already drifted from the newer governance rules proposed in chat, especially around `partial` as a terminal result. Centralizing the executor runbook inside the repository reduces prompt drift, makes process changes reviewable in git, and gives future automations one canonical place to follow.
+- Consequences: `automation-executor-prompt.md` becomes the primary process source for executor automations; the automation TOML prompt should be shortened to a stable reference to that file; `00-current-state.md`, handoff docs, and quality rules must stay aligned with the runbook; and any legacy `partial` recovery state should be normalized the next time the same implementation task is resumed by automation.
+
+## D-070
+
+- Date: 2026-03-25
+- Status: accepted
+- Decision: The daily automation limit applies to run slots, not only to completed subtasks. `AutomationState` must track this through `run_slots_used_in_cycle`, and one automation launch always consumes one slot within the current cycle.
+- Rationale: The earlier wording around “10 completed subtasks” was ambiguous and could undercount actual daily executor usage, especially when a cycle included a legacy `partial` run or multiple bounded docs-only maintenance runs. The real operational limit is the number of launches available in the day, so the state field and runbook terminology must reflect launch slots directly.
+- Consequences: `automation-executor-prompt.md` and `00-current-state.md` must use `run_slots_used_in_cycle`; the 10-slot cap should be described as a limit on runnable subtask slots inside the cycle; and future planning should stop opening the 11th bounded step in the same cycle even if some previous steps were docs-only or historically partial.
+
+## D-071
+
+- Date: 2026-03-25
+- Status: accepted
+- Decision: Remove the standalone bootstrap document and keep its surviving rules in the canonical handoff sources: `docs/context/handoff/context-protocol.md` for general cross-chat guidance and `docs/context/handoff/automation-executor-prompt.md` for scheduled executor/automation-governance runs.
+- Rationale: The separate bootstrap document duplicated protocol and standing-rule content, which created another drift point on top of the newer repository-side executor runbook. Consolidating bootstrap guidance into the protocol plus the automation runbook reduces maintenance overhead, removes ambiguous source selection, and keeps future prompt/process changes reviewable in one place.
+- Consequences: the redundant bootstrap document should be deleted; existing references must be replaced with `context-protocol.md`, `automation-executor-prompt.md`, or neutral “bootstrap guidance” wording as appropriate; and `00-current-state.md`, README navigation, governance memory, and task history must be synchronized in the same change.

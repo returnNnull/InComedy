@@ -1,0 +1,15 @@
+# Session Log Part 20
+
+## 2026-03-25 13:19
+
+- Context: Automation продолжила тот же `EPIC-068` / `TASK-073` и выполнила ровно один bounded verification rerun на текущем host, не меняя product code и не выбирая новый epic/task.
+- Changes: Повторные `xcrun simctl list devices available`, `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -showdestinations` и targeted `xcodebuild ... test` для `iosAppUITests/iosAppUITests/testLineupTabShowsApplicationsAndReorderSurface` подтвердили тот же host-level blocker: `CoreSimulatorService connection became invalid`, simulator device support disabled, доступны только placeholder destinations, а целевой тест завершается code `70` с `Unable to find a device matching the provided destination specifier`. Обновлены `AutomationState` (`run_slots_used_in_cycle=6`, `last_run_result=docs_only`), recovery checkpoint, decision traceability и task memory; новый verdict этого запуска зафиксирован как finished docs-only blocker outcome для того же `TASK-073`. Security review verdict: security-impacting runtime surface не менялся.
+- Decisions: Новое governance decision не принималось. Подтверждены `D-067`, `D-068`, `D-069` и `D-070`: implementation scope не меняется, `TASK-073` остаётся активным, но текущий host трактуется как true external blocker для финального iOS verification.
+- Next: Ровно одна следующая подзадача не меняется: пере-запустить targeted iOS XCUITest verification для lineup live-stage UI на unrestricted host с рабочим `CoreSimulatorService`; новый epic/task не выбирать.
+
+## 2026-03-25 13:45
+
+- Context: Пользователь запросил переработать repo-side prompt для автоматизации: перенести surviving rules из отдельного bootstrap-документа в `automation-executor-prompt.md`, затем удалить сам лишний документ и заменить все ссылки на него.
+- Changes: Расширен `docs/context/handoff/automation-executor-prompt.md` постоянными bootstrap-правилами, которые раньше жили только в отдельном bootstrap message: formalized task intake через `task-request-template.md`, session-log discipline в формате `Context / Changes / Decisions / Next`, server diagnostics через dedicated runbook, explicit provider-confirmation rule, document split rule и уточнения по русскоязычным комментариям/structured logging. `docs/context/handoff/context-protocol.md` теперь содержит общий cross-chat bootstrap checklist без отдельного шаблонного файла; синхронизированы `docs/context/README.md`, `docs/context/00-current-state.md`, decision log, traceability, task history и исторические ссылки; лишний bootstrap-документ удалён. Security review verdict: изменена только docs/process guidance, security-impacting runtime surface не менялся.
+- Decisions: Принят `D-071`: отдельный bootstrap-document больше не поддерживается; общий handoff/bootstrap source теперь `context-protocol.md`, а executor-specific bootstrap/process rules живут в `automation-executor-prompt.md`.
+- Next: Продуктовый следующий шаг не меняется: вернуться к `TASK-073` и пере-запустить targeted iOS XCUITest verification для lineup live-stage UI на unrestricted host с рабочим `CoreSimulatorService`; новый epic/task не выбирать.

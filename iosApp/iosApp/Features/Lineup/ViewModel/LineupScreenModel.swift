@@ -24,6 +24,16 @@ final class LineupScreenModel: ObservableObject {
     /// Хранит верхнеуровневую безопасную ошибку feature-а.
     @Published var errorMessage: String?
 
+    /// Возвращает текущего комика на сцене из актуального lineup.
+    var currentPerformer: LineupEntryItem? {
+        lineup.first(where: { $0.statusKey == "on_stage" })
+    }
+
+    /// Возвращает ближайшего следующего комика из актуального lineup.
+    var nextUpPerformer: LineupEntryItem? {
+        lineup.first(where: { $0.statusKey == "up_next" })
+    }
+
     /// Bridge к общей lineup feature model.
     private let bridge: LineupBridge?
 
@@ -189,6 +199,40 @@ final class LineupScreenModel: ObservableObject {
         }
     }
 
+    /// Меняет live-stage статус конкретной записи lineup.
+    ///
+    /// - Parameters:
+    ///   - eventId: Идентификатор события.
+    ///   - entryId: Идентификатор записи lineup.
+    ///   - statusKey: Wire-ключ нового live-stage статуса.
+    func updateLineupEntryStatus(
+        eventId: String,
+        entryId: String,
+        statusKey: String
+    ) {
+        if let bridge {
+            bridge.updateLineupEntryStatus(
+                eventId: eventId,
+                entryId: entryId,
+                statusKey: statusKey
+            )
+            return
+        }
+
+        lineup = lineup.map { item in
+            if item.id == entryId {
+                return item.withStatusKey(statusKey)
+            }
+            if statusKey == "on_stage", item.statusKey == "on_stage" {
+                return item.withStatusKey("draft")
+            }
+            if statusKey == "up_next", item.statusKey == "up_next" {
+                return item.withStatusKey("draft")
+            }
+            return item
+        }
+    }
+
     /// Очищает текущую lineup error.
     func clearError() {
         if let bridge {
@@ -306,7 +350,7 @@ struct LineupScreenFixture {
                     comedianUsername: "smile",
                     applicationId: "application-approved",
                     orderIndex: 1,
-                    statusKey: "draft",
+                    statusKey: "on_stage",
                     notes: nil,
                     createdAtIso: "2026-03-23T01:10:00+03:00",
                     updatedAtIso: "2026-03-23T01:10:00+03:00"
@@ -319,7 +363,7 @@ struct LineupScreenFixture {
                     comedianUsername: "mset",
                     applicationId: "application-approved-2",
                     orderIndex: 2,
-                    statusKey: "draft",
+                    statusKey: "up_next",
                     notes: nil,
                     createdAtIso: "2026-03-23T01:20:00+03:00",
                     updatedAtIso: "2026-03-23T01:20:00+03:00"
@@ -501,6 +545,25 @@ struct LineupEntryItem: Identifiable {
     ///
     /// - Parameter orderIndex: Новый order index.
     func withOrderIndex(_ orderIndex: Int) -> LineupEntryItem {
+        LineupEntryItem(
+            id: id,
+            eventId: eventId,
+            comedianUserId: comedianUserId,
+            comedianDisplayName: comedianDisplayName,
+            comedianUsername: comedianUsername,
+            applicationId: applicationId,
+            orderIndex: orderIndex,
+            statusKey: statusKey,
+            notes: notes,
+            createdAtIso: createdAtIso,
+            updatedAtIso: updatedAtIso
+        )
+    }
+
+    /// Возвращает копию entry с обновленным live-stage статусом.
+    ///
+    /// - Parameter statusKey: Новый wire-статус.
+    func withStatusKey(_ statusKey: String) -> LineupEntryItem {
         LineupEntryItem(
             id: id,
             eventId: eventId,

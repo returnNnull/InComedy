@@ -28,9 +28,9 @@
 
 - Date: 2026-02-23
 - Status: accepted
-- Decision: Keep `chat-handoff-template.md` auto-synced with `context-protocol.md`.
+- Decision: Keep repository handoff/bootstrap guidance auto-synced with `context-protocol.md`.
 - Rationale: Prevents transfer-template drift when protocol rules evolve.
-- Consequences: Any protocol change affecting handoff behavior must include template update in the same change.
+- Consequences: Any protocol change affecting handoff behavior must include synchronous updates to the documents that surface those bootstrap rules.
 
 ## D-020
 

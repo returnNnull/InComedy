@@ -14,6 +14,10 @@ struct AuthProviderLinkButton: View {
     }
 }
 
-#Preview {
-    AuthProviderLinkButton(provider: .vk, isLoading: false, onTap: {})
+/// Preview-обертка провайдерной кнопки без macro-based `#Preview`.
+private struct AuthProviderLinkButton_Previews: PreviewProvider {
+    /// Возвращает preview-конфигурацию кнопки VK-входа.
+    static var previews: some View {
+        AuthProviderLinkButton(provider: .vk, isLoading: false, onTap: {})
+    }
 }

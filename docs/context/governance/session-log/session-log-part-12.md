@@ -16,7 +16,7 @@
 
 ## 2026-03-16 20:14
 
-- Context: A new chat was started from the handoff template, and the first request was to synchronize repository context before any further implementation work.
+- Context: A new chat was started from the context bootstrap checklist, and the first request was to synchronize repository context before any further implementation work.
 - Changes: Read the required product, engineering, and governance context documents in the requested order; followed the split-document indexes to the latest `decisions-log`, `session-log`, and `decision-traceability` parts; extracted the active decision head, current `P0` baseline, current governance `Next`, and key decision execution statuses; and formalized this sync task in the task-request template history.
 - Decisions: Treat the current repository baseline as unchanged during sync: `D-061` is the latest accepted decision, the active auth baseline remains `D-059` plus `D-060`, and no new product or architecture decisions were introduced in this session. Implementation should continue only after the next user task is stated against this synced baseline.
 - Next: Use the synchronized context as the starting point for the next task; if new information conflicts with `docs/context/*`, update the relevant docs first, then code. The latest carried-over operational follow-up from prior work remains an optional live Android VK smoke check after the next server deploy.

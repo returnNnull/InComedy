@@ -147,6 +147,7 @@ fun MainScreen(
             onSubmitApplication = lineupViewModel::submitApplication,
             onUpdateApplicationStatus = lineupViewModel::updateApplicationStatus,
             onReorderLineup = lineupViewModel::reorderLineup,
+            onUpdateLineupEntryStatus = lineupViewModel::updateLineupEntryStatus,
             onClearError = lineupViewModel::clearError,
         ),
         ticketingBindings = TicketingTabBindings(

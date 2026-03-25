@@ -10,6 +10,10 @@ struct AuthGraphView: View {
     }
 }
 
-#Preview {
-    AuthGraphView(onAuthorized: {})
+/// Preview-обертка auth graph для Xcode canvas без macro-based `#Preview`.
+private struct AuthGraphView_Previews: PreviewProvider {
+    /// Возвращает preview-конфигурацию auth navigation stack.
+    static var previews: some View {
+        AuthGraphView(onAuthorized: {})
+    }
 }

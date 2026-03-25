@@ -23,7 +23,7 @@
 
 ## 2026-03-16 22:27
 
-- Context: A new chat was started from the handoff template, and the user requested the mandatory context synchronization before any further implementation work.
+- Context: A new chat was started from the context bootstrap checklist, and the user requested the mandatory context synchronization before any further implementation work.
 - Changes: Read the source-of-truth product, engineering, backlog, decisions, session-memory, and decision-traceability documents in the required order; followed split indexes into the latest governance parts; confirmed the latest decision id, the current `P0` product slice, the latest operational `Next`, and the status of the key recent decisions; and formalized this chat start in a new `task-request-template` part because the previous part had already exceeded the context-size threshold.
 - Decisions: Treat this chat as context-sync-only until the user provides the next concrete implementation task; keep `D-059`, `D-060`, and `D-061` as the active baseline decisions; and distinguish the product backlog's current `P0` slice from the separate technical cleanup `Next` recorded in the latest session entry.
 - Next: Wait for the next concrete task, formalize it in `task-request-template`, and update the relevant `docs/context/*` files before code if the scope, decisions, or rules change.

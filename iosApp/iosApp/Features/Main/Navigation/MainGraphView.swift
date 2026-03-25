@@ -765,6 +765,10 @@ private extension String {
     }
 }
 
-#Preview {
-    MainGraphView(onSignOut: {}, fixture: .uiTestMain)
+/// Preview-обертка main graph для Xcode canvas без macro-based `#Preview`.
+private struct MainGraphView_Previews: PreviewProvider {
+    /// Возвращает preview-конфигурацию главного графа на UI-test fixture.
+    static var previews: some View {
+        MainGraphView(onSignOut: {}, fixture: .uiTestMain)
+    }
 }

@@ -5,13 +5,17 @@ This protocol defines how to use and transfer project context between chats.
 ## Source of Truth
 
 - The folder `docs/context/` is the single source of truth for product and engineering context.
+- `handoff/automation-executor-prompt.md` is the mandatory runbook for scheduled `InComedy Executor` automations; automation TOML prompts should reference it instead of duplicating long process rules.
 - Every new chat must start from `active-run.md` when it exists, then continue from `../00-current-state.md`.
 - If chat discussion conflicts with these docs, update docs first, then continue implementation.
 - Verification/test-runtime issues found while finishing the active task stay inside that same task by default; do not split them into a new task or blocker unless an external/user-confirmation boundary is actually reached.
+- Mandatory security review remains part of DoD for every meaningful task, including automation-delivered and docs-only governance/process sync work.
+- Legacy `awaiting_verification` / `partial` labels in older memory are recovery aliases only: interpret them through the current status model and normalize them when the same task is resumed.
 
 ## Read Order (for any new chat/session)
 
 0. `active-run.md` when it exists, then compare it with `git status` and the current branch before choosing work
+0a. `automation-executor-prompt.md` for scheduled `InComedy Executor` automation runs or when the task is to maintain automation governance/prompt rules
 1. `../00-current-state.md`
 2. `../product/product-brief.md`
 3. `../product/backlog.md`
@@ -25,6 +29,18 @@ This protocol defines how to use and transfer project context between chats.
 11. `../governance/session-log.md` + latest part referenced by `../00-current-state.md`
 12. `../governance/decision-traceability.md` + latest part referenced by `../00-current-state.md`
 13. `../../standup-platform-ru/README.md` and relevant detailed spec files when the task needs product/domain clarification
+
+## Standing Bootstrap Rules
+
+Any cross-chat handoff/bootstrap message must preserve these rules up front:
+
+- `docs/context/*` stays the primary source of truth; if new input conflicts with the docs, update docs first, then continue implementation.
+- New and materially changed repository code comments must stay in Russian and explain responsibility/flow rather than restating syntax.
+- Backend production-significant flows must use structured logging through the sanitized diagnostics system; raw host/container logs are a fallback path, not the primary observability layer.
+- External auth/payment/push/PSP providers may be implemented in code, but they become active/default/confirmed only after explicit user confirmation; assistant inference, existing code, and config/examples do not count as approval.
+- Every meaningful work session must leave a concise sanitized `Context / Changes / Decisions / Next` entry in `../governance/session-log.md`; raw transcript dumping and secrets are forbidden.
+- Every meaningful task still requires a proportional security review; docs/process-only sync must explicitly record a zero-impact verdict when no security surface changed.
+- Server diagnostics or production triage must use `../engineering/server-diagnostics-runbook.md`.
 
 ## Update Policy
 
@@ -69,15 +85,14 @@ When moving to another chat, share:
 2. Rule: "`docs/context/*` is the primary source of truth."
 3. Path to `active-run.md` when it exists.
 4. Path to `../00-current-state.md`.
-5. Path to `chat-handoff-template.md`.
-6. Latest relevant part files from decisions/session/traceability referenced by `../00-current-state.md`.
-7. Current `P0` focus and next action from `../00-current-state.md`.
-
-Ready-to-use message template:
-- `chat-handoff-template.md`
+5. Path to `context-protocol.md`.
+6. Path to `automation-executor-prompt.md` when the task is a scheduled executor run or automation-governance/prompt maintenance work.
+7. Latest relevant part files from decisions/session/traceability referenced by `../00-current-state.md`.
+8. Current `P0` focus, next action, and active cross-cutting constraints from `../00-current-state.md`.
 
 Template sync rule:
-- If read order, responsibilities, or handoff checks change in this protocol, `chat-handoff-template.md` and `../00-current-state.md` must be updated in the same change when applicable.
+- If read order, bootstrap rules, responsibilities, or handoff checks change in this protocol, `../00-current-state.md`, `../README.md`, and any affected governance references must be updated in the same change when applicable.
+- If the automation runbook changes, keep `automation-executor-prompt.md`, `../00-current-state.md`, and the actual `InComedy Executor` automation TOML prompts aligned in the same work block.
 
 ## Definition of Context Sync
 

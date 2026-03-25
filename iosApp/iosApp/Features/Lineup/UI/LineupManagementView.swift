@@ -90,6 +90,13 @@ struct LineupManagementView: View {
 
                 Divider()
 
+                LiveStageSummarySection(
+                    currentPerformerName: model.currentPerformer?.comedianDisplayName,
+                    nextUpPerformerName: model.nextUpPerformer?.comedianDisplayName
+                )
+
+                Divider()
+
                 LineupSection(
                     entries: model.lineup,
                     eventTitleById: Dictionary(uniqueKeysWithValues: events.map { ($0.id, $0.title) }),
@@ -102,6 +109,15 @@ struct LineupManagementView: View {
                             eventId: eventId,
                             entryId: entryId,
                             delta: delta
+                        )
+                    },
+                    onUpdateStatus: { entryId, statusKey in
+                        let eventId = model.selectedEventId ?? selectedOrganizerEventId
+                        guard !eventId.isEmpty else { return }
+                        model.updateLineupEntryStatus(
+                            eventId: eventId,
+                            entryId: entryId,
+                            statusKey: statusKey
                         )
                     }
                 )
@@ -124,6 +140,30 @@ struct LineupManagementView: View {
         if submitEventId.isEmpty {
             submitEventId = firstEventId
         }
+    }
+}
+
+/// Сводка текущего и следующего комика для live-stage surface.
+private struct LiveStageSummarySection: View {
+    /// Имя текущего комика на сцене.
+    let currentPerformerName: String?
+
+    /// Имя ближайшего следующего комика.
+    let nextUpPerformerName: String?
+
+    /// Отрисовывает audience/organizer summary на основе текущего lineup state.
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Live stage")
+                .font(.headline)
+            Text(currentPerformerName.map { "Сейчас на сцене: \($0)" } ?? "Сейчас на сцене: еще не выбран")
+                .accessibilityIdentifier("lineup.live.current")
+            Text(nextUpPerformerName.map { "Следующий: \($0)" } ?? "Следующий: еще не выбран")
+                .foregroundColor(.secondary)
+                .accessibilityIdentifier("lineup.live.next")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("lineup.live")
     }
 }
 
@@ -326,6 +366,9 @@ private struct LineupSection: View {
     /// Колбэк смещения записи вверх или вниз.
     let onMoveEntry: (String, Int) -> Void
 
+    /// Колбэк смены live-stage статуса записи.
+    let onUpdateStatus: (String, String) -> Void
+
     /// Отрисовывает список lineup entries или пустое состояние.
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -348,7 +391,10 @@ private struct LineupSection: View {
                         canMoveDown: index < entries.count - 1,
                         isBusy: isBusy,
                         onMoveUp: { onMoveEntry(entry.id, -1) },
-                        onMoveDown: { onMoveEntry(entry.id, +1) }
+                        onMoveDown: { onMoveEntry(entry.id, +1) },
+                        onUpdateStatus: { statusKey in
+                            onUpdateStatus(entry.id, statusKey)
+                        }
                     )
                 }
             }
@@ -379,6 +425,9 @@ private struct LineupEntryCard: View {
     /// Колбэк смещения вниз.
     let onMoveDown: () -> Void
 
+    /// Колбэк смены live-stage статуса.
+    let onUpdateStatus: (String) -> Void
+
     /// Отрисовывает карточку lineup entry.
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -402,6 +451,22 @@ private struct LineupEntryCard: View {
                 .buttonStyle(.bordered)
                 .disabled(!canMoveDown || isBusy)
                 .accessibilityIdentifier("lineup.entry.moveDown.\(entry.id)")
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(liveStageActions, id: \.statusKey) { action in
+                        Button(action.title) {
+                            onUpdateStatus(action.statusKey)
+                        }
+                        .buttonStyle(
+                            EventSelectionButtonStyle(
+                                isSelected: entry.statusKey == action.statusKey
+                            )
+                        )
+                        .disabled(isBusy)
+                        .accessibilityIdentifier("lineup.entry.statusAction.\(entry.id).\(action.statusKey)")
+                    }
+                }
             }
         }
         .padding(12)
@@ -474,6 +539,25 @@ private let reviewActions: [ReviewAction] = [
     ReviewAction(statusKey: "rejected", title: "Reject")
 ]
 
+/// Описание доступного live-stage action.
+private struct LiveStageAction {
+    /// Wire-ключ целевого live-stage статуса.
+    let statusKey: String
+
+    /// Подпись action-кнопки.
+    let title: String
+}
+
+/// Список live-stage action-кнопок текущего organizer MVP slice-а.
+private let liveStageActions: [LiveStageAction] = [
+    LiveStageAction(statusKey: "draft", title: "В draft"),
+    LiveStageAction(statusKey: "up_next", title: "Следующий"),
+    LiveStageAction(statusKey: "on_stage", title: "На сцене"),
+    LiveStageAction(statusKey: "done", title: "Выступил"),
+    LiveStageAction(statusKey: "delayed", title: "Задержка"),
+    LiveStageAction(statusKey: "dropped", title: "Снят")
+]
+
 /// Возвращает подпись review-статуса заявки.
 private func applicationStatusTitle(_ statusKey: String) -> String {
     switch statusKey {
@@ -499,6 +583,16 @@ private func lineupStatusTitle(_ statusKey: String) -> String {
     switch statusKey {
     case "draft":
         return "Draft"
+    case "up_next":
+        return "Следующий"
+    case "on_stage":
+        return "На сцене"
+    case "done":
+        return "Выступил"
+    case "delayed":
+        return "Задержан"
+    case "dropped":
+        return "Снят"
     default:
         return statusKey
     }

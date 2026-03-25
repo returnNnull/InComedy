@@ -6,6 +6,7 @@ This folder stores the compact operational context for product, engineering, gov
 
 - For every new chat/session, read `00-current-state.md` first.
 - Then follow the ordered onboarding path in `handoff/context-protocol.md`.
+- For scheduled executor automations or automation-governance/prompt work, also read `handoff/automation-executor-prompt.md`.
 - Treat `docs/context/*` as the primary source of truth for ongoing work.
 - Use `../standup-platform-ru/*` as the detailed target-state specification layer when a task needs deeper domain/product clarification.
 
@@ -15,7 +16,7 @@ This folder stores the compact operational context for product, engineering, gov
 - `product/`: product scope, priorities, glossary, NFR, and risks.
 - `engineering/`: stack, architecture, quality rules, tests, API contracts, and operational runbooks.
 - `governance/`: decisions, traceability, and rolling session memory.
-- `handoff/`: cross-chat sync protocol, chat bootstrap message, active task template, and historical task-request log.
+- `handoff/`: cross-chat sync protocol, executor automation runbook, active task template, and historical task-request log.
 - `../standup-platform-ru/`: detailed Russian-language product and technical specification package for the current standup-event platform direction.
 
 ## Key Files
@@ -36,7 +37,7 @@ This folder stores the compact operational context for product, engineering, gov
 - `governance/decision-traceability.md`: split mapping from decisions to code and tests.
 - `governance/context-integrity-checklist.md`: pre-merge context consistency checks.
 - `handoff/context-protocol.md`: standard for reading, updating, and handing off context across chats.
-- `handoff/chat-handoff-template.md`: copy-paste message to bootstrap a new chat with full context sync.
+- `handoff/automation-executor-prompt.md`: canonical runbook for scheduled `InComedy Executor` automations and automation-governance prompt rules.
 - `handoff/task-request-template.md`: active reusable structure for new major tasks.
 - `handoff/task-request-log.md`: historical formalized requests and implementation outcomes.
 - `../standup-platform-ru/README.md`: entry point to the full Russian product/technical handoff package.
@@ -64,7 +65,7 @@ This folder stores the compact operational context for product, engineering, gov
   - next action
 - If any context file becomes too large (about 8,000+ characters), split it using the rule in `handoff/context-protocol.md`.
 - Store split parts in a dedicated subfolder named after the index file (example: `session-log/session-log-part-01.md`).
-- If `handoff/context-protocol.md` changes, sync `handoff/chat-handoff-template.md` in the same update.
+- If `handoff/context-protocol.md` or `handoff/automation-executor-prompt.md` changes, sync `00-current-state.md`, relevant README/navigation references, and governance docs in the same update.
 
 ## Operating Rule
 

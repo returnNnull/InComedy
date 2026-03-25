@@ -40,7 +40,7 @@
 
 - Added `D-065` to record that assistant inference, existing code, and example config/docs do not count as user approval of an external provider.
 - Rewrote `00-current-state.md` so the active `P0` ticketing focus is provider-agnostic again and the next bounded step requires explicit user confirmation before any provider-specific PSP path is treated as selected.
-- Updated tooling, architecture, context protocol, handoff template, integrity checklist, README, and env examples so YooKassa is documented only as an unapproved disabled-by-default candidate.
+- Updated tooling, architecture, context protocol, bootstrap guidance, integrity checklist, README, and env examples so YooKassa is documented only as an unapproved disabled-by-default candidate.
 - Split rolling governance/task memory forward into `decisions-log-part-05.md`, `session-log-part-17.md`, and `task-request-template-part-28.md`.
 
 ## Verification

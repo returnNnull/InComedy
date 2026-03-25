@@ -13,7 +13,7 @@ ADR-style decision register for product and engineering governance.
 2. `decisions-log/decisions-log-part-02.md` (`D-016` -> `D-044`)
 3. `decisions-log/decisions-log-part-03.md` (`D-045` -> `D-054`)
 4. `decisions-log/decisions-log-part-04.md` (`D-055` -> `D-064`)
-5. `decisions-log/decisions-log-part-05.md` (`D-065` -> present)
+5. `decisions-log/decisions-log-part-05.md` (`D-065` -> `D-071` and later entries)
 
 ## Append Rule
 

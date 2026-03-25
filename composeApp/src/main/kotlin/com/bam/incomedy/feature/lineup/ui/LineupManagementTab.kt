@@ -33,6 +33,7 @@ import com.bam.incomedy.domain.event.OrganizerEvent
 import com.bam.incomedy.domain.lineup.ComedianApplication
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
+import com.bam.incomedy.domain.lineup.LineupEntryStatus
 import com.bam.incomedy.feature.lineup.LineupState
 
 /**
@@ -54,6 +55,8 @@ internal data class LineupTabBindings(
     val onUpdateApplicationStatus: (String, String, ComedianApplicationStatus) -> Unit = { _, _, _ -> },
     /** Команда перестановки полного lineup списка. */
     val onReorderLineup: (String, List<String>) -> Unit = { _, _ -> },
+    /** Команда смены live-stage статуса записи lineup. */
+    val onUpdateLineupEntryStatus: (String, String, LineupEntryStatus) -> Unit = { _, _, _ -> },
     /** Команда очистки верхнеуровневой lineup-ошибки. */
     val onClearError: () -> Unit = {},
 )
@@ -186,6 +189,13 @@ internal fun LineupManagementTab(
 
         HorizontalDivider()
 
+        LiveStageSummarySection(
+            currentPerformer = lineupState.currentPerformer,
+            nextUpPerformer = lineupState.nextUpPerformer,
+        )
+
+        HorizontalDivider()
+
         LineupListSection(
             entries = lineupState.lineup,
             eventTitleById = eventTitleById,
@@ -201,6 +211,46 @@ internal fun LineupManagementTab(
                 ) ?: return@LineupListSection
                 lineupBindings.onReorderLineup(eventId, reorderedIds)
             },
+            onUpdateStatus = { entryId, status ->
+                val eventId = lineupState.selectedEventId ?: selectedOrganizerEventId
+                if (eventId.isBlank()) return@LineupListSection
+                lineupBindings.onUpdateLineupEntryStatus(eventId, entryId, status)
+            },
+        )
+    }
+}
+
+/**
+ * Сводка live-stage состояния для organizer и audience сценариев внутри lineup surface.
+ *
+ * @property currentPerformer Текущий комик со статусом `on_stage`.
+ * @property nextUpPerformer Ближайший комик со статусом `up_next`.
+ */
+@Composable
+private fun LiveStageSummarySection(
+    currentPerformer: LineupEntry?,
+    nextUpPerformer: LineupEntry?,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(LineupScreenTags.LIVE_SUMMARY_SECTION),
+    ) {
+        Text(
+            text = "Live stage",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = currentPerformer?.comedianDisplayName?.let { "Сейчас на сцене: $it" } ?: "Сейчас на сцене: еще не выбран",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(LineupScreenTags.CURRENT_PERFORMER),
+        )
+        Text(
+            text = nextUpPerformer?.comedianDisplayName?.let { "Следующий: $it" } ?: "Следующий: еще не выбран",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(LineupScreenTags.NEXT_UP_PERFORMER),
         )
     }
 }
@@ -457,6 +507,7 @@ private fun ApplicationCard(
  * @property selectedEventId Идентификатор события, к которому относится reorder.
  * @property isBusy Признак активной мутации.
  * @property onMoveEntry Колбэк смещения entry на одну позицию.
+ * @property onUpdateStatus Колбэк смены live-stage статуса.
  */
 @Composable
 private fun LineupListSection(
@@ -465,6 +516,7 @@ private fun LineupListSection(
     selectedEventId: String,
     isBusy: Boolean,
     onMoveEntry: (String, Int) -> Unit,
+    onUpdateStatus: (String, LineupEntryStatus) -> Unit,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -498,6 +550,7 @@ private fun LineupListSection(
                 isBusy = isBusy,
                 onMoveUp = { onMoveEntry(entry.id, -1) },
                 onMoveDown = { onMoveEntry(entry.id, +1) },
+                onUpdateStatus = { status -> onUpdateStatus(entry.id, status) },
             )
         }
     }
@@ -513,6 +566,7 @@ private fun LineupListSection(
  * @property isBusy Признак активной мутации.
  * @property onMoveUp Колбэк перемещения вверх.
  * @property onMoveDown Колбэк перемещения вниз.
+ * @property onUpdateStatus Колбэк смены live-stage статуса.
  */
 @Composable
 private fun LineupEntryCard(
@@ -523,6 +577,7 @@ private fun LineupEntryCard(
     isBusy: Boolean,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onUpdateStatus: (LineupEntryStatus) -> Unit,
 ) {
     Surface(
         tonalElevation = 1.dp,
@@ -565,6 +620,20 @@ private fun LineupEntryCard(
                     modifier = Modifier.testTag("${LineupScreenTags.LINEUP_MOVE_DOWN_PREFIX}${entry.id}"),
                 ) {
                     Text("Ниже")
+                }
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                LIVE_STAGE_ACTIONS.forEach { action ->
+                    SelectionButton(
+                        title = action.title,
+                        isSelected = entry.status == action.status,
+                        onClick = { onUpdateStatus(action.status) },
+                        enabled = !isBusy,
+                        tag = "${LineupScreenTags.LINEUP_STATUS_ACTION_PREFIX}${entry.id}.${action.status.wireName}",
+                    )
                 }
             }
         }
@@ -698,6 +767,11 @@ private fun applicationStatusTitle(status: ComedianApplicationStatus): String {
 private fun lineupStatusTitle(statusKey: String): String {
     return when (statusKey) {
         "draft" -> "Draft"
+        "up_next" -> "Следующий"
+        "on_stage" -> "На сцене"
+        "done" -> "Выступил"
+        "delayed" -> "Задержан"
+        "dropped" -> "Снят"
         else -> statusKey
     }
 }
@@ -710,6 +784,17 @@ private fun lineupStatusTitle(statusKey: String): String {
  */
 private data class ReviewAction(
     val status: ComedianApplicationStatus,
+    val title: String,
+)
+
+/**
+ * Описание live-stage action-кнопки organizer-а.
+ *
+ * @property status Целевой live-stage статус.
+ * @property title Подпись кнопки.
+ */
+private data class LiveStageAction(
+    val status: LineupEntryStatus,
     val title: String,
 )
 
@@ -736,6 +821,36 @@ private val REVIEW_ACTIONS = listOf(
 )
 
 /**
+ * Список доступных live-stage мутаций для organizer live controls.
+ */
+private val LIVE_STAGE_ACTIONS = listOf(
+    LiveStageAction(
+        status = LineupEntryStatus.DRAFT,
+        title = "В draft",
+    ),
+    LiveStageAction(
+        status = LineupEntryStatus.UP_NEXT,
+        title = "Следующий",
+    ),
+    LiveStageAction(
+        status = LineupEntryStatus.ON_STAGE,
+        title = "На сцене",
+    ),
+    LiveStageAction(
+        status = LineupEntryStatus.DONE,
+        title = "Выступил",
+    ),
+    LiveStageAction(
+        status = LineupEntryStatus.DELAYED,
+        title = "Задержка",
+    ),
+    LiveStageAction(
+        status = LineupEntryStatus.DROPPED,
+        title = "Снят",
+    ),
+)
+
+/**
  * Набор тегов, по которым UI-тесты находят ключевые элементы lineup surface.
  */
 object LineupScreenTags {
@@ -753,6 +868,15 @@ object LineupScreenTags {
 
     /** Тег счетчика lineup entries. */
     const val LINEUP_COUNT = "lineup.count.entries"
+
+    /** Тег секции live-stage summary. */
+    const val LIVE_SUMMARY_SECTION = "lineup.live"
+
+    /** Тег текста с текущим комиком на сцене. */
+    const val CURRENT_PERFORMER = "lineup.live.current"
+
+    /** Тег текста с ближайшим следующим комиком. */
+    const val NEXT_UP_PERFORMER = "lineup.live.next"
 
     /** Тег organizer context секции. */
     const val ORGANIZER_SECTION = "lineup.organizer"
@@ -804,6 +928,9 @@ object LineupScreenTags {
 
     /** Префикс тегов текста статуса lineup entry. */
     const val LINEUP_STATUS_PREFIX = "lineup.entry.status."
+
+    /** Префикс тегов live-stage action кнопок. */
+    const val LINEUP_STATUS_ACTION_PREFIX = "lineup.entry.statusAction."
 
     /** Префикс тегов кнопок смещения вверх. */
     const val LINEUP_MOVE_UP_PREFIX = "lineup.entry.moveUp."

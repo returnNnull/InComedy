@@ -56,14 +56,14 @@ Entry template:
 ## 2026-02-23 12:03
 
 - Context: Need a practical copy-paste message for quick chat bootstrap.
-- Changes: Added `chat-handoff-template.md` and linked it in context docs.
+- Changes: Added explicit bootstrap guidance for quick chat handoff and linked it in context docs.
 - Decisions: Standardized handoff message format for all new chat threads.
-- Next: Use the template as default when opening new conversation threads.
+- Next: Use the bootstrap guidance as default when opening new conversation threads.
 
 ## 2026-02-23 12:04
 
 - Context: Need context-size control to prevent oversized handoff payloads.
-- Changes: Added document split rule to `context-protocol.md`, `README.md`, and handoff template.
+- Changes: Added document split rule to `context-protocol.md`, `README.md`, and the bootstrap guidance.
 - Decisions: Accepted split policy in `D-009` (index + part files).
 - Next: Apply splitting immediately when any context file exceeds the threshold.
 

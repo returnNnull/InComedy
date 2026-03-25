@@ -17,13 +17,13 @@
 ## 2026-03-15 01:28
 
 - Context: The user asked to make two collaboration rules explicit for all future work and new chats: repository code must be commented, and server-side logging must be implemented through the existing diagnostics system rather than ad-hoc raw logs.
-- Changes: Strengthened `engineering-standards.md` and `quality-rules.md` to make comment coverage and diagnostics-backed backend observability explicit completion requirements, and updated `chat-handoff-template.md` so new chats inherit both rules before implementation starts.
+- Changes: Strengthened `engineering-standards.md` and `quality-rules.md` to make comment coverage and diagnostics-backed backend observability explicit completion requirements, and updated the bootstrap guidance so new chats inherit both rules before implementation starts.
 - Decisions: Treat comment compliance as a mandatory part of delivered code quality for new or materially changed code, and treat sanitized diagnostics instrumentation as the primary server observability path for production-significant backend flows.
 - Next: Apply these rules in subsequent code changes, especially when touching backend auth/payment/operations flows or introducing new server troubleshooting instrumentation.
 
 ## 2026-03-15 01:59
 
-- Context: A new chat started from the handoff template, and the user requested mandatory repository context synchronization before any implementation work.
+- Context: A new chat started from the context bootstrap checklist, and the user requested mandatory repository context synchronization before any implementation work.
 - Changes: Re-read the ordered product, engineering, and governance context documents, including split indexes plus the latest decision/session/traceability parts, and extracted the current active decision, P0 priority, session-log next actions, and decision execution statuses.
 - Decisions: Treat `D-059` as the active auth decision baseline, keep diagnostics-backed backend logging and mandatory code comments as standing implementation rules, and avoid starting code changes before this sync is explicitly confirmed.
 - Next: Use this synchronized state as the baseline for the next user task; when a concrete task arrives, formalize it in the task-request template and update context docs in the same change if scope or rules move.

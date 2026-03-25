@@ -9,7 +9,8 @@ This document defines mandatory delivery and quality controls for InComedy.
 - If the task changes the latest decision, current `P0` focus, next step, or active cross-cutting constraints, `docs/context/00-current-state.md` must be updated in the same change.
 - CI checks for the changed scope must pass before merge.
 - Mandatory security review is part of DoD for every task, even if the change is not explicitly security-related.
-- Verification, test harness, simulator/runtime, and analogous execution issues discovered while completing the current task are part of that same task by default; they may keep the task `partial`, but they must not be reclassified as a separate blocker/task/epic unless a true external blocker or explicit user decision boundary is reached.
+- Verification, test harness, simulator/runtime, and analogous execution issues discovered while completing the current task are part of that same task by default; they must not be reclassified as a separate blocker/task/epic unless a true external blocker or explicit user decision boundary is reached.
+- New automation-driven implementation runs must not end with `partial`; after bounded local repair attempts, the run must finish either with a completed outcome or with a finished `docs_only` blocker record that states the exact external blocker, evidence, and next action.
 
 ## Error Handling
 
@@ -88,6 +89,7 @@ This document defines mandatory delivery and quality controls for InComedy.
   - which decisions were taken,
   - what remains next.
 - `docs/context/handoff/task-request-template.md` should stay a reusable template only, while historical formalized requests and outcomes belong in `docs/context/handoff/task-request-log.md`.
+- Scheduled `InComedy Executor` runs must follow `docs/context/handoff/automation-executor-prompt.md`, and automation TOML prompts should link to that document instead of carrying a divergent inline copy of the same rules.
 - This trace must be concise enough to scan quickly, but specific enough that a later chat can understand the work trajectory without replaying the full conversation.
 
 ## Security and Privacy

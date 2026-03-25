@@ -11,8 +11,10 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 ## Current Active Request
 
 - `EPIC-068` remains active; `TASK-071` and `TASK-072` are now `completed`.
-- Current next bounded outcome target: `TASK-073` for Android/iOS UI wiring of current performer / next up and organizer live controls on top of the delivered shared live-stage foundation, without realtime delivery yet.
-- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-32.md`.
+- `TASK-074` is now `docs_only`: executor process rules were centralized in `docs/context/handoff/automation-executor-prompt.md`, related context/governance docs were synchronized, all `InComedy Executor` automation TOML prompts now reference that runbook instead of carrying divergent inline copies, the daily cycle limit is consistently documented as `run slots` with `AutomationState.run_slots_used_in_cycle`, legacy `awaiting_verification` / `partial` aliases are mapped to the current status model, the mandatory security-review step is now explicit in executor/handoff guidance, and the recorded verdict for this docs-only sync is `no security-impacting runtime surface change`.
+- `TASK-075` is now `docs_only`: the standalone bootstrap document was removed, its non-duplicated rules were folded into `docs/context/handoff/automation-executor-prompt.md`, `docs/context/handoff/context-protocol.md` became the only general cross-chat bootstrap checklist, and all repo/task/governance references were replaced accordingly; the recorded security verdict for this docs-only sync is `no security-impacting runtime surface change`.
+- `TASK-073` remains `in_progress`, but `EPIC-068` is currently `blocked_external` on this host: Android/iOS lineup UI wiring for current performer / next up and organizer live controls is implemented, Android verification is green, the latest reruns on `2026-03-25` fixed the repo-side Xcode/Kotlin bootstrap through `iosApp/scripts/build-shared.sh`, and the remaining SwiftUI `#Preview` macro blocks were replaced with `PreviewProvider` fallbacks, so generic iOS build is green in this sandbox. A fresh bounded verification rerun at `2026-03-25 13:18-13:19 MSK` reconfirmed that this host still has no usable iOS simulator device set: `xcrun simctl` loses `CoreSimulatorService`, `xcodebuild -showdestinations` exposes only placeholder destinations, and the targeted XCUITest exits with code `70`, so the current automation run closes as a docs-only blocker verdict while `TASK-073` stays active for rerun on an unrestricted host.
+- Detailed request/decomposition and rolling outcome history are stored in `task-request-template/task-request-template-part-33.md`.
 
 ## Parts (Exact Order)
 
@@ -47,9 +49,10 @@ Use `task-request-template.md` as the active reusable intake template. This log 
 29. `task-request-template/task-request-template-part-29.md` (shared/mobile ticket wallet and checker scan surfaces from 2026-03-22)
 30. `task-request-template/task-request-template-part-30.md` (EPIC-067 lineup foundation and platform UI wiring from 2026-03-23)
 31. `task-request-template/task-request-template-part-31.md` (EPIC-067 review-ready completion + EPIC-068 backend live-stage foundation from 2026-03-24)
-32. `task-request-template/task-request-template-part-32.md` (EPIC-068 shared/data/feature live-stage integration outcome from 2026-03-24)
+32. `task-request-template/task-request-template-part-32.md` (EPIC-068 shared/data/feature live-stage integration outcome and follow-up memory through executor governance sync)
+33. `task-request-template/task-request-template-part-33.md` (EPIC-068 TASK-073 host-blocked verification confirmation from 2026-03-25)
 
 ## Append Rule
 
-- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-32.md`.
+- Append new formalized requests and outcomes to the latest part file: `task-request-template/task-request-template-part-33.md`.
 - If the latest part grows above ~8,000 characters, create the next sequential part file, update this index, and continue appending there.
