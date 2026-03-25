@@ -20,3 +20,10 @@
 - Changes: `AutomationState` и `active-run.md` возвращены на `EPIC-069/TASK-084` в posture `ready_to_commit`; task memory теперь явно разделяет текущий commit boundary и следующий продуктовый шаг `TASK-085`. В navigation docs путь чтения уточнён: новая сессия сначала читает `handoff/active-run.md`, если файл существует, и только потом `00-current-state.md`. Security review verdict: docs/process-only sync, security-impacting runtime surface не менялся.
 - Decisions: Новый architectural/product decision не принят; текущее изменение применяет уже зафиксированный `D-079` к активному recovery state.
 - Next: Сначала локальный commit для `TASK-084`, затем переключение recovery на `TASK-085`.
+
+## 2026-03-25 16:37
+
+- Context: Recovery был остановлен на `TASK-084/ready_to_commit`, поэтому этот запуск сначала закрывал локальную commit boundary и только затем мог перевести active checkpoint на следующий bounded step.
+- Changes: Добавлен недостающий regression test для graceful rejection недоступного WebSocket channel-а в `EventLiveChannelRoutesTest`, затем выполнен forced rerun `./gradlew :server:test --rerun-tasks --tests 'com.bam.incomedy.server.lineup.EventLiveChannelRoutesTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`, который завершился успешно. После этого создан локальный commit `ecb5b96` для `TASK-084`, а `AutomationState`, `active-run.md` и task memory переключены на `EPIC-069/TASK-085`. Security review verdict: runtime surface этого follow-up запуска не расширялся; подтверждено, что public live channel по-прежнему ограничен published public events, peer rate limiting и audience-safe payload-ом, а новый тест только укрепляет coverage rejection path-а.
+- Decisions: Новый architectural/product decision не принят; выполнен closure sequence уже зафиксированных `D-078` и `D-079`.
+- Next: Ровно одна следующая подзадача — `TASK-085`: shared/data realtime subscription contract для lineup live updates без Android/iOS wiring, staff/private channel, push fallback или durable outbox в том же bounded run.

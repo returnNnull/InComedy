@@ -10,38 +10,38 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-25T16:29:41+03:00`
+- Timestamp: `2026-03-25T16:37:32+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-069`
-- Active Subtask: `TASK-084`
+- Active Subtask: `TASK-085`
 - Branch: `codex/epic-069-live-stage-realtime-delivery`
 - Epic Status: `in_progress`
-- Run Status: `ready_to_commit`
+- Run Status: `in_progress`
 
 ## Цель
 
-- `Закрыть local commit boundary для уже завершённого TASK-084; только после локального commit переключить recovery на TASK-085 — shared/data realtime subscription contract для lineup live updates.`
+- `Выполнить TASK-085 — shared/data realtime subscription contract для lineup live updates на базе уже закоммиченного backend WebSocket foundation из TASK-084.`
 
 ## Итог
 
-- `User confirmation по EPIC-068 получен, поэтому epic закрыт как done и работа продолжена без review boundary.`
-- `TASK-084 завершён: backend live-event channel `/ws/events/{eventId}` доставлен вместе с initial snapshot, audience-safe realtime payload-ами, server-local broadcaster и publish hooks из approve/reorder/live-state path-ов.`
-- `Targeted server verification green и docs sync завершён, но локальный commit для TASK-084 ещё не создан, поэтому recovery остаётся на commit boundary этого task-а в статусе ready_to_commit.`
-- `Принят D-079: dirty worktree после completed/docs_only task считается незакрытой commit boundary; до локального commit recovery нельзя переключать на новый TASK.`
+- `Локальная commit boundary TASK-084 закрыта commit-ом ecb5b96 (`TASK-084 EPIC-069: backend live-event WebSocket channel`).`
+- `Targeted server verification принудительно rerun-нут: `./gradlew :server:test --rerun-tasks --tests 'com.bam.incomedy.server.lineup.EventLiveChannelRoutesTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'` завершился успешно; websocket regression coverage теперь включает rejection недоступного event channel-а.`
+- `Recovery переключён на TASK-085; следующий bounded run должен продолжать shared/data realtime subscription contract, не перепрыгивая к Android/iOS wiring, staff/private channel, push fallback или durable outbox.`
 
 ## Возобновление
 
-- `Если чат оборвется, сначала сверить recovery docs с git status: текущий активный checkpoint остаётся на TASK-084/ready_to_commit. Нужно сначала создать локальный commit для TASK-084 и только потом переключать recovery на TASK-085. После этого не перепрыгивать к Android/iOS wiring, staff channel, push fallback или durable outbox, пока shared/data слой не закрыт.`
+- `Если чат оборвется, сверить branch и git status, затем продолжить ровно с TASK-085/in_progress. Стартовать от уже доставленного backend WebSocket foundation и закрыть shared/data realtime subscription contract без расширения scope в Android/iOS wiring, staff/private channel, push fallback или durable outbox.`
 
 ## Если сессия оборвётся
 
 - Check `git status`.
 - Confirm branch is still `codex/epic-069-live-stage-realtime-delivery`.
-- Treat active recovery state as `EPIC-069/TASK-084` in posture `ready_to_commit`.
-- Close the local commit boundary for `TASK-084` before any new implementation step.
+- Treat active recovery state as `EPIC-069/TASK-085` in posture `in_progress`.
+- Continue from the committed backend WebSocket foundation delivered in `ecb5b96`.
+- Keep the scope limited to shared/data realtime subscription contract.
 - Start from the delivered backend WebSocket foundation; do not reopen `TASK-084` unless a concrete regression is found.
 
 ## Следующий шаг
 
-- `Ровно один следующий шаг после этого запуска: сначала создать локальный commit для TASK-084, затем переключить active recovery на TASK-085 — shared/data realtime subscription contract для lineup live updates.`
+- `Ровно один следующий шаг после этого запуска: выполнить TASK-085 — shared/data realtime subscription contract для lineup live updates.`

@@ -10,5 +10,6 @@ Run before merge/commit of major changes.
 - [ ] `product/backlog.md` reflects changed priorities/scope (if applicable).
 - [ ] If a repeated technical problem or non-obvious repair path was discovered, `engineering/issue-resolution-log.md` was updated.
 - [ ] If an external provider is described as active/default/confirmed, the user's explicit confirmation is recorded in the current task/session/decision memory.
+- [ ] If work introduced, changed, or closed active product/delivery/technical risks or residual limitations, `product/risk-log.md` was updated in the same change.
 - [ ] Any discovered vulnerabilities are communicated to product owner immediately and logged in `product/risk-log.md` with remediation plan and target date.
 - [ ] No conflicting rules introduced across engineering documents.

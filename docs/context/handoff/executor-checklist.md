@@ -30,14 +30,16 @@
 
 1. Для code changes выполни минимальный релевантный набор checks из [test-strategy.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/test-strategy.md).
 2. Перед закрытием meaningful task зафиксируй security review verdict.
-3. Для history конкретных прогонов используй [verification-memory.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/verification-memory.md).
-4. Если подзадача дошла до `completed` или `docs_only`, переведи recovery state в `ready_to_commit`, создай локальный commit и только потом переключай active recovery на следующий task.
+3. Если task создает, меняет или снимает активные product/delivery/technical/security risks, обнови [risk-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/product/risk-log.md) в том же work block; commit message `Ограничения и риски` не заменяет этот реестр.
+4. Для history конкретных прогонов используй [verification-memory.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/verification-memory.md).
+5. Если подзадача дошла до `completed` или `docs_only`, переведи recovery state в `ready_to_commit`, создай локальный commit и только потом переключай active recovery на следующий task.
 
 ## Обязательные обновления
 
 Обновляй в том же work block:
 
 - [00-current-state.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/00-current-state.md)
+- [risk-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/product/risk-log.md) при новых/измененных активных рисках, остаточных ограничениях или уязвимостях
 - [session-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/governance/session-log.md)
 - [decision-traceability.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/governance/decision-traceability.md)
 - [decisions-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/governance/decisions-log.md) при новых решениях
@@ -55,5 +57,6 @@
    - последний ID решения;
    - текущий `P0 focus`;
    - следующий шаг;
+   - статус ключевых активных рисков;
    - статус ключевых решений;
    - ровно одну следующую подзадачу.

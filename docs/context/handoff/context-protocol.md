@@ -10,6 +10,7 @@ This protocol defines how to use and transfer project context between chats.
 - If chat discussion conflicts with these docs, update docs first, then continue implementation.
 - Verification/test-runtime issues found while finishing the active task stay inside that same task by default; the next bounded run must resume the recorded local repair path for that blocker before reclassifying it as `blocked_external` or redirecting the work to another host.
 - Mandatory security review remains part of DoD for every meaningful task, including automation-delivered and docs-only governance/process sync work.
+- `../product/risk-log.md` является каноническим реестром активных product/delivery/technical/security risks; если task меняет риск-профиль или оставляет residual limitations после commit, этот реестр должен быть обновлён в том же work block.
 - `completed` и `docs_only` bounded tasks не считаются recovery-closed, пока не закрыта local commit boundary; до этого recovery state должен оставаться на текущей подзадаче в posture `ready_to_commit`, а не переключаться на следующий `TASK`.
 - Legacy `awaiting_verification` / `partial` labels in older memory are recovery aliases only: interpret them through the current status model and normalize them when the same task is resumed.
 - Active epics should follow a documented ordered subtask plan; future product subtasks should come from that plan unless the plan itself is explicitly updated in governance/task memory.
@@ -17,12 +18,13 @@ This protocol defines how to use and transfer project context between chats.
 ## Read Order (for any new chat/session)
 
 0. `active-run.md` when it exists, then compare it with `git status` and the current branch before choosing work
-0b. If docs already point to the next `TASK`, but `git status` is still dirty with changes from a previously `completed`/`docs_only` task, treat the previous task as `ready_to_commit` and close that commit boundary before any new implementation work
 0a. `automation-executor-prompt.md` for scheduled `InComedy Executor` automation runs; from there read `executor-checklist.md`, and open `executor-policy.md` only when the short checklist is not enough
+0b. If docs already point to the next `TASK`, but `git status` is still dirty with changes from a previously `completed`/`docs_only` task, treat the previous task as `ready_to_commit` and close that commit boundary before any new implementation work
 1. `../00-current-state.md`
 2. `../product/product-brief.md`
 3. `../product/backlog.md`
-3a. `../product/next-epic-queue.md` when the active epic is already in `awaiting_user_review` or when you need to choose the next epic quickly
+3a. `../product/risk-log.md`, если task затрагивает rollout limitations, residual risks, provider/compliance constraints или security surface
+3b. `../product/next-epic-queue.md` when the active epic is already in `awaiting_user_review` or when you need to choose the next epic quickly
 4. `../engineering/tooling-stack.md`
 5. `../engineering/engineering-standards.md`
 6. `../engineering/quality-rules.md`
@@ -50,6 +52,7 @@ Any cross-chat handoff/bootstrap message must preserve these rules up front:
 - External auth/payment/push/PSP providers may be implemented in code, but they become active/default/confirmed only after explicit user confirmation; assistant inference, existing code, and config/examples do not count as approval.
 - Every meaningful work session must leave a concise sanitized `Context / Changes / Decisions / Next` entry in `../governance/session-log.md`; raw transcript dumping and secrets are forbidden.
 - Every meaningful task still requires a proportional security review; docs/process-only sync must explicitly record a zero-impact verdict when no security surface changed.
+- Если task создал, изменил или снял активный риск, `../product/risk-log.md` должен быть обновлён синхронно; commit message `Ограничения и риски` не считается достаточной заменой risk register-а.
 - Dirty worktree после `completed`/`docs_only` task по умолчанию трактуется как незакрытая commit boundary, а не как разрешение двигаться к следующему active task; новую подзадачу можно начинать только после локального commit.
 - Server diagnostics or production triage must use `../engineering/server-diagnostics-runbook.md`.
 
@@ -57,6 +60,7 @@ Any cross-chat handoff/bootstrap message must preserve these rules up front:
 
 - Current bootstrap snapshot changes (`latest decision`, `current P0 focus`, `next step`, `latest relevant part files`, `active cross-cutting constraints`) -> update `../00-current-state.md`.
 - Strategy/scope changes -> update `../product/product-brief.md`.
+- Active risk profile changes -> update `../product/risk-log.md`.
 - Technology choice changes -> update `../engineering/tooling-stack.md`.
 - Engineering process/quality changes -> update `../engineering/engineering-standards.md` and/or `../engineering/quality-rules.md`.
 - Any major decision -> append entry to the latest decisions-log part referenced by `../governance/decisions-log.md`.
@@ -120,4 +124,5 @@ Before considering context synchronized in a new chat:
 - read order is completed,
 - latest decision ID is acknowledged,
 - current P0 focus is acknowledged,
+- latest active risks are acknowledged when the task changes risk posture,
 - next action from the latest part referenced by `session-log.md` is acknowledged.

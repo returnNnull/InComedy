@@ -20,7 +20,7 @@
 1. `TASK-084` — backend WebSocket live-event channel `/ws/events/{eventId}` для audience-safe lineup/live-stage updates, включая event envelope, server-local broadcaster и route coverage.
    - Status: `completed`
 2. `TASK-085` — shared/data realtime subscription contract и transport integration для lineup live updates в KMP-слоях.
-   - Status: `planned`
+   - Status: `in_progress`
 3. `TASK-086` — Android/iOS wiring на новый realtime feed и executable verification delivered live-update behavior.
    - Status: `planned`
 
@@ -32,11 +32,11 @@
 
 ### Current Next
 
-- `Операционный следующий шаг: закрыть local commit boundary для TASK-084. Ровно одна следующая продуктовая подзадача после этого — TASK-085: shared/data realtime subscription contract для lineup live updates, без Android/iOS wiring в том же bounded шаге.`
+- `Ровно одна следующая продуктовая подзадача: TASK-085 — shared/data realtime subscription contract для lineup live updates, без Android/iOS wiring в том же bounded шаге.`
 
 ### Current Recovery State
 
-- `TASK-084` остаётся active recovery checkpoint в статусе `ready_to_commit`, пока для него не создан локальный commit. Переключение active recovery на `TASK-085` разрешено только после закрытия этой commit boundary.
+- `Локальная commit boundary TASK-084 закрыта commit-ом ecb5b96, поэтому active recovery checkpoint переключён на TASK-085 в статусе in_progress.`
 
 ### Recovery Guardrail
 
@@ -78,6 +78,7 @@
 ### Verification
 
 - `Passed: ./gradlew :server:test --tests 'com.bam.incomedy.server.lineup.EventLiveChannelRoutesTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'`
+- `Passed: ./gradlew :server:test --rerun-tasks --tests 'com.bam.incomedy.server.lineup.EventLiveChannelRoutesTest' --tests 'com.bam.incomedy.server.lineup.ComedianApplicationsRoutesTest'` (forced rerun после добавления regression coverage для rejection недоступного event channel-а)
 
 ### Notes
 
@@ -86,4 +87,4 @@
 
 ### Next
 
-- `Ровно один следующий операционный шаг: локальный commit для TASK-084. Ровно одна следующая продуктовая подзадача после этого — TASK-085: shared/data realtime subscription contract для lineup live updates, без Android/iOS wiring в том же bounded шаге.`
+- `Ровно одна следующая продуктовая подзадача — TASK-085: shared/data realtime subscription contract для lineup live updates, без Android/iOS wiring в том же bounded шаге.`

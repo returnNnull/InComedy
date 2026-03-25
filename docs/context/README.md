@@ -13,7 +13,7 @@ This folder stores the compact operational context for product, engineering, gov
 ## Structure
 
 - `00-current-state.md`: compact bootstrap snapshot for the latest decision id, current `P0` focus, next step, latest relevant part files, and active cross-cutting constraints.
-- `product/`: product scope, priorities, glossary, NFR, and risks.
+- `product/`: product scope, priorities, glossary, NFR, and canonical active risk register.
 - `engineering/`: stack, architecture, quality rules, tests, API contracts, and operational runbooks.
 - `governance/`: decisions, traceability, and rolling session memory.
 - `handoff/`: cross-chat sync protocol, executor automation runbook, active task template, and historical task-request log.
@@ -26,7 +26,7 @@ This folder stores the compact operational context for product, engineering, gov
 - `product/next-epic-queue.md`: short ordered queue for the next epics after review boundary.
 - `product/glossary.md`: domain terms and definitions.
 - `product/non-functional-requirements.md`: performance, reliability, security, and operability targets.
-- `product/risk-log.md`: current risks with mitigation and owners.
+- `product/risk-log.md`: канонический реестр активных product/delivery/technical/security risks с mitigation, owners и status.
 - `engineering/tooling-stack.md`: approved and planned technology stack.
 - `engineering/engineering-standards.md`: mandatory architecture, MVI, governance-memory, and commenting rules.
 - `engineering/quality-rules.md`: DoD, quality gates, test minimums, and engineering constraints.
@@ -66,7 +66,7 @@ This folder stores the compact operational context for product, engineering, gov
   - maintain decisions/session/traceability records,
   - keep `00-current-state.md` aligned with the latest decision id, current `P0` focus, next step, and active cross-cutting constraints,
   - use `handoff/task-request-template.md` to structure major tasks and record outcomes in `handoff/task-request-log.md`,
-  - immediately communicate discovered security vulnerabilities and maintain remediation records in `product/risk-log.md`,
+  - maintain `product/risk-log.md` as the single active register for product/delivery/technical/security risks and immediately communicate discovered vulnerabilities,
   - remind product owner to refresh priorities in `product/backlog.md` when context is stale.
 - Update `product/product-brief.md` only when strategy, roles, or core scope changes.
 - Add a new entry to the latest part referenced by `governance/decisions-log.md` for every architectural or product-level decision.
