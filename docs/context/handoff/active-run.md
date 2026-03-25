@@ -10,37 +10,37 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-25T17:49:44+03:00`
+- Timestamp: `2026-03-25T18:23:37+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `none`
-- Active Subtask: `none`
-- Branch: `main`
-- Epic Status: `done`
+- Active Epic: `EPIC-070`
+- Active Subtask: `TASK-088`
+- Branch: `codex/epic-070-donations-payout-foundation`
+- Epic Status: `in_progress`
 - Run Status: `completed`
 
 ## Цель
 
-- `Зафиксировать явное user confirmation для EPIC-069, закрыть epic в context docs, затем merge-нуть ветку в main и push-нуть origin/main.`
+- `Завершить TASK-087: backend foundation для comedian payout profile и donation intents без активации конкретного PSP и синхронизировать активную governance memory под текущие executor rules.`
 
 ## Итог
 
-- `User review confirmation received: EPIC-069 / TASK-086 больше не находится в posture awaiting_user_review; epic переведён в status done.`
-- Delivered realtime slice остаётся прежним и принятым: public `/ws/events/{eventId}` feed, lifecycle-gated Android/iOS consumption, audience-safe live summary и organizer refresh после `application_approved` уже verified и зафиксированы в branch history.
-- После merge/push default branch снова `main`; EPIC-069 больше не является active delivery epic, а `R-013` остаётся open как residual rollout limitation profile для будущего follow-up scope.
+- `TASK-087` завершён: доставлены `:domain:donations`, миграция `V15`, persistence и защищённые backend routes для payout profile self-service, donation intent create/list и verified-payout gate.`
+- Handoff/governance ссылки синхронизированы с текущей семантикой счётчика запусков; `run_slots_used_in_cycle` остаётся только счётчиком фактических запусков текущего cycle.
+- `EPIC-070` остаётся активным; следующий bounded шаг — `TASK-088`, shared/data transport integration для delivered backend foundation.`
 
 ## Возобновление
 
-- `Если чат оборвется, сверить branch и git status. Если merge main + push уже завершены, оставить EPIC-069 закрытым; если нет — довести интеграцию до merged main + pushed origin/main без переоткрытия epic-а.`
+- `Если чат оборвется, продолжить только TASK-088 на текущей ветке; TASK-087 уже закрыт и должен переоткрываться только при regression.`
 
 ## Если сессия оборвётся
 
 - Check `git status`.
-- Check whether `main` already contains merge commit for `codex/epic-069-live-stage-realtime-delivery`.
-- Keep `EPIC-069` closed if merge/push is already complete.
-- Do not start `EPIC-070` автоматически только потому, что EPIC-069 завершён.
-- Reopen `EPIC-069` only for a concrete post-merge regression or explicit follow-up request.
+- Keep `EPIC-069` closed; do not reopen it without a concrete regression or explicit follow-up request.
+- Continue only `TASK-088` for `EPIC-070`; do not skip straight to platform UI or payout automation.
+- Do not treat any existing ticketing PSP adapter or env config as confirmed donation/payout provider selection.
+- Keep the delivered `manual_settlement` foundation provider-agnostic until explicit user confirmation of the external donation/payout path.
 
 ## Следующий шаг
 
-- `Ровно один следующий шаг после merge/push: при новом запросе выбрать следующий highest-priority unfinished epic из next-epic-queue; EPIC-069 не трогать без follow-up/regression.`
+- `Ровно один следующий шаг: TASK-088 — shared/data donation service contract и transport integration для payout profile, donation history и intent creation без platform UI и без выбора внешнего PSP.`

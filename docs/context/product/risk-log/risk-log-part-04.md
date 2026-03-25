@@ -22,3 +22,16 @@
 - Владелец: Engineering
 - Связанные артефакты: `D-078`, `TASK-084`, `TASK-085`, `TASK-086`, `docs/context/handoff/task-request-template/task-request-template-part-37.md`
 - Статус: open
+
+## R-005 (updated 2026-03-25)
+
+- Дата: 2026-03-25
+- Категория: `product/compliance`
+- Риск: Donation payout model всё ещё может не пройти legal/compliance review, хотя backend теперь уже требует verified payout profile и хранит manual-settlement-ready donation intents.
+- Текущая экспозиция / триггер: `TASK-087` доставил provider-agnostic payout-profile/donation-intent foundation, но явная legal/financial scheme, operator verification workflow и внешний donation/payout provider всё ещё не подтверждены.
+- Влияние: High
+- Вероятность: Medium
+- Смягчение / следующий шаг: Держать `EPIC-070` provider-agnostic, не считать ticketing PSP выбором donation provider, продолжать `TASK-088`/`TASK-089` без активации checkout, а до релизного включения donations получить явное product/finance confirmation по legal scheme и user-approved provider choice.
+- Владелец: Product + Finance + Engineering
+- Связанные артефакты: `D-081`, `TASK-087`, `docs/context/handoff/task-request-template/task-request-template-part-37.md`
+- Статус: open

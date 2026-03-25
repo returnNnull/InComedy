@@ -16,14 +16,14 @@
 
 ## 2026-03-25 12:58
 
-- Context: Пользователь уточнил семантику daily limit: это лимит на automation launches в течение дня, а не только на число завершённых подзадач.
-- Changes: `automation-executor-prompt.md` обновлён так, чтобы лимит трактовался как максимум 10 run slots на cycle; поле `AutomationState.completed_subtasks_in_cycle` заменено на `run_slots_used_in_cycle`, а текущий state приведён к числовому счетчику использованных запусков.
-- Decisions: Принят `D-070`: cycle limit считается по использованным run slots, и один automation launch всегда потребляет один слот текущего cycle.
+- Context: Пользователь уточнил семантику executor accounting: важно считать реальные automation launches в cycle, а не только число завершённых подзадач.
+- Changes: `automation-executor-prompt.md` обновлён так, чтобы `AutomationState.completed_subtasks_in_cycle` был заменён на `run_slots_used_in_cycle`, а текущий state приведён к числовому счётчику использованных запусков.
+- Decisions: Принят `D-070`: executor cycle теперь учитывается через launch counter `run_slots_used_in_cycle`, и один automation launch всегда потребляет один слот текущего cycle.
 - Next: Продуктовый следующий шаг не изменился: вернуться к `TASK-073` и пере-запустить targeted iOS XCUITest verification для live-stage UI на хосте с рабочим `CoreSimulatorService`.
 
 ## 2026-03-25 13:09
 
 - Context: Пользователь попросил довести executor runbook до консистентного состояния после review и убрать оставшийся governance drift.
-- Changes: `automation-executor-prompt.md` теперь последовательно использует только `run_slots_used_in_cycle` и 10-slot launch semantics; в runbook и handoff docs добавлен явный mapping legacy `awaiting_verification` -> `verifying` и legacy `partial` -> historical recovery alias only; обязательный security review теперь явно закреплён и для executor/docs-only closure; текущая task memory нормализована так, чтобы активный `TASK-073` считался `in_progress`, а старые `partial` упоминания оставались только историческими. Security review verdict для этого docs-only sync: security-impacting runtime surface не менялся.
+- Changes: `automation-executor-prompt.md` теперь последовательно использует только `run_slots_used_in_cycle` как launch counter; в runbook и handoff docs добавлен явный mapping legacy `awaiting_verification` -> `verifying` и legacy `partial` -> historical recovery alias only; обязательный security review теперь явно закреплён и для executor/docs-only closure; текущая task memory нормализована так, чтобы активный `TASK-073` считался `in_progress`, а старые `partial` упоминания оставались только историческими. Security review verdict для этого docs-only sync: security-impacting runtime surface не менялся.
 - Decisions: Новое governance decision не принималось. Синхронизированы уже принятые `D-069` и `D-070`, а также существующее DoD-правило про mandatory security review.
 - Next: Продуктовый следующий шаг не меняется: вернуться к `TASK-073` и пере-запустить targeted iOS XCUITest verification для lineup live-stage UI на хосте с рабочим `CoreSimulatorService`.

@@ -44,9 +44,9 @@
 
 - Date: 2026-03-25
 - Status: accepted
-- Decision: The daily automation limit applies to run slots, not only to completed subtasks. `AutomationState` must track this through `run_slots_used_in_cycle`, and one automation launch always consumes one slot within the current cycle.
-- Rationale: The earlier wording around “10 completed subtasks” was ambiguous and could undercount actual daily executor usage, especially when a cycle included a legacy `partial` run or multiple bounded docs-only maintenance runs. The real operational limit is the number of launches available in the day, so the state field and runbook terminology must reflect launch slots directly.
-- Consequences: `automation-executor-prompt.md` and `00-current-state.md` must use `run_slots_used_in_cycle`; the 10-slot cap should be described as a limit on runnable subtask slots inside the cycle; and future planning should stop opening the 11th bounded step in the same cycle even if some previous steps were docs-only or historically partial.
+- Decision: `AutomationState` должен считать фактические executor launches через `run_slots_used_in_cycle`, а не только число завершенных подзадач; каждый automation launch увеличивает этот счетчик в пределах текущего cycle.
+- Rationale: Формулировка про “10 completed subtasks” была двусмысленной и занижала реальное потребление executor launches, особенно когда в cycle были docs-only sync-слоты или historical `partial` recovery. Нужен был именно корректный launch counter, а не surrogate-метрика по закрытым подзадачам.
+- Consequences: `automation-executor-prompt.md` и `00-current-state.md` должны использовать `run_slots_used_in_cycle` как наблюдаемый счетчик запусков текущего cycle; это поле не должно трактоваться как отдельный жёсткий продуктовый cap поверх фактического расписания automation-ов и ручных rerun-ов.
 
 ## D-071
 

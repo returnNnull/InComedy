@@ -42,3 +42,46 @@
 ### Next
 
 - После merge/push считать следующим future candidate `EPIC-070` из next-epic-queue, но не открывать новый epic автоматически без отдельного user request.
+
+## Active Request (EPIC-070 Donations/Payout Foundation)
+
+### Epic
+
+- `EPIC-070` — donations/payout foundation.
+
+### Status
+
+- `in_progress`
+
+### Why Now
+
+- Пользователь явно запросил старт `EPIC-070` после закрытия и merge/push `EPIC-069`.
+- По `product/backlog.md` и `product/next-epic-queue.md` donations/payout foundation остаётся следующим `P0` bounded context.
+- Выбор внешнего donation/payout provider всё ещё не подтверждён, поэтому первый шаг должен остаться provider-agnostic и не трактовать существующий ticketing PSP adapter как готовое решение для нового домена.
+
+### Ordered Subtask Plan
+
+1. `TASK-087` — backend foundation для comedian payout profile и donation intents с verified-payout gate, protected self-service routes и server coverage.
+   - Status: `completed`
+2. `TASK-088` — shared/data donation service contract и transport integration для payout profile, donation history и intent creation без platform UI.
+   - Status: `in_progress`
+3. `TASK-089` — Android/iOS donation и comedian payout surfaces с executable verification для delivered foundation.
+   - Status: `planned`
+
+### Scope Rules
+
+- Этот epic покрывает provider-agnostic foundation домена donations/payouts.
+- Donation flow не должен смешиваться с ticket checkout и не должен считать существующий `YooKassa` adapter для ticketing подтверждением donation/payout provider choice.
+- Первый bounded step может создать payout profile / donation ledger foundation и manual-settlement-ready persistence без включения полноценного external checkout, webhook processing или payout automation в том же run.
+
+### Current Next
+
+- `Ровно одна текущая продуктовая подзадача — TASK-088: shared/data donation transport integration поверх уже delivered backend foundation, без platform UI и без активации конкретного PSP.`
+
+### Current Recovery State
+
+- `EPIC-070 открыт по явному user request на ветке codex/epic-070-donations-payout-foundation; TASK-087 уже закрыт, а текущий active bounded step — TASK-088.`
+
+### Recovery Guardrail
+
+- `До отдельного user confirmation нельзя считать donation/payout provider подтверждённым по коду, env или существующему ticketing checkout adapter-у; первый шаг EPIC-070 остаётся provider-agnostic foundation only.`

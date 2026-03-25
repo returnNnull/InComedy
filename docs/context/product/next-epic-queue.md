@@ -10,18 +10,18 @@
 
 ## Текущая очередь
 
-1. `EPIC-070` — donations/payout foundation
+1. `EPIC-071` — notifications / announcements delivery foundation
    - Status: `planned`
-   - Why next: donations остаются следующим `P0` слоем после завершения текущего realtime epic-а.
-2. `EPIC-071` — notifications / announcements delivery foundation
+   - Why next after active epic: важный `P0` слой, который идёт сразу после donations/payout foundation.
+2. `EPIC-072` — analytics foundation
    - Status: `planned`
-   - Why after EPIC-070: важный `P0` слой, но идёт после donations/payout foundation.
+   - Why after EPIC-071: полезный следующий `P0/P1` слой, но он не должен обгонять notifications и активный donations epic.
 
 ## Активированный epic
 
-- `none`
-  - Last completed: `EPIC-069` явно подтверждён пользователем и смержен в `main` как завершённый realtime/WebSocket delivery slice.
-  - Next candidate on future request: `EPIC-070` — donations/payout foundation.
+- `EPIC-070`
+  - Current state: `TASK-087` завершён на ветке `codex/epic-070-donations-payout-foundation`; следующий bounded step — `TASK-088`, shared/data transport integration без platform UI.
+  - Guardrail: donations epic остаётся provider-agnostic/manual-settlement-ready и не трактует существующий ticketing PSP adapter как подтверждённый donation/payout provider.
 
 ## Правило
 

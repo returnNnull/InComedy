@@ -12,11 +12,13 @@ import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
 import com.bam.incomedy.server.db.PostgresComedianApplicationRepository
+import com.bam.incomedy.server.db.PostgresDonationRepository
 import com.bam.incomedy.server.db.PostgresEventRepository
 import com.bam.incomedy.server.db.PostgresLineupRepository
 import com.bam.incomedy.server.db.PostgresTicketingRepository
 import com.bam.incomedy.server.db.PostgresVenueRepository
 import com.bam.incomedy.server.db.PostgresUserRepository
+import com.bam.incomedy.server.donations.DonationRoutes
 import com.bam.incomedy.server.events.EventRoutes
 import com.bam.incomedy.server.ios.AppleAppSiteAssociationRoutes
 import com.bam.incomedy.server.identity.IdentityRoutes
@@ -70,6 +72,7 @@ fun Application.module() {
     val eventRepository = PostgresEventRepository(dataSource)
     val comedianApplicationRepository = PostgresComedianApplicationRepository(dataSource)
     val lineupRepository = PostgresLineupRepository(dataSource)
+    val donationRepository = PostgresDonationRepository(dataSource)
     val ticketingRepository = PostgresTicketingRepository(dataSource)
     val eventLiveChannelBroadcaster = EventLiveChannelBroadcaster()
     val tokenService = JwtSessionTokenService(config.jwt)
@@ -253,6 +256,16 @@ fun Application.module() {
             eventRepository = eventRepository,
             ticketingRepository = ticketingRepository,
             checkoutGateway = checkoutGateway,
+            rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        DonationRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            sessionUserRepository = repository,
+            eventRepository = eventRepository,
+            lineupRepository = lineupRepository,
+            donationRepository = donationRepository,
             rateLimiter = rateLimiter,
             diagnosticsStore = diagnosticsStore,
         )

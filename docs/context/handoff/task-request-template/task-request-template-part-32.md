@@ -95,7 +95,7 @@
 - Добавлен `docs/context/handoff/automation-executor-prompt.md` как единый runbook для scheduled `InComedy Executor` automation runs.
 - `docs/context/handoff/context-protocol.md` и `docs/context/README.md` теперь явно ссылаются на этот runbook, когда речь идет об automation governance или executor runs.
 - `docs/context/00-current-state.md`, `docs/context/handoff/context-protocol.md` и `docs/context/README.md` синхронизированы с новым правилом: executor automation runs больше не должны завершаться terminal `partial`, legacy `awaiting_verification` / `partial` теперь трактуются только как recovery aliases старых записей, а mandatory security review явно закреплен и для executor-driven closure.
-- Семантика daily limit уточнена: в одном cycle доступно максимум 10 automation run slots, а `AutomationState` теперь использует числовое поле `run_slots_used_in_cycle` вместо списка завершенных подзадач.
+- Семантика executor accounting уточнена: `AutomationState` теперь использует числовое поле `run_slots_used_in_cycle` как счётчик реальных запусков в текущем cycle вместо списка завершенных подзадач.
 - Все automation TOML в `/Users/abetirov/.codex/automations/incomedy-executor-*/automation.toml` переведены на короткий prompt со ссылкой к repo-side runbook вместо длинной встроенной копии process-правил.
 
 ### Verification
@@ -107,7 +107,7 @@
 
 - Продуктовый следующий шаг не менялся: `TASK-073` остаётся фактической следующей implementation-задачей для `EPIC-068`.
 - Legacy `partial` state для `TASK-073` теперь сохранён только как исторический snapshot в старых записях; актуальная recovery semantics должна считать `TASK-073` `in_progress` до финального verification/blocker verdict.
-- Текущий cycle usage теперь считается по числу запусков, а не по числу завершенных subtasks; это уточнение не меняет следующий продуктовый шаг, но меняет planning semantics для automation day budget.
+- Текущий cycle usage теперь считается по числу запусков, а не по числу завершенных subtasks; это уточнение не меняет следующий продуктовый шаг и влияет только на executor accounting/recovery semantics.
 - Security review verdict: docs-only governance sync не менял security-impacting runtime surface.
 
 ### Next

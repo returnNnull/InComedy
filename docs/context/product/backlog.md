@@ -7,7 +7,7 @@ Priority scale:
 
 ## P0
 
-Current implementation sequence note (`2026-03-24`):
+Current implementation sequence note (`2026-03-25`):
 - Reset the active MVP auth standard to login + password.
 - Keep provider-agnostic identity, roles, active-role context, and organizer workspace membership as the internal auth foundation.
 - Implement credential auth first, then VK ID as the external provider; phone OTP, Telegram, and Google are no longer part of the active MVP auth scope.
@@ -16,7 +16,8 @@ Current implementation sequence note (`2026-03-24`):
 - Comedian applications + organizer approve/reject/waitlist + lineup ordering are now delivered end-to-end, including Android/iOS shells and targeted executable verification.
 - Live stage status foundation now includes backend mutation semantics plus shared/data/feature lineup contracts for `current performer` / `next up`.
 - Android/iOS UI wiring for organizer live controls and audience-facing current/next state on top of the delivered shared foundation завершены в `EPIC-068`, который теперь принят пользователем и закрыт как `done`.
-- Активный следующий `P0` delivery slice — `EPIC-069`: realtime/WebSocket delivery для live stage updates.
+- `EPIC-069` realtime/WebSocket delivery для live stage updates завершён, принят пользователем и смержен в `main`.
+- Активный `P0` delivery slice — `EPIC-070`: donations/payout foundation; `TASK-087` backend foundation уже доставлен, а `TASK-088`/`TASK-089` покрывают shared/data wiring и platform UI без преждевременного PSP choice.
 - После review boundary текущего epic оперативная очередь следующих epic-ов ведётся в `product/next-epic-queue.md`.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
