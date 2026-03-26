@@ -33,5 +33,5 @@
 - Вероятность: Medium
 - Смягчение / следующий шаг: Держать `EPIC-070` provider-agnostic и в `awaiting_user_review`, не считать ticketing PSP выбором donation provider, не расширять foundation UI до checkout/webhook/payout automation без отдельного подтверждения, а до релизного включения donations получить явное product/finance confirmation по legal scheme и user-approved provider choice.
 - Владелец: Product + Finance + Engineering
-- Связанные артефакты: `D-081`, `TASK-087`, `TASK-088`, `TASK-089`, `docs/context/handoff/task-request-template/task-request-template-part-37.md`, `docs/context/handoff/task-request-template/task-request-template-part-39.md`
+- Связанные артефакты: `D-081`, `TASK-087`, `TASK-088`, `TASK-089`, `docs/context/handoff/task-request-template/task-request-template-part-37.md`, `docs/context/handoff/task-request-template/task-request-template-part-39.md`, `docs/context/handoff/task-request-template/task-request-template-part-40.md`
 - Статус: open

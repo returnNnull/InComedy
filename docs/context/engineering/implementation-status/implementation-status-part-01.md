@@ -1,6 +1,6 @@
 # Implementation Status Part 01
 
-## Current Implementation Status (2026-03-25)
+## Current Implementation Status (2026-03-26)
 
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
@@ -19,7 +19,8 @@
   - operator-only bounded server diagnostics store + retrieval endpoint with request-id correlation, covering the current auth/session/identity/workspace route surface;
   - shared/mobile backend error correlation via surfaced backend request ids in failure messages;
   - public live-event channel `/ws/events/{eventId}` with audience-safe `lineup.changed` / `stage.current_changed` payloads and server-local in-memory broadcaster wired to comedian application approval plus lineup reorder/live-state mutations;
-  - Android/iOS lineup surfaces now consume the public live-event feed through lifecycle-scoped runtime activation, shared lineup-state application of audience-safe live summaries, and organizer application refresh after `application_approved` realtime events.
+  - Android/iOS lineup surfaces now consume the public live-event feed through lifecycle-scoped runtime activation, shared lineup-state application of audience-safe live summaries, and organizer application refresh after `application_approved` realtime events;
+  - donations/payout client foundation across shared `:feature:donations`, shared Swift bridge snapshots, Android `Донаты` tab, and iOS `DonationHubView`, covering sent/received donation history plus comedian payout-profile self-service form поверх уже delivered provider-agnostic backend.
 - Partial:
   - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
@@ -28,8 +29,8 @@
   - ticketing foundation now includes derived `InventoryUnit` persistence from frozen snapshots, event-versioned sync markers, public and authenticated inventory routes, protected hold lifecycle, provider-agnostic checkout order creation, authenticated order-status reads, issued-ticket persistence and QR delivery, checker scan flow, shared `:feature:ticketing` state, Android `Билеты` tab wiring, and iOS `TicketWalletView`; `sold_out` automation, complimentary issuance, refund/cancel ticket lifecycle, wallet pass/export, and check-in stats/offline buffering are still missing;
   - comedian applications and lineup backend foundation now includes submit/review/list/reorder/live-stage mutation plus public WebSocket live-event delivery for audience-safe lineup/live-stage updates; staff/private channels, durable outbox/multi-instance fanout, and non-lineup live event types are still missing;
   - comedian applications and lineup shared/mobile foundation now includes dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules, Android/iOS live-stage UI surfaces, a KMP realtime subscription contract over the public `/ws/events/{eventId}` channel, and lifecycle-gated product consumption of that feed; reconnect/push fallback, durable outbox/multi-instance fanout, and richer organizer-private synchronization beyond approval-triggered application refresh are still missing;
-  - donations/payout foundation now includes dedicated `:domain:donations`, `:data:donations` и `:feature:donations`, migration-backed persistence for `comedian_payout_profiles` and `donation_intents`, protected payout-profile self-service routes, Ktor transport/DTO mapping for payout profile and donation history/create flows, Koin wiring into `shared`, verified-payout gating, donor idempotency, Android Compose and iOS SwiftUI donation/payout surfaces, and manual-settlement-ready provider-agnostic responses; external checkout/webhooks, operator verification workflow, and payout automation are still missing;
-  - current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet and check-in surfaces, but deeper organizer operational flows beyond workspaces, venues, events, and ticketing foundations are still missing.
+  - donations/payout foundation now includes dedicated `:domain:donations`, `:data:donations` и `:feature:donations`, migration-backed persistence for `comedian_payout_profiles` and `donation_intents`, protected payout-profile self-service routes, Ktor transport/DTO mapping for payout profile and donation history/create flows, Koin wiring into `shared`, verified-payout gating, donor idempotency, Android Compose and iOS SwiftUI donation/payout surfaces, and manual-settlement-ready provider-agnostic responses; external checkout/webhooks, operator verification workflow, payout automation, and explicit legal/provider confirmation are still missing;
+  - current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet, donation overview / comedian payout surface, and check-in flows, but deeper organizer operational flows beyond workspaces, venues, events, ticketing, and the first donation foundation slice are still missing.
 
 ## Next Bounded Contexts
 

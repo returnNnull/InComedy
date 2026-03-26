@@ -10,11 +10,11 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-26T04:26:55+03:00`
+- Timestamp: `2026-03-26T05:36:02+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-070`
-- Active Subtask: `TASK-089`
+- Active Subtask: `none`
 - Branch: `codex/epic-070-donations-payout-foundation`
 - Epic Status: `awaiting_user_review`
 - Run Status: `completed`
@@ -25,8 +25,8 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Итог
 
-- `TASK-089` завершён: добавлены общий `:feature:donations`, shared bridge/snapshot wiring, Android Compose donation tab и iOS SwiftUI donation tab с payout profile form, donation history overview и accessibility/test coverage без активации checkout/webhook/payout automation.`
-- `Повторная targeted iOS verification обнаружила collision accessibility identifiers внутри SwiftUI payout section; leaf identifiers были восстановлены, после чего targeted XCUITest donations tab прошёл успешно.`
+- `TASK-089` завершён: добавлены общий `:feature:donations`, shared bridge/snapshot wiring, Android Compose donation tab и iOS SwiftUI donation tab с payout profile form, donation history overview и platform test coverage без активации checkout/webhook/payout automation.`
+- `Повторная targeted iOS verification обнаружила stale form sync внутри SwiftUI payout section; форма теперь пересинхронизируется по payout profile updatedAtIso, после чего targeted XCUITest donations tab прошёл успешно.`
 - `EPIC-070` переведён в `awaiting_user_review`; новых product subtasks до explicit user confirmation открывать нельзя.`
 
 ## Возобновление

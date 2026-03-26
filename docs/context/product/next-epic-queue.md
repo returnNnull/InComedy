@@ -20,7 +20,7 @@
 ## Активированный epic
 
 - `EPIC-070`
-  - Current state: `TASK-087` и `TASK-088` завершены на ветке `codex/epic-070-donations-payout-foundation`; следующий bounded step — `TASK-089`, Android/iOS donation и comedian payout surfaces с executable verification.
+  - Current state: `TASK-087`, `TASK-088` и `TASK-089` завершены на ветке `codex/epic-070-donations-payout-foundation`; epic переведён в `awaiting_user_review`, а следующим bounded шагом остаётся только explicit user review confirmation.
   - Guardrail: donations epic остаётся provider-agnostic/manual-settlement-ready и не трактует существующий ticketing PSP adapter как подтверждённый donation/payout provider.
 
 ## Правило
