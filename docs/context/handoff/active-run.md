@@ -10,7 +10,7 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-26T14:03:31+03:00`
+- Timestamp: `2026-03-26T15:47:02+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-070`
@@ -21,13 +21,13 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Цель
 
-- `Закрыть накопившуюся незакоммиченную docs-only recovery boundary, подтвердить review boundary после локального commit 5ee1337 и сохранить EPIC-070 в awaiting_user_review без открытия нового scope.`
+- `Подтвердить clean review boundary после локального docs-sync commit 89b4029, удержать EPIC-070 в awaiting_user_review и не открывать новый scope без explicit user confirmation.`
 
 ## Итог
 
 - `TASK-089` завершён: добавлены общий `:feature:donations`, shared bridge/snapshot wiring, Android Compose donation tab и iOS SwiftUI donation tab с payout profile form, donation history overview и platform test coverage без активации checkout/webhook/payout automation.`
 - `Review-driven follow-up после commit 1059945 устранил donations/session lifecycle regression: shared state теперь очищается при пропаже access token, Android wrapper больше не делает eager refresh в init, а iOS donation refresh запускается только после готовности session context.`
-- `Накопившийся docs-only recovery sync собран в один closure block: текущий launch обновил state/session/task memory, подтвердил review boundary поверх commit-а 5ee1337 и не менял runtime/code surface.`
+- `Очередной scheduled slot стартовал на clean worktree после локального docs-sync commit 89b4029: текущий launch обновил state/session/task memory, увеличил `AutomationState.run_slots_used_in_cycle` до `26`, повторно подтвердил runtime review boundary поверх commit-а 5ee1337 и не менял runtime/code surface.`
 - `EPIC-070 остаётся в awaiting_user_review; новый epic или новая product-подзадача без explicit user confirmation по-прежнему запрещены.`
 
 ## Возобновление
