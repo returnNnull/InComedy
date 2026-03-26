@@ -122,6 +122,39 @@ class DonationsViewModelTest {
         assertEquals("+79991234567", donationService.lastSavedBeneficiaryRef)
     }
 
+    @Test
+    fun `missing session clears sensitive donations state`() = runTest(dispatcher) {
+        var accessToken: String? = "access-token"
+        val donationService = FakeDonationService(
+            sentDonations = listOf(donationIntent(id = "sent-1")),
+            receivedDonations = listOf(donationIntent(id = "recv-1")),
+            payoutProfile = payoutProfile(),
+        )
+        val viewModel = DonationsViewModel(
+            donationService = donationService,
+            accessTokenProvider = { accessToken },
+            roleProvider = { listOf("audience", "comedian") },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadOverview()
+        advanceUntilIdle()
+        assertEquals(1, viewModel.state.value.sentDonations.size)
+        assertEquals(1, viewModel.state.value.receivedDonations.size)
+        assertEquals("profile-1", viewModel.state.value.payoutProfile?.id)
+
+        accessToken = null
+        viewModel.loadOverview()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state.sentDonations.isEmpty())
+        assertTrue(state.receivedDonations.isEmpty())
+        assertNull(state.payoutProfile)
+        assertFalse(state.hasComedianRole)
+        assertEquals("Нет активной сессии для работы с донатами", state.errorMessage)
+    }
+
     private class FakeDonationService(
         private val sentDonations: List<DonationIntent> = emptyList(),
         private val receivedDonations: List<DonationIntent> = emptyList(),

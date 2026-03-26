@@ -1,6 +1,7 @@
 package com.bam.incomedy.feature.donations.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -77,5 +78,35 @@ class DonationHubTabContentTest {
 
         composeRule.onNodeWithTag(DonationScreenTags.PAYOUT_LOCKED).assertIsDisplayed()
         composeRule.onNodeWithTag(DonationScreenTags.SENT_COUNT).assertTextEquals("Отправлено: 1")
+    }
+
+    @Test
+    fun refreshesWhenAccessTokenBecomesAvailable() {
+        val sessionState = mutableStateOf(
+            AndroidUiStateFactory.sessionState(accessToken = null),
+        )
+        var refreshCalls = 0
+
+        composeRule.setContent {
+            MaterialTheme {
+                DonationHubTab(
+                    sessionState = sessionState.value,
+                    donationsBindings = DonationsTabBindings(
+                        state = AndroidUiStateFactory.donationsState(),
+                        onRefresh = { refreshCalls += 1 },
+                    ),
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertEquals(0, refreshCalls)
+
+        composeRule.runOnUiThread {
+            sessionState.value = sessionState.value.copy(accessToken = "access-token")
+        }
+        composeRule.waitForIdle()
+
+        assertEquals(1, refreshCalls)
     }
 }

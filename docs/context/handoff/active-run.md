@@ -10,25 +10,25 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-26T05:40:29+03:00`
+- Timestamp: `2026-03-26T10:35:00+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-070`
 - Active Subtask: `none`
 - Branch: `codex/epic-070-donations-payout-foundation`
 - Epic Status: `awaiting_user_review`
-- Run Status: `docs_only`
+- Run Status: `completed`
 
 ## Цель
 
-- `Подтвердить review-boundary posture для EPIC-070: удерживать ветку на awaiting_user_review, не открывать новый epic и убрать stale handoff/doc state после уже завершённого TASK-089.`
+- `Закрыть незавершённую commit boundary review-driven regression fix для donations/session lifecycle и вернуть recovery к чистому review boundary по EPIC-070 без открытия нового scope.`
 
 ## Итог
 
 - `TASK-089` завершён: добавлены общий `:feature:donations`, shared bridge/snapshot wiring, Android Compose donation tab и iOS SwiftUI donation tab с payout profile form, donation history overview и platform test coverage без активации checkout/webhook/payout automation.`
-- `Повторная targeted iOS verification обнаружила stale form sync внутри SwiftUI payout section; форма теперь пересинхронизируется по payout profile updatedAtIso, после чего targeted XCUITest donations tab прошёл успешно.`
-- Текущий `docs_only` sync убрал stale duplicate outcome `TASK-089` из historical `part-39` и выровнял recovery/backlog posture под реальное состояние `EPIC-070 awaiting_user_review`.
-- `EPIC-070` переведён в `awaiting_user_review`; новых product subtasks до explicit user confirmation открывать нельзя.`
+- `Review-driven follow-up после commit 1059945 устранил donations/session lifecycle regression: shared state теперь очищается при пропаже access token, Android wrapper больше не делает eager refresh в init, а iOS donation refresh запускается только после готовности session context.`
+- `Повторная verification зелёная: прошли rerun `:feature:donations:allTests`, targeted Android Compose donations test и targeted iOS donations XCUITest; verification/session/task memory синхронизированы под этот outcome.`
+- `Локальная commit boundary для review-driven follow-up закрыта текущим локальным commit-ом, а EPIC-070 остаётся в awaiting_user_review без открытия нового epic или новой product подзадачи.`
 
 ## Возобновление
 

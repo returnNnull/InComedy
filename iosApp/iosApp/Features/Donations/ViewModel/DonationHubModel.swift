@@ -19,7 +19,6 @@ final class DonationHubModel: ObservableObject {
             viewModel: InComedyKoin.shared.getDonationsViewModel()
         )
         bind()
-        self.bridge?.refresh()
     }
 
     init(fixture: DonationHubFixture) {

@@ -27,9 +27,22 @@
 - `Passed: ./gradlew :feature:donations:allTests :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.donations.ui.DonationHubTabContentTest' --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' :composeApp:compileDebugKotlin`
 - `Passed: xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:iosAppUITests/iosAppUITests/testDonationTabShowsPayoutAndHistorySurface test`
 
+### Review-Driven Follow-Up
+
+- После commit `1059945` найден и устранён donations/session lifecycle regression: `DonationsViewModel` теперь сбрасывает весь `DonationsState`, если активная сессия пропала, чтобы sent/received history и payout profile не оставались в process-lived памяти после logout или потери access token.
+- `DonationsAndroidViewModel` больше не инициирует eager refresh в `init`; Android donations tab использует уже существующий session-driven `LaunchedEffect(accessToken)` внутри `DonationHubTab`.
+- `DonationHubModel` больше не делает eager refresh при создании, а `MainGraphView` запускает `donationModel.refresh()` только когда `isAuthorized == true` и `isLoadingContext == false`, чтобы initial iOS donations load не опережал готовность session context.
+- Добавлены regression checks для shared state reset и Android session-bootstrap refresh path; iOS путь повторно подтверждён через targeted donations XCUITest.
+
+### Follow-Up Verification
+
+- `Passed: ./gradlew :feature:donations:allTests`
+- `Passed: ./gradlew :composeApp:compileDebugKotlin :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.donations.ui.DonationHubTabContentTest.refreshesWhenAccessTokenBecomesAvailable'`
+- `Passed: xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:iosAppUITests/iosAppUITests/testDonationTabShowsPayoutAndHistorySurface test`
+
 ### Notes
 
-- Security review verdict: новый client/shared slice ограничен authenticated donation history и comedian payout-profile UI поверх уже существующего provider-agnostic backend surface; provider secrets, checkout activation, webhook ingestion, payout execution и implicit reuse ticketing PSP credentials не добавлялись.
+- Security review verdict: базовый client/shared slice и review-driven follow-up остаются внутри authenticated donation history и comedian payout-profile UI поверх уже существующего provider-agnostic backend surface; provider secrets, checkout activation, webhook ingestion, payout execution и implicit reuse ticketing PSP credentials не добавлялись.
 - `R-005` остаётся open: platform UX уже доставлен, но legal/financial scheme, operator verification workflow и explicit donation/payout provider choice всё ещё не подтверждены.
 
 ### Review Boundary

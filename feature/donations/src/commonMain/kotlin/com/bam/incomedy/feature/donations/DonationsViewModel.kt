@@ -168,7 +168,9 @@ class DonationsViewModel(
             ?.trim()
             ?.takeIf(String::isNotBlank)
         if (accessToken == null) {
-            _state.update { it.copy(errorMessage = "Нет активной сессии для работы с донатами") }
+            _state.value = DonationsState(
+                errorMessage = "Нет активной сессии для работы с донатами",
+            )
         }
         return accessToken
     }

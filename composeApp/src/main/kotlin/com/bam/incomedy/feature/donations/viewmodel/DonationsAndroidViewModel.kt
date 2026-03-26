@@ -16,10 +16,6 @@ class DonationsAndroidViewModel(
     private val sharedViewModel = InComedyKoin.getDonationsViewModel()
     val state: StateFlow<DonationsState> = sharedViewModel.state
 
-    init {
-        sharedViewModel.loadOverview()
-    }
-
     fun refresh() {
         sharedViewModel.loadOverview()
     }

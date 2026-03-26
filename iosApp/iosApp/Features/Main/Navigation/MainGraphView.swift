@@ -177,8 +177,16 @@ struct MainGraphView: View {
         }
         .accessibilityIdentifier("main.root")
         .onChange(of: model.isAuthorized) { _, isAuthorized in
+            if isAuthorized && !model.isLoadingContext {
+                donationModel.refresh()
+            }
             if !isAuthorized {
                 onSignOut()
+            }
+        }
+        .onChange(of: model.isLoadingContext) { _, isLoadingContext in
+            if model.isAuthorized && !isLoadingContext {
+                donationModel.refresh()
             }
         }
     }

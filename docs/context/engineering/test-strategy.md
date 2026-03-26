@@ -27,6 +27,7 @@
 - Ticketing inventory/hold/order/checkout backend changes must cover derivation from `EventHallSnapshot` plus event-local overrides, hold conflict invariants, checkout-order creation from active hold-ов, authenticated order-status reads, paid-order ticket issuance idempotency, authenticated `GET /api/v1/me/tickets`, checker-only `POST /api/v1/checkin/scan` with duplicate-scan handling, PSP handoff session creation with idempotent reuse, webhook-driven payment confirmation/cancellation with provider-status recheck plus source validation, duplicate-webhook idempotency, expiry/release semantics for both hold-ов and pending order-ов, stale-sync avoidance on unchanged reads, and migration-path verification for the ticketing foundation slice.
 - Smoke tests on release branches must validate the currently shipped critical flows.
 - Mobile UI changes in active product flows must have executable platform UI coverage where in-repo infrastructure exists.
+- Donations mobile wrapper/UI changes must cover session-bootstrap и logout regressions: initial refresh не должен выполняться eager-в `ViewModel` init до готовности access token, а payout profile и donation history обязаны очищаться при пропаже активной сессии.
 - Auth/session boundary refactors must execute `:domain:auth:allTests`, `:domain:session:allTests`, `:core:backend:allTests`, `:data:auth:allTests`, `:data:session:allTests`, `:shared:allTests`, `:composeApp:testDebugUnitTest`, and `:composeApp:compileDebugKotlin` before completion.
 
 ## MVI-Specific Expectations
