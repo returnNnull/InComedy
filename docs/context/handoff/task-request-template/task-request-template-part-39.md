@@ -60,8 +60,9 @@
 
 ### Verification
 
-- `Passed: ./gradlew --no-build-cache :feature:donations:allTests :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin :shared:compileKotlinIosSimulatorArm64`
-- `Passed: xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'platform=iOS Simulator,id=48100E42-0C0F-4794-9570-4DA5185BAB28' -only-testing:iosAppUITests/iosAppUITests/testDonationTabShowsPayoutAndHistorySurface test`
+- `Passed: ./gradlew --no-build-cache :feature:donations:allTests :shared:compileCommonMainKotlinMetadata :shared:compileKotlinIosSimulatorArm64 :composeApp:testDebugUnitTest :composeApp:compileDebugKotlin`
+- `Passed: JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`
+- `Passed: JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'id=5EC0AE38-9521-40C0-B43F-874924578A0F' -derivedDataPath /tmp/incomedy-uitest-deriveddata-task089 -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:iosAppUITests/iosAppUITests/testDonationTabShowsPayoutAndHistorySurface test CODE_SIGNING_ALLOWED=NO`
 
 ### Notes
 
