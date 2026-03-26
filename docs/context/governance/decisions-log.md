@@ -16,8 +16,9 @@ ADR-style decision register for product and engineering governance.
 5. `decisions-log/decisions-log-part-05.md` (`D-065` -> `D-071`)
 6. `decisions-log/decisions-log-part-06.md` (`D-072` -> `D-077`)
 7. `decisions-log/decisions-log-part-07.md` (`D-078` and later entries)
+8. `decisions-log/decisions-log-part-08.md` (`D-082` and later entries)
 
 ## Append Rule
 
-- Append new decisions to `decisions-log/decisions-log-part-07.md`.
-- If the latest part grows above ~8,000 characters, create `decisions-log/decisions-log-part-08.md`, update this index, and continue appending there.
+- Append new decisions to `decisions-log/decisions-log-part-08.md`.
+- If the latest part grows above ~8,000 characters, create `decisions-log/decisions-log-part-09.md`, update this index, and continue appending there.

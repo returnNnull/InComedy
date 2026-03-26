@@ -22,8 +22,9 @@ Track how decisions map to implementation and tests.
 5. `decision-traceability/decision-traceability-part-05.md` (`D-060` -> `D-068`)
 6. `decision-traceability/decision-traceability-part-06.md` (`D-067` -> `D-077`)
 7. `decision-traceability/decision-traceability-part-07.md` (`D-078` and later entries)
+8. `decision-traceability/decision-traceability-part-08.md` (`D-082` and later entries)
 
 ## Append Rule
 
-- Append new decision entries to `decision-traceability/decision-traceability-part-07.md`.
-- If the latest part grows above ~8,000 characters, create `decision-traceability/decision-traceability-part-08.md`, update this index, and continue appending there.
+- Append new decision entries to `decision-traceability/decision-traceability-part-08.md`.
+- If the latest part grows above ~8,000 characters, create `decision-traceability/decision-traceability-part-09.md`, update this index, and continue appending there.

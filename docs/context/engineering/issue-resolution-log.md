@@ -20,7 +20,7 @@
 - Xcode/simulator:
   - `I-001` — `CoreSimulatorService` / placeholder destinations / targeted XCUITest device selection failure
 - Gradle/KMP:
-  - пока нет записей
+  - `I-002` — `Storage ... already registered` / `CorruptedException` после параллельных Gradle/Kotlin daemon runs по одному worktree
 - Android emulator:
   - пока нет записей
 - CI:
@@ -42,9 +42,10 @@
 
 ## Parts (Exact Order)
 
-1. `issue-resolution-log/issue-resolution-log-part-01.md` (`I-001` and later entries)
+1. `issue-resolution-log/issue-resolution-log-part-01.md` (`I-001`)
+2. `issue-resolution-log/issue-resolution-log-part-02.md` (`I-002` and later entries)
 
 ## Append Rule
 
-- Append new issue/solution entries to `issue-resolution-log/issue-resolution-log-part-01.md`.
-- If the latest part grows above ~8,000 characters, create `issue-resolution-log/issue-resolution-log-part-02.md`, update this index, and continue appending there.
+- Append new issue/solution entries to `issue-resolution-log/issue-resolution-log-part-02.md`.
+- If the latest part grows above ~8,000 characters, create `issue-resolution-log/issue-resolution-log-part-03.md`, update this index, and continue appending there.

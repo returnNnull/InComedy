@@ -5,9 +5,11 @@ import com.bam.incomedy.server.config.JwtConfig
 import com.bam.incomedy.server.db.AuthProvider
 import com.bam.incomedy.server.db.StoredUser
 import com.bam.incomedy.server.db.UserRole
+import com.bam.incomedy.server.notifications.AnnouncementRoutes
 import com.bam.incomedy.server.realtime.EventLiveChannelBroadcaster
 import com.bam.incomedy.server.realtime.EventLiveChannelRoutes
 import com.bam.incomedy.server.security.InMemoryAuthRateLimiter
+import com.bam.incomedy.server.support.InMemoryAnnouncementRepository
 import com.bam.incomedy.server.support.InMemoryComedianApplicationRepository
 import com.bam.incomedy.server.support.InMemoryEventRepository
 import com.bam.incomedy.server.support.InMemoryLineupRepository
@@ -52,6 +54,7 @@ class EventLiveChannelRoutesTest {
         val userRepository = InMemoryUserRepository()
         val venueRepository = InMemoryVenueRepository()
         val eventRepository = InMemoryEventRepository()
+        val announcementRepository = InMemoryAnnouncementRepository()
         val applicationRepository = InMemoryComedianApplicationRepository()
         val lineupRepository = InMemoryLineupRepository()
         val tokenService = tokenService()
@@ -71,6 +74,7 @@ class EventLiveChannelRoutesTest {
         configureRealtimeRoutes(
             userRepository = userRepository,
             eventRepository = eventRepository,
+            announcementRepository = announcementRepository,
             applicationRepository = applicationRepository,
             lineupRepository = lineupRepository,
             tokenService = tokenService,
@@ -118,6 +122,7 @@ class EventLiveChannelRoutesTest {
         val userRepository = InMemoryUserRepository()
         val venueRepository = InMemoryVenueRepository()
         val eventRepository = InMemoryEventRepository()
+        val announcementRepository = InMemoryAnnouncementRepository()
         val applicationRepository = InMemoryComedianApplicationRepository()
         val lineupRepository = InMemoryLineupRepository()
         val tokenService = tokenService()
@@ -137,6 +142,7 @@ class EventLiveChannelRoutesTest {
         configureRealtimeRoutes(
             userRepository = userRepository,
             eventRepository = eventRepository,
+            announcementRepository = announcementRepository,
             applicationRepository = applicationRepository,
             lineupRepository = lineupRepository,
             tokenService = tokenService,
@@ -191,6 +197,7 @@ class EventLiveChannelRoutesTest {
         val userRepository = InMemoryUserRepository()
         val venueRepository = InMemoryVenueRepository()
         val eventRepository = InMemoryEventRepository()
+        val announcementRepository = InMemoryAnnouncementRepository()
         val applicationRepository = InMemoryComedianApplicationRepository()
         val lineupRepository = InMemoryLineupRepository()
         val tokenService = tokenService()
@@ -209,6 +216,7 @@ class EventLiveChannelRoutesTest {
         configureRealtimeRoutes(
             userRepository = userRepository,
             eventRepository = eventRepository,
+            announcementRepository = announcementRepository,
             applicationRepository = applicationRepository,
             lineupRepository = lineupRepository,
             tokenService = tokenService,
@@ -225,10 +233,67 @@ class EventLiveChannelRoutesTest {
         assertEquals("Event live channel is unavailable", closeReason.message)
     }
 
+    /** Проверяет, что новый organizer announcement публикуется в public live channel. */
+    @Test
+    fun `creating announcement emits announcement created event`() = testApplication {
+        val userRepository = InMemoryUserRepository()
+        val venueRepository = InMemoryVenueRepository()
+        val eventRepository = InMemoryEventRepository()
+        val announcementRepository = InMemoryAnnouncementRepository()
+        val applicationRepository = InMemoryComedianApplicationRepository()
+        val lineupRepository = InMemoryLineupRepository()
+        val tokenService = tokenService()
+        val broadcaster = EventLiveChannelBroadcaster()
+
+        val owner = ownerUser()
+        userRepository.putUser(owner)
+        val event = seedPublishedEvent(
+            userRepository = userRepository,
+            venueRepository = venueRepository,
+            eventRepository = eventRepository,
+            owner = owner,
+        )
+        configureRealtimeRoutes(
+            userRepository = userRepository,
+            eventRepository = eventRepository,
+            announcementRepository = announcementRepository,
+            applicationRepository = applicationRepository,
+            lineupRepository = lineupRepository,
+            tokenService = tokenService,
+            broadcaster = broadcaster,
+        )
+
+        val ownerAccessToken = tokenService.issue(
+            userId = owner.id,
+            provider = AuthProvider.PASSWORD,
+        ).accessToken
+        val websocketClient = createClient {
+            install(WebSockets)
+        }
+
+        websocketClient.webSocket("/ws/events/${event.id}") {
+            val initialPayload = receiveTextFrame()
+            assertTrue(initialPayload.contains(""""type":"lineup.changed""""))
+
+            val response = client.post("/api/v1/events/${event.id}/announcements") {
+                header(HttpHeaders.Authorization, "Bearer $ownerAccessToken")
+                contentType(ContentType.Application.Json)
+                setBody("""{"message":"Начинаем через 10 минут"}""")
+            }
+            assertEquals(HttpStatusCode.Created, response.status)
+
+            val announcementPayload = receiveTextFrame()
+            assertTrue(announcementPayload.contains(""""type":"announcement.created""""))
+            assertTrue(announcementPayload.contains("Начинаем через 10 минут"))
+            assertTrue(announcementPayload.contains(""""author_role":"organizer""""))
+        }
+    }
+
     /** Поднимает Ktor app с applications/lineup routes и public live-event channel. */
     private fun ApplicationTestBuilder.configureRealtimeRoutes(
         userRepository: InMemoryUserRepository,
         eventRepository: InMemoryEventRepository,
+        announcementRepository: InMemoryAnnouncementRepository,
         applicationRepository: InMemoryComedianApplicationRepository,
         lineupRepository: InMemoryLineupRepository,
         tokenService: JwtSessionTokenService,
@@ -265,6 +330,16 @@ class EventLiveChannelRoutesTest {
                     lineupRepository = lineupRepository,
                     eventLiveChannelBroadcaster = broadcaster,
                     rateLimiter = InMemoryAuthRateLimiter(),
+                )
+                AnnouncementRoutes.register(
+                    route = this,
+                    tokenService = tokenService,
+                    sessionUserRepository = userRepository,
+                    workspaceRepository = userRepository,
+                    eventRepository = eventRepository,
+                    announcementRepository = announcementRepository,
+                    rateLimiter = InMemoryAuthRateLimiter(),
+                    eventLiveChannelBroadcaster = broadcaster,
                 )
                 EventLiveChannelRoutes.register(
                     route = this,

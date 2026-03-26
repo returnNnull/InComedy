@@ -14,6 +14,7 @@ repositories {
 dependencies {
     implementation(project(":domain:donations"))
     implementation(project(":domain:event"))
+    implementation(project(":domain:notifications"))
     implementation(project(":domain:ticketing"))
     implementation(project(":domain:venue"))
     implementation(libs.ktor.server.core.jvm)

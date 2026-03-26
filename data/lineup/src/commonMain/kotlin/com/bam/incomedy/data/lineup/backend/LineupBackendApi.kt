@@ -23,7 +23,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -169,8 +169,8 @@ class LineupBackendApi private constructor(
         val normalizedEventId = eventId.trim()
         require(normalizedEventId.isNotEmpty()) { "Не выбран event для live updates" }
 
-        return liveUpdatesTransport.observe(buildEventLiveUpdatesUrl(normalizedEventId)).map { payload ->
-            parser.decodeFromString(LineupLiveUpdateResponse.serializer(), payload).toDomain()
+        return liveUpdatesTransport.observe(buildEventLiveUpdatesUrl(normalizedEventId)).mapNotNull { payload ->
+            decodeSupportedLiveUpdate(payload)
         }
     }
 
@@ -194,6 +194,15 @@ class LineupBackendApi private constructor(
                 "wss://$normalizedBaseUrl/ws/events/$eventId"
             }
         }
+    }
+
+    /** Декодирует только поддерживаемые lineup live-event payload-ы и пропускает остальные. */
+    private fun decodeSupportedLiveUpdate(payload: String): LineupLiveUpdate? {
+        val envelope = parser.decodeFromString(LineupLiveEnvelopeTypeResponse.serializer(), payload)
+        if (LineupLiveUpdateType.fromWireName(envelope.type) == null) {
+            return null
+        }
+        return parser.decodeFromString(LineupLiveUpdateResponse.serializer(), payload).toDomain()
     }
 
     companion object {
@@ -227,6 +236,12 @@ private data class LineupListResponse(
 )
 
 /** DTO public live-event envelope-а. */
+@Serializable
+private data class LineupLiveEnvelopeTypeResponse(
+    val type: String,
+)
+
+/** DTO public live-event envelope-а для поддерживаемых lineup событий. */
 @Serializable
 private data class LineupLiveUpdateResponse(
     val type: String,

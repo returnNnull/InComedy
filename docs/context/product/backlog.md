@@ -17,8 +17,9 @@ Priority scale:
 - Live stage status foundation now includes backend mutation semantics plus shared/data/feature lineup contracts for `current performer` / `next up`.
 - Android/iOS UI wiring for organizer live controls and audience-facing current/next state on top of the delivered shared foundation завершены в `EPIC-068`, который теперь принят пользователем и закрыт как `done`.
 - `EPIC-069` realtime/WebSocket delivery для live stage updates завершён, принят пользователем и смержен в `main`.
-- `EPIC-070` donations/payout foundation уже доставлен по плану `TASK-087 -> TASK-088 -> TASK-089` и удерживается на review boundary в статусе `awaiting_user_review`; без explicit user confirmation не открывать следующий epic и не расширять donations scope к checkout/webhooks/payout automation.
-- После review boundary текущего epic оперативная очередь следующих epic-ов ведётся в `product/next-epic-queue.md`.
+- `EPIC-070` donations/payout foundation уже доставлен по плану `TASK-087 -> TASK-088 -> TASK-089`, явно подтверждён пользователем, смержен в `main` и закрыт как `done`; donations scope по-прежнему нельзя расширять к checkout/webhooks/payout automation без отдельного provider/legal confirmation.
+- `EPIC-071` notifications / announcements delivery foundation теперь активен; первый bounded шаг `TASK-090` уже доставил backend organizer announcements/event feed foundation без `/api/v1/me/notifications` и без выбора внешнего push provider.
+- После старта текущего active epic оперативная очередь следующих epic-ов и их порядок ведутся в `product/next-epic-queue.md`.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).
 - Auth via standard login + password, with provider-agnostic extension points and VK ID as the external provider.

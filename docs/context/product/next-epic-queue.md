@@ -11,19 +11,20 @@
 ## Текущая очередь
 
 1. `EPIC-071` — notifications / announcements delivery foundation
-   - Status: `planned`
-   - Why next: важный `P0` слой, который идёт сразу после закрытого donations/payout foundation.
+   - Status: `in_progress`
+   - Why next: важный `P0` слой уже активирован отдельным automation step-ом после закрытого donations/payout foundation.
 2. `EPIC-072` — analytics foundation
    - Status: `planned`
-   - Why after EPIC-071: полезный следующий `P0/P1` слой, но он не должен обгонять notifications и активный donations epic.
+   - Why after EPIC-071: полезный следующий `P0/P1` слой, но он не должен обгонять активный notifications epic.
 
 ## Активированный epic
 
-- `none`
-  - Last completed: `EPIC-070` явно подтверждён пользователем и смержен в `main` как завершённый donations/payout foundation slice.
-  - Next candidate on future request: `EPIC-071` — notifications / announcements delivery foundation.
+- `EPIC-071`
+  - Status: `in_progress`
+  - Current next task: `TASK-091` — shared/data announcement service contract и transport integration без platform UI и без push-provider activation.
+  - Last completed epic: `EPIC-070` явно подтверждён пользователем и смержен в `main` как завершённый donations/payout foundation slice.
 
 ## Правило
 
-- Не начинай следующий epic из этого списка автоматически сразу после merge/push завершённого epic-а; нужен новый явный user request или отдельный automation step, который зафиксирует новый active epic.
+- Не начинай следующий epic из этого списка автоматически сразу после завершения `EPIC-071`; нужен новый явный user request или отдельный automation step, который зафиксирует новый active epic.
 - Если порядок меняется, синхронно обновляй этот файл, `00-current-state.md`, `task-request-log.md` и session memory.

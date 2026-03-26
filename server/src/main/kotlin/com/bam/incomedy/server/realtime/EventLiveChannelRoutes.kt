@@ -23,8 +23,9 @@ import java.util.UUID
 /**
  * WebSocket event live channel для audience-safe live stage updates.
  *
- * Первый bounded шаг epic-а публикует только `lineup.changed` и `stage.current_changed`; staff
- * channel, sales/inventory/announcement события и push fallback останутся следующими задачами.
+ * Текущий delivery slice публикует `lineup.changed`, `stage.current_changed` и
+ * `announcement.created`; staff channel, sales/inventory события и push fallback останутся
+ * следующими задачами.
  */
 object EventLiveChannelRoutes {
     private val logger = LoggerFactory.getLogger(EventLiveChannelRoutes::class.java)

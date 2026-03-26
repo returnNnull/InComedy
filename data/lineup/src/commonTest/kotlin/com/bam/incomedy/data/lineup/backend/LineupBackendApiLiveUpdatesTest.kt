@@ -101,6 +101,49 @@ class LineupBackendApiLiveUpdatesTest {
 
         assertEquals("wss://incomedy.ru/mobile/ws/events/event-42", transport.observedUrls.single())
     }
+
+    /** Проверяет, что неизвестный live-event тип пропускается без падения существующего lineup consumer-а. */
+    @Test
+    fun observeEventLiveUpdatesIgnoresUnknownEventTypes() = runTest {
+        val api = LineupBackendApi.createForTesting(
+            baseUrl = "https://incomedy.ru",
+            parser = backendJson,
+            liveUpdatesTransport = RecordingTransport(
+                payloads = listOf(
+                    """
+                    {
+                      "type": "announcement.created",
+                      "event_id": "event-1",
+                      "occurred_at": "2026-03-26T18:20:00+03:00",
+                      "reason": "organizer_announcement_created",
+                      "announcement": {
+                        "id": "announcement-1",
+                        "message": "Начинаем через 10 минут",
+                        "author_role": "organizer",
+                        "created_at": "2026-03-26T18:20:00+03:00"
+                      }
+                    }
+                    """.trimIndent(),
+                    """
+                    {
+                      "type": "lineup.changed",
+                      "event_id": "event-1",
+                      "occurred_at": "2026-03-26T18:21:00+03:00",
+                      "reason": "initial_snapshot",
+                      "summary": {
+                        "lineup": []
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+            ),
+        )
+
+        val update = api.observeEventLiveUpdates("event-1").single()
+
+        assertEquals(LineupLiveUpdateType.LINEUP_CHANGED, update.type)
+        assertEquals("initial_snapshot", update.reason)
+    }
 }
 
 /** Простой transport double, который возвращает заранее заданные payload-ы и запоминает URL. */

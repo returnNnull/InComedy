@@ -1,5 +1,6 @@
 package com.bam.incomedy.server.realtime
 
+import com.bam.incomedy.domain.notifications.EventAnnouncement
 import com.bam.incomedy.server.db.LineupEntryStatus
 import com.bam.incomedy.server.db.StoredLineupEntry
 import kotlinx.coroutines.channels.BufferOverflow
@@ -79,6 +80,21 @@ class EventLiveChannelBroadcaster(
         )
     }
 
+    /** Публикует audience-safe уведомление о новом organizer announcement-е. */
+    suspend fun publishAnnouncementCreated(
+        eventId: String,
+        announcement: EventAnnouncement,
+        reason: String,
+    ) {
+        channelFor(eventId).emit(
+            EventLiveEnvelope.announcementCreated(
+                eventId = eventId,
+                announcement = announcement,
+                reason = reason,
+            ),
+        )
+    }
+
     /** Получает или создает shared flow для конкретного события. */
     private fun channelFor(eventId: String): MutableSharedFlow<EventLiveEnvelope> {
         return channels.computeIfAbsent(eventId) {
@@ -94,11 +110,12 @@ class EventLiveChannelBroadcaster(
 /**
  * Realtime envelope audience-facing event live channel-а.
  *
- * @property type Тип события (`lineup.changed` или `stage.current_changed`).
+ * @property type Тип события (`lineup.changed`, `stage.current_changed` или `announcement.created`).
  * @property eventId Идентификатор события.
  * @property occurredAtIso Момент формирования payload.
  * @property reason Безопасная причина публикации для клиентской дедупликации/отладки.
- * @property summary Audience-safe summary текущего live stage состояния.
+ * @property summary Audience-safe summary текущего live stage состояния для lineup/stage событий.
+ * @property announcement Audience-safe payload announcement-события.
  */
 @Serializable
 data class EventLiveEnvelope(
@@ -108,7 +125,8 @@ data class EventLiveEnvelope(
     @SerialName("occurred_at")
     val occurredAtIso: String,
     val reason: String,
-    val summary: EventLiveSummary,
+    val summary: EventLiveSummary? = null,
+    val announcement: EventLiveAnnouncementPayload? = null,
 ) {
     companion object {
         /** Собирает envelope для lineup change. */
@@ -140,6 +158,51 @@ data class EventLiveEnvelope(
                 occurredAtIso = occurredAt.toString(),
                 reason = reason,
                 summary = lineup.toAudienceSummary(),
+            )
+        }
+
+        /** Собирает envelope для нового event announcement-а. */
+        fun announcementCreated(
+            eventId: String,
+            announcement: EventAnnouncement,
+            reason: String,
+        ): EventLiveEnvelope {
+            return EventLiveEnvelope(
+                type = "announcement.created",
+                eventId = eventId,
+                occurredAtIso = announcement.createdAtIso,
+                reason = reason,
+                announcement = EventLiveAnnouncementPayload.fromDomain(announcement),
+            )
+        }
+    }
+}
+
+/**
+ * Audience-safe payload event announcement-а внутри live channel.
+ *
+ * @property id Идентификатор announcement.
+ * @property message Текст объявления.
+ * @property authorRole Безопасная роль автора без раскрытия user identity.
+ * @property createdAtIso RFC3339 timestamp публикации.
+ */
+@Serializable
+data class EventLiveAnnouncementPayload(
+    val id: String,
+    val message: String,
+    @SerialName("author_role")
+    val authorRole: String,
+    @SerialName("created_at")
+    val createdAtIso: String,
+) {
+    companion object {
+        /** Собирает websocket payload из доменной announcement-модели. */
+        fun fromDomain(announcement: EventAnnouncement): EventLiveAnnouncementPayload {
+            return EventLiveAnnouncementPayload(
+                id = announcement.id,
+                message = announcement.message,
+                authorRole = announcement.authorRole.wireName,
+                createdAtIso = announcement.createdAtIso,
             )
         }
     }

@@ -11,6 +11,7 @@ import com.bam.incomedy.server.auth.vk.VkIdAuthService
 import com.bam.incomedy.server.config.AppConfig
 import com.bam.incomedy.server.db.DatabaseFactory
 import com.bam.incomedy.server.db.DatabaseMigrationRunner
+import com.bam.incomedy.server.db.PostgresAnnouncementRepository
 import com.bam.incomedy.server.db.PostgresComedianApplicationRepository
 import com.bam.incomedy.server.db.PostgresDonationRepository
 import com.bam.incomedy.server.db.PostgresEventRepository
@@ -24,6 +25,7 @@ import com.bam.incomedy.server.ios.AppleAppSiteAssociationRoutes
 import com.bam.incomedy.server.identity.IdentityRoutes
 import com.bam.incomedy.server.lineup.ComedianApplicationsRoutes
 import com.bam.incomedy.server.lineup.LineupRoutes
+import com.bam.incomedy.server.notifications.AnnouncementRoutes
 import com.bam.incomedy.server.observability.DiagnosticsConfig
 import com.bam.incomedy.server.observability.DiagnosticsRoutes
 import com.bam.incomedy.server.observability.InMemoryDiagnosticsStore
@@ -70,6 +72,7 @@ fun Application.module() {
     val repository = PostgresUserRepository(dataSource)
     val venueRepository = PostgresVenueRepository(dataSource)
     val eventRepository = PostgresEventRepository(dataSource)
+    val announcementRepository = PostgresAnnouncementRepository(dataSource)
     val comedianApplicationRepository = PostgresComedianApplicationRepository(dataSource)
     val lineupRepository = PostgresLineupRepository(dataSource)
     val donationRepository = PostgresDonationRepository(dataSource)
@@ -239,6 +242,17 @@ fun Application.module() {
             lineupRepository = lineupRepository,
             eventLiveChannelBroadcaster = eventLiveChannelBroadcaster,
             rateLimiter = rateLimiter,
+            diagnosticsStore = diagnosticsStore,
+        )
+        AnnouncementRoutes.register(
+            route = this,
+            tokenService = tokenService,
+            sessionUserRepository = repository,
+            workspaceRepository = repository,
+            eventRepository = eventRepository,
+            announcementRepository = announcementRepository,
+            rateLimiter = rateLimiter,
+            eventLiveChannelBroadcaster = eventLiveChannelBroadcaster,
             diagnosticsStore = diagnosticsStore,
         )
         EventLiveChannelRoutes.register(
