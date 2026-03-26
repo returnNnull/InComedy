@@ -20,6 +20,9 @@ struct MainGraphView: View {
     /// Модель audience/staff ticketing feature.
     @StateObject private var ticketModel: TicketWalletModel
 
+    /// Модель donation overview и comedian payout surface.
+    @StateObject private var donationModel: DonationHubModel
+
     /// Имя нового рабочего пространства из формы на вкладке "Главная".
     @State private var workspaceName: String = ""
 
@@ -76,6 +79,13 @@ struct MainGraphView: View {
                 )
             } ?? TicketWalletModel()
         )
+        _donationModel = StateObject(
+            wrappedValue: fixture.map { _ in
+                DonationHubModel(
+                    fixture: DonationHubFixture.preview()
+                )
+            } ?? DonationHubModel()
+        )
     }
 
     /// Отрисовывает tab shell авторизованной части приложения.
@@ -96,6 +106,16 @@ struct MainGraphView: View {
                 Label("Главная", systemImage: "house")
             }
             .accessibilityIdentifier("main.tab.home")
+
+            NavigationStack {
+                DonationHubView(
+                    model: donationModel
+                )
+            }
+            .tabItem {
+                Label("Донаты", systemImage: "heart.text.square")
+            }
+            .accessibilityIdentifier("main.tab.donations")
 
             NavigationStack {
                 TicketWalletView(

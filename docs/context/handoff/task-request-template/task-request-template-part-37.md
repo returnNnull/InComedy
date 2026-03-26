@@ -51,7 +51,7 @@
 
 ### Status
 
-- `in_progress`
+- `awaiting_user_review`
 
 ### Why Now
 
@@ -66,7 +66,7 @@
 2. `TASK-088` — shared/data donation service contract и transport integration для payout profile, donation history и intent creation без platform UI.
    - Status: `completed`
 3. `TASK-089` — Android/iOS donation и comedian payout surfaces с executable verification для delivered foundation.
-   - Status: `in_progress`
+   - Status: `completed`
 
 ### Scope Rules
 
@@ -76,11 +76,11 @@
 
 ### Current Next
 
-- `Ровно одна текущая продуктовая подзадача — TASK-089: Android/iOS donation и comedian payout surfaces поверх уже delivered shared/data foundation, с executable verification и без активации конкретного PSP.`
+- `Product work остановлен на review boundary: до явного user confirmation по EPIC-070 нельзя открывать новый epic или новую подзадачу поверх donations foundation.`
 
 ### Current Recovery State
 
-- `EPIC-070 открыт по явному user request на ветке codex/epic-070-donations-payout-foundation; TASK-087` и `TASK-088` уже закрыты, а текущий active bounded step — `TASK-089`.`
+- `EPIC-070 остаётся на ветке codex/epic-070-donations-payout-foundation в статусе awaiting_user_review; TASK-087`, `TASK-088` и `TASK-089` уже закрыты и могут переоткрываться только как regression/review follow-up.`
 
 ### Recovery Guardrail
 

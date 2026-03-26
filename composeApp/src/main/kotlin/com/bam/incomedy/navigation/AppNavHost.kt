@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import com.bam.incomedy.feature.auth.navigation.authGraph
 import com.bam.incomedy.feature.auth.ui.AuthScreen
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import com.bam.incomedy.feature.donations.viewmodel.DonationsAndroidViewModel
 import com.bam.incomedy.feature.main.navigation.mainGraph
 import com.bam.incomedy.feature.main.ui.MainScreen
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
@@ -44,6 +45,9 @@ fun AppNavHost(
     val eventViewModel: EventAndroidViewModel = viewModel(
         factory = AndroidViewModelFactories.event(application),
     )
+    val donationsViewModel: DonationsAndroidViewModel = viewModel(
+        factory = AndroidViewModelFactories.donations(application),
+    )
     val ticketingViewModel: TicketingAndroidViewModel = viewModel(
         factory = AndroidViewModelFactories.ticketing(application),
     )
@@ -67,6 +71,7 @@ fun AppNavHost(
         mainContent = { contentModifier ->
             MainScreen(
                 sessionViewModel = sessionViewModel,
+                donationsViewModel = donationsViewModel,
                 eventViewModel = eventViewModel,
                 lineupViewModel = lineupViewModel,
                 ticketingViewModel = ticketingViewModel,

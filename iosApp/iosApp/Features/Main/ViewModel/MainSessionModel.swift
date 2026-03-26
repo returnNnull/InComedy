@@ -410,7 +410,7 @@ struct MainSessionFixture {
         userId: "user-1",
         photoURL: nil,
         providerKey: "password",
-        roles: ["audience", "organizer"],
+        roles: ["audience", "organizer", "comedian"],
         activeRoleKey: "audience",
         linkedProviderKeys: ["password"],
         workspaces: [

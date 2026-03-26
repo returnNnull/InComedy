@@ -9,6 +9,7 @@ import com.bam.incomedy.data.ticketing.di.ticketingDataModule
 import com.bam.incomedy.data.venue.di.venueDataModule
 import com.bam.incomedy.feature.auth.di.authFeatureModule
 import com.bam.incomedy.feature.auth.mvi.AuthViewModel
+import com.bam.incomedy.feature.donations.DonationsViewModel
 import com.bam.incomedy.feature.event.EventViewModel
 import com.bam.incomedy.feature.lineup.LineupViewModel
 import com.bam.incomedy.feature.ticketing.TicketingViewModel
@@ -68,6 +69,13 @@ object InComedyKoin {
                     accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
                 )
             }
+            single {
+                DonationsViewModel(
+                    donationService = get(),
+                    accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
+                    roleProvider = { get<SessionViewModel>().state.value.roles },
+                )
+            }
         },
     )
 
@@ -111,6 +119,12 @@ object InComedyKoin {
 
     /** Возвращает общую модель comedian applications и organizer lineup. */
     fun getLineupViewModel(): LineupViewModel {
+        init()
+        return requireNotNull(koinApp).koin.get()
+    }
+
+    /** Возвращает общую модель donation overview и comedian payout surface. */
+    fun getDonationsViewModel(): DonationsViewModel {
         init()
         return requireNotNull(koinApp).koin.get()
     }

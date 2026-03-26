@@ -14,6 +14,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.bam.incomedy.feature.donations.ui.DonationScreenTags
+import com.bam.incomedy.feature.donations.ui.DonationsTabBindings
 import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
 import com.bam.incomedy.feature.ticketing.ui.TicketingTabBindings
@@ -205,6 +207,22 @@ class MainScreenContentTest {
         composeRule.onNodeWithTag(TicketingScreenTags.COUNT).assertTextEquals("Билетов: 2")
     }
 
+    /** Проверяет, что main shell умеет переключаться на donations/payout вкладку. */
+    @Test
+    fun donationTabIsReachableFromBottomBar() {
+        setMainScreenContent(
+            donationsBindings = DonationsTabBindings(
+                state = AndroidUiStateFactory.donationsState(),
+            ),
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_DONATIONS).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(DonationScreenTags.ROOT).assertIsDisplayed()
+        composeRule.onNodeWithTag(DonationScreenTags.SENT_COUNT).assertTextEquals("Отправлено: 1")
+    }
+
     /** Проверяет, что main shell умеет переключаться на вкладку лайнапа и заявок. */
     @Test
     fun lineupTabIsReachableFromBottomBar() {
@@ -383,6 +401,9 @@ class MainScreenContentTest {
     /** Поднимает содержимое главного экрана в Material-теме для проверки UI-поведения. */
     private fun setMainScreenContent(
         state: com.bam.incomedy.shared.session.SessionState = AndroidUiStateFactory.sessionState(),
+        donationsBindings: DonationsTabBindings = DonationsTabBindings(
+            state = AndroidUiStateFactory.donationsState(),
+        ),
         eventBindings: EventTabBindings = EventTabBindings(
             state = AndroidUiStateFactory.eventState(),
         ),
@@ -406,6 +427,7 @@ class MainScreenContentTest {
             MaterialTheme {
                 MainScreenContent(
                     state = state,
+                    donationsBindings = donationsBindings,
                     eventBindings = eventBindings,
                     lineupBindings = lineupBindings,
                     ticketingBindings = ticketingBindings,

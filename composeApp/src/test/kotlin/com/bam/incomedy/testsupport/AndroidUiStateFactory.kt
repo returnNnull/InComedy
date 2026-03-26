@@ -3,6 +3,11 @@ package com.bam.incomedy.testsupport
 import com.bam.incomedy.domain.auth.AuthProviderType
 import com.bam.incomedy.domain.auth.AuthSession
 import com.bam.incomedy.domain.auth.AuthorizedUser
+import com.bam.incomedy.domain.donations.DonationIntent
+import com.bam.incomedy.domain.donations.DonationIntentStatus
+import com.bam.incomedy.domain.donations.PayoutLegalType
+import com.bam.incomedy.domain.donations.PayoutProfile
+import com.bam.incomedy.domain.donations.PayoutVerificationStatus
 import com.bam.incomedy.domain.event.EventHallSnapshot
 import com.bam.incomedy.domain.event.EventSalesStatus
 import com.bam.incomedy.domain.event.EventStatus
@@ -26,6 +31,7 @@ import com.bam.incomedy.domain.venue.HallTemplateStatus
 import com.bam.incomedy.domain.venue.OrganizerVenue
 import com.bam.incomedy.domain.venue.VenueContact
 import com.bam.incomedy.feature.auth.mvi.AuthState
+import com.bam.incomedy.feature.donations.DonationsState
 import com.bam.incomedy.feature.event.EventState
 import com.bam.incomedy.feature.lineup.LineupState
 import com.bam.incomedy.feature.ticketing.TicketingState
@@ -187,6 +193,35 @@ object AndroidUiStateFactory {
     }
 
     /**
+     * Возвращает состояние donation history и comedian payout surface для Android UI-тестов.
+     */
+    fun donationsState(
+        payoutProfile: PayoutProfile? = payoutProfile(),
+        sentDonations: List<DonationIntent> = listOf(donationIntent()),
+        receivedDonations: List<DonationIntent> = listOf(
+            donationIntent(
+                id = "donation-2",
+                donorDisplayName = "Анна Сцена",
+                amountMinor = 5000,
+            ),
+        ),
+        hasComedianRole: Boolean = true,
+        isLoading: Boolean = false,
+        isSubmittingPayoutProfile: Boolean = false,
+        errorMessage: String? = null,
+    ): DonationsState {
+        return DonationsState(
+            payoutProfile = payoutProfile,
+            sentDonations = sentDonations,
+            receivedDonations = receivedDonations,
+            hasComedianRole = hasComedianRole,
+            isLoading = isLoading,
+            isSubmittingPayoutProfile = isSubmittingPayoutProfile,
+            errorMessage = errorMessage,
+        )
+    }
+
+    /**
      * Возвращает состояние comedian applications и organizer lineup feature для Android UI-тестов.
      */
     fun lineupState(
@@ -335,6 +370,68 @@ object AndroidUiStateFactory {
             issuedAtIso = issuedAtIso,
             checkedInAtIso = checkedInAtIso,
             checkedInByUserId = checkedInByUserId,
+        )
+    }
+
+    /**
+     * Возвращает donation intent для UI-проверок donations surface.
+     */
+    fun donationIntent(
+        id: String = "donation-1",
+        eventId: String = "event-1",
+        eventTitle: String = "Late Night Standup",
+        comedianUserId: String = "comedian-1",
+        comedianDisplayName: String = "Иван Смехов",
+        donorUserId: String = "donor-1",
+        donorDisplayName: String = "Тестовый Донатор",
+        amountMinor: Int = 2500,
+        currency: String = "RUB",
+        message: String? = "Спасибо за сет",
+        status: DonationIntentStatus = DonationIntentStatus.CREATED,
+        createdAtIso: String = "2026-03-25T20:00:00+03:00",
+        updatedAtIso: String = "2026-03-25T20:10:00+03:00",
+    ): DonationIntent {
+        return DonationIntent(
+            id = id,
+            eventId = eventId,
+            eventTitle = eventTitle,
+            comedianUserId = comedianUserId,
+            comedianDisplayName = comedianDisplayName,
+            donorUserId = donorUserId,
+            donorDisplayName = donorDisplayName,
+            amountMinor = amountMinor,
+            currency = currency,
+            message = message,
+            status = status,
+            createdAtIso = createdAtIso,
+            updatedAtIso = updatedAtIso,
+        )
+    }
+
+    /**
+     * Возвращает payout profile комика для UI-проверок donations surface.
+     */
+    fun payoutProfile(
+        id: String = "profile-1",
+        userId: String = "comedian-1",
+        payoutProvider: String = "manual_settlement",
+        legalType: PayoutLegalType = PayoutLegalType.SELF_EMPLOYED,
+        beneficiaryRef: String = "+79990000000",
+        verificationStatus: PayoutVerificationStatus = PayoutVerificationStatus.PENDING,
+        createdAtIso: String = "2026-03-25T19:00:00+03:00",
+        updatedAtIso: String = "2026-03-25T19:30:00+03:00",
+        statusUpdatedAtIso: String = "2026-03-25T19:30:00+03:00",
+    ): PayoutProfile {
+        return PayoutProfile(
+            id = id,
+            userId = userId,
+            payoutProvider = payoutProvider,
+            legalType = legalType,
+            beneficiaryRef = beneficiaryRef,
+            verificationStatus = verificationStatus,
+            createdAtIso = createdAtIso,
+            updatedAtIso = updatedAtIso,
+            statusUpdatedAtIso = statusUpdatedAtIso,
         )
     }
 

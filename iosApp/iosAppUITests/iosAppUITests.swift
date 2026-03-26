@@ -191,6 +191,43 @@ final class iosAppUITests: XCTestCase {
         XCTAssertEqual(scanResultCode.label, "Билет подтвержден")
     }
 
+    /// Проверяет вкладку донатов, payout profile форму и history surface.
+    func testDonationTabShowsPayoutAndHistorySurface() {
+        app.tabBars.buttons["Донаты"].tap()
+
+        let donationRoot = app.descendants(matching: .any)
+            .matching(identifier: "donations.root")
+            .firstMatch
+        let sentCount = app.descendants(matching: .any)
+            .matching(identifier: "donations.count.sent")
+            .firstMatch
+        let receivedCount = app.descendants(matching: .any)
+            .matching(identifier: "donations.count.received")
+            .firstMatch
+        let companyButton = app.buttons["donations.payout.legalType.company"]
+        let beneficiaryInput = app.textFields["donations.payout.beneficiary"]
+        let saveButton = app.buttons["donations.payout.save"]
+
+        XCTAssertTrue(donationRoot.waitForExistence(timeout: 2))
+        XCTAssertTrue(sentCount.waitForExistence(timeout: 2))
+        XCTAssertEqual(sentCount.label, "Отправлено: 1")
+        XCTAssertTrue(receivedCount.waitForExistence(timeout: 2))
+        XCTAssertEqual(receivedCount.label, "Получено: 1")
+        XCTAssertTrue(scrollUntilVisible(companyButton))
+        companyButton.tap()
+        XCTAssertTrue(scrollUntilVisible(beneficiaryInput))
+        beneficiaryInput.tap()
+        beneficiaryInput.typeText(" fixture-ref")
+        XCTAssertTrue(scrollUntilVisible(saveButton))
+        saveButton.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(identifier: "donations.payout.card")
+                .firstMatch
+                .waitForExistence(timeout: 2)
+        )
+    }
+
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.
     func testAccountTabSwitchesRoleAndSignsOut() {
         app.tabBars.buttons["Аккаунт"].tap()

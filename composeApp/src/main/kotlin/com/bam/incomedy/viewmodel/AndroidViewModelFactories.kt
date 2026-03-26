@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import com.bam.incomedy.feature.donations.viewmodel.DonationsAndroidViewModel
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.lineup.viewmodel.LineupAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
@@ -68,6 +69,17 @@ object AndroidViewModelFactories {
     fun ticketing(application: Application): ViewModelProvider.Factory {
         return singleViewModelFactory(TicketingAndroidViewModel::class.java) {
             TicketingAndroidViewModel(application)
+        }
+    }
+
+    /**
+     * Возвращает фабрику для Android-адаптера donation overview и comedian payout surface.
+     *
+     * @param application Android application context, необходимый `DonationsAndroidViewModel`.
+     */
+    fun donations(application: Application): ViewModelProvider.Factory {
+        return singleViewModelFactory(DonationsAndroidViewModel::class.java) {
+            DonationsAndroidViewModel(application)
         }
     }
 

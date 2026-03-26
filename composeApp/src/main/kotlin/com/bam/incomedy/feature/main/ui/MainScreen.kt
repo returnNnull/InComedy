@@ -53,6 +53,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bam.incomedy.domain.session.OrganizerWorkspace
 import com.bam.incomedy.domain.session.OrganizerWorkspaceInvitation
 import com.bam.incomedy.domain.session.OrganizerWorkspaceMembership
+import com.bam.incomedy.feature.donations.ui.DonationHubTab
+import com.bam.incomedy.feature.donations.ui.DonationScreenTags
+import com.bam.incomedy.feature.donations.ui.DonationsTabBindings
+import com.bam.incomedy.feature.donations.viewmodel.DonationsAndroidViewModel
 import com.bam.incomedy.feature.event.ui.EventManagementTab
 import com.bam.incomedy.feature.event.ui.EventScreenTags
 import com.bam.incomedy.feature.event.ui.EventTabBindings
@@ -88,6 +92,7 @@ import java.net.URL
 @Composable
 fun MainScreen(
     sessionViewModel: SessionAndroidViewModel,
+    donationsViewModel: DonationsAndroidViewModel,
     eventViewModel: EventAndroidViewModel,
     lineupViewModel: LineupAndroidViewModel,
     ticketingViewModel: TicketingAndroidViewModel,
@@ -95,6 +100,7 @@ fun MainScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by sessionViewModel.state.collectAsStateWithLifecycle()
+    val donationsState by donationsViewModel.state.collectAsStateWithLifecycle()
     val eventState by eventViewModel.state.collectAsStateWithLifecycle()
     val lineupState by lineupViewModel.state.collectAsStateWithLifecycle()
     val ticketingState by ticketingViewModel.state.collectAsStateWithLifecycle()
@@ -102,6 +108,12 @@ fun MainScreen(
 
     MainScreenContent(
         state = state,
+        donationsBindings = DonationsTabBindings(
+            state = donationsState,
+            onRefresh = donationsViewModel::refresh,
+            onSavePayoutProfile = donationsViewModel::savePayoutProfile,
+            onClearError = donationsViewModel::clearError,
+        ),
         eventBindings = EventTabBindings(
             state = eventState,
             onRefreshContext = eventViewModel::refreshContext,
@@ -224,6 +236,7 @@ fun MainScreen(
 @Composable
 internal fun MainScreenContent(
     state: SessionState,
+    donationsBindings: DonationsTabBindings = DonationsTabBindings(),
     eventBindings: EventTabBindings = EventTabBindings(),
     lineupBindings: LineupTabBindings = LineupTabBindings(),
     ticketingBindings: TicketingTabBindings = TicketingTabBindings(),
@@ -293,6 +306,11 @@ internal fun MainScreenContent(
                     sessionState = state,
                     ticketingBindings = ticketingBindings,
                     modifier = Modifier.testTag(TicketingScreenTags.ROOT),
+                )
+                MainTab.DONATIONS -> DonationHubTab(
+                    sessionState = state,
+                    donationsBindings = donationsBindings,
+                    modifier = Modifier.testTag(DonationScreenTags.ROOT),
                 )
                 MainTab.ACCOUNT -> AccountTab(
                     state = state,
@@ -1010,6 +1028,11 @@ private enum class MainTab(
         iconGlyph = "◩",
         testTag = MainScreenTags.TAB_TICKETS,
     ),
+    DONATIONS(
+        title = "Донаты",
+        iconGlyph = "₽",
+        testTag = MainScreenTags.TAB_DONATIONS,
+    ),
     VENUES(
         title = "Площадки",
         iconGlyph = "▦",
@@ -1050,6 +1073,9 @@ object MainScreenTags {
 
     /** Тег вкладки билетов. */
     const val TAB_TICKETS = "main.tab.tickets"
+
+    /** Тег вкладки donations/payout overview. */
+    const val TAB_DONATIONS = "main.tab.donations"
 
     /** Тег вкладки площадок. */
     const val TAB_VENUES = "main.tab.venues"
