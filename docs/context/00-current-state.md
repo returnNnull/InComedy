@@ -10,15 +10,15 @@ AutomationState:
   active_subtask_id: ""
   active_branch: "codex/epic-070-donations-payout-foundation"
   epic_status: "awaiting_user_review"
-  run_slots_used_in_cycle: 23
-  last_run_at: "2026-03-26T10:35:00+03:00"
-  last_run_result: "completed"
+  run_slots_used_in_cycle: 24
+  last_run_at: "2026-03-26T12:41:17+03:00"
+  last_run_result: "docs_only"
 ```
 
 - Последнее принятое решение: `D-081`
-- Актуальные связанные части: `governance/decisions-log/decisions-log-part-07.md`, `governance/session-log/session-log-part-24.md`, `governance/decision-traceability/decision-traceability-part-07.md`, `handoff/task-request-template/task-request-template-part-37.md`, `handoff/task-request-template/task-request-template-part-40.md`, `engineering/verification-memory/verification-memory-part-02.md`
+- Актуальные связанные части: `governance/decisions-log/decisions-log-part-07.md`, `governance/session-log/session-log-part-25.md`, `governance/decision-traceability/decision-traceability-part-07.md`, `handoff/task-request-template/task-request-template-part-37.md`, `handoff/task-request-template/task-request-template-part-40.md`, `engineering/verification-memory/verification-memory-part-02.md`
 - Активный auth baseline: `login + password` плюс `VK ID`
-- Текущий `P0` focus: `EPIC-070` остаётся в `awaiting_user_review`; review-driven follow-up поверх delivered `TASK-089` уже локально зафиксировал donations/session lifecycle regression после commit `1059945`: stale sent/received donations и payout profile очищаются при потере access token, а Android/iOS donations refresh больше не стартует до готовности session context
+- Текущий `P0` focus: `EPIC-070` остаётся в `awaiting_user_review`; clean review boundary после локального commit `5ee1337` подтверждён очередным docs-only sync, runtime scope не менялся
 - Следующий bounded step: `Остановиться на review boundary по EPIC-070 и не открывать новый epic или product subtask до явного user confirmation`
 - Ограничения: repeated blocker triage всегда начинает с [issue-resolution-log.md](/Users/abetirov/AndroidStudioProjects/InComedy/docs/context/engineering/issue-resolution-log.md); для iOS simulator/Xcode destination симптомов первым действием считать запуск Xcode или его перезапуск, если он завис
 - Ограничения: внешний donation/payout provider choice не считать подтвержденным без explicit user confirmation; delivered `manual_settlement` foundation не равна выбору PSP и не должна трактоваться как rollout-ready checkout path
