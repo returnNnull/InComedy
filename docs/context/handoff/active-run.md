@@ -10,38 +10,38 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-26T15:47:02+03:00`
+- Timestamp: `2026-03-26T16:08:28+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
-- Active Epic: `EPIC-070`
+- Active Epic: `none`
 - Active Subtask: `none`
-- Branch: `codex/epic-070-donations-payout-foundation`
-- Epic Status: `awaiting_user_review`
-- Run Status: `docs_only`
+- Branch: `main`
+- Epic Status: `done`
+- Run Status: `completed`
 
 ## Цель
 
-- `Подтвердить clean review boundary после локального docs-sync commit 89b4029, удержать EPIC-070 в awaiting_user_review и не открывать новый scope без explicit user confirmation.`
+- `Зафиксировать явное user confirmation для EPIC-070, закрыть epic в context docs, затем merge-нуть ветку в main и push-нуть origin/main.`
 
 ## Итог
 
-- `TASK-089` завершён: добавлены общий `:feature:donations`, shared bridge/snapshot wiring, Android Compose donation tab и iOS SwiftUI donation tab с payout profile form, donation history overview и platform test coverage без активации checkout/webhook/payout automation.`
-- `Review-driven follow-up после commit 1059945 устранил donations/session lifecycle regression: shared state теперь очищается при пропаже access token, Android wrapper больше не делает eager refresh в init, а iOS donation refresh запускается только после готовности session context.`
-- `Очередной scheduled slot стартовал на clean worktree после локального docs-sync commit 89b4029: текущий launch обновил state/session/task memory, увеличил `AutomationState.run_slots_used_in_cycle` до `26`, повторно подтвердил runtime review boundary поверх commit-а 5ee1337 и не менял runtime/code surface.`
-- `EPIC-070 остаётся в awaiting_user_review; новый epic или новая product-подзадача без explicit user confirmation по-прежнему запрещены.`
+- `User review confirmation received: EPIC-070 / TASK-089 больше не находится в posture awaiting_user_review; epic переведён в status done.`
+- `Delivered donations/payout foundation остаётся прежним и принятым: provider-agnostic backend persistence, shared/data donation transport, Android/iOS donation hub surfaces и review-driven session-lifecycle fix уже verified и зафиксированы в branch history.`
+- `После merge/push default branch снова main; EPIC-070 больше не является active delivery epic, а R-005 остаётся open как residual legal/provider limitation для будущего explicit follow-up scope.`
 
 ## Возобновление
 
-- `Если чат оборвется, не открывать новый epic: удерживать ветку на review boundary по EPIC-070 и возвращаться только к review feedback/regression внутри уже delivered TASK-089.`
+- `Если чат оборвется, сверить branch и git status. Если merge main + push уже завершены, оставить EPIC-070 закрытым; если нет — довести интеграцию до merged main + pushed origin/main без переоткрытия epic-а.`
 
 ## Если сессия оборвётся
 
 - Check `git status`.
-- Keep `EPIC-069` closed; do not reopen it without a concrete regression or explicit follow-up request.
-- Keep `EPIC-070` in `awaiting_user_review`; do not start any new epic or new product task without explicit user confirmation.
+- Check whether `main` already contains merge commit for `codex/epic-070-donations-payout-foundation`.
+- Keep `EPIC-070` closed if merge/push is already complete.
+- Do not start `EPIC-071` автоматически только потому, что EPIC-070 завершён.
+- Reopen `EPIC-070` only for a concrete post-merge regression or explicit follow-up request.
 - Do not treat any existing ticketing PSP adapter or env config as confirmed donation/payout provider selection.
-- Keep the delivered `manual_settlement` foundation provider-agnostic until explicit user confirmation of the external donation/payout path.
 
 ## Следующий шаг
 
-- `Точное следующее действие по runbook: остановиться на review boundary и дождаться явного user confirmation по EPIC-070; только после этого либо закрывать epic как done, либо вносить review-driven follow-up на той же ветке.`
+- `Ровно один следующий шаг после merge/push: при новом запросе выбрать следующий highest-priority unfinished epic из next-epic-queue; EPIC-070 не трогать без follow-up/regression.`

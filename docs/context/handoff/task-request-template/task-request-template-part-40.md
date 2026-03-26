@@ -45,10 +45,11 @@
 - Security review verdict: базовый client/shared slice и review-driven follow-up остаются внутри authenticated donation history и comedian payout-profile UI поверх уже существующего provider-agnostic backend surface; provider secrets, checkout activation, webhook ingestion, payout execution и implicit reuse ticketing PSP credentials не добавлялись.
 - `R-005` остаётся open: platform UX уже доставлен, но legal/financial scheme, operator verification workflow и explicit donation/payout provider choice всё ещё не подтверждены.
 
-### Review Boundary
+### User Confirmation Outcome
 
-- `EPIC-070` переведён в `awaiting_user_review`; новый implementation epic до explicit user confirmation не открывать.
+- Пользователь явно подтвердил review и запросил merge/push finished branch.
+- `EPIC-070` переведён из `awaiting_user_review` в `done`; reopen допустим только для post-merge regression или нового explicit follow-up request.
 
 ### Next
 
-- `Ровно один следующий шаг: получить explicit user review confirmation по EPIC-070.`
+- `После merge/push считать следующим future candidate EPIC-071 из next-epic-queue, но не открывать новый epic автоматически без отдельного user request.`
