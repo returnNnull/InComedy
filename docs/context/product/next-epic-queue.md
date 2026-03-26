@@ -21,7 +21,7 @@
 
 - `EPIC-071`
   - Status: `in_progress`
-  - Current next task: `TASK-091` — shared/data announcement service contract и transport integration без platform UI и без push-provider activation.
+  - Current next task: `TASK-092` — Android/iOS announcement/feed surfaces и executable verification без push-provider activation.
   - Last completed epic: `EPIC-070` явно подтверждён пользователем и смержен в `main` как завершённый donations/payout foundation slice.
 
 ## Правило

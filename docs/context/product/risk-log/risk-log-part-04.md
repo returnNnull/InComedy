@@ -40,11 +40,11 @@
 
 - Дата: 2026-03-26
 - Категория: `delivery/technical`
-- Риск: Первый notifications slice пока не является rollout-ready communication layer: backend already publishes organizer announcements/event feed, но `/api/v1/me/notifications`, mobile/shared feed surfaces, moderation controls, durable outbox и push-provider delivery всё ещё отсутствуют.
-- Текущая экспозиция / триггер: `TASK-090` закрыл только backend foundation с public `GET /api/v1/public/events/{eventId}/announcements`, protected `POST /api/v1/events/{eventId}/announcements` и `announcement.created` live-event payload-ом; без shared/data/UI и без FCM/APNs activation users не получают background-critical notifications и не видят feed в app.
+- Риск: Первый notifications slice пока не является rollout-ready communication layer: backend и shared/data foundation уже доставлены, но `/api/v1/me/notifications`, Android/iOS announcement/feed surfaces, moderation controls, durable outbox и push-provider delivery всё ещё отсутствуют.
+- Текущая экспозиция / триггер: `TASK-090` и `TASK-091` уже покрыли backend organizer announcements/event feed foundation, `:data:notifications` transport, shared `NotificationService` wiring и executable KMP verification, однако app по-прежнему не показывает feed пользователю и не имеет background-critical delivery path.
 - Влияние: Medium
 - Вероятность: High
-- Смягчение / следующий шаг: Продолжать `EPIC-071` по плану `TASK-091 -> TASK-092`, держать push providers в candidate state до отдельного explicit user confirmation, не считать backend feed эквивалентом полноценного rollout-ready notifications layer и до rollout добавить moderation/reporting плюс durable outbox/fanout strategy.
+- Смягчение / следующий шаг: Продолжать `EPIC-071` по плану `TASK-092`, держать push providers в candidate state до отдельного explicit user confirmation, не считать backend + shared/data feed эквивалентом полноценного rollout-ready notifications layer и до rollout добавить platform surfaces, moderation/reporting плюс durable outbox/fanout strategy.
 - Владелец: Engineering + Product
-- Связанные артефакты: `D-082`, `TASK-090`, `docs/context/handoff/task-request-template/task-request-template-part-40.md`, `docs/context/engineering/implementation-status/implementation-status-part-01.md`
+- Связанные артефакты: `D-082`, `TASK-090`, `TASK-091`, `docs/context/handoff/task-request-template/task-request-template-part-41.md`, `docs/context/engineering/implementation-status/implementation-status-part-01.md`
 - Статус: open
