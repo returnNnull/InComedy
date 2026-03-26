@@ -10,23 +10,24 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Снимок
 
-- Timestamp: `2026-03-26T05:36:02+03:00`
+- Timestamp: `2026-03-26T05:40:29+03:00`
 - Cycle ID: `2026-03-24-10-04`
 - Cycle Window: `10:00-04:00 Europe/Moscow`
 - Active Epic: `EPIC-070`
 - Active Subtask: `none`
 - Branch: `codex/epic-070-donations-payout-foundation`
 - Epic Status: `awaiting_user_review`
-- Run Status: `completed`
+- Run Status: `docs_only`
 
 ## Цель
 
-- `Завершить TASK-089: Android/iOS donation и comedian payout surfaces поверх delivered shared/data foundation, с executable verification и без выбора внешнего PSP.`
+- `Подтвердить review-boundary posture для EPIC-070: удерживать ветку на awaiting_user_review, не открывать новый epic и убрать stale handoff/doc state после уже завершённого TASK-089.`
 
 ## Итог
 
 - `TASK-089` завершён: добавлены общий `:feature:donations`, shared bridge/snapshot wiring, Android Compose donation tab и iOS SwiftUI donation tab с payout profile form, donation history overview и platform test coverage без активации checkout/webhook/payout automation.`
 - `Повторная targeted iOS verification обнаружила stale form sync внутри SwiftUI payout section; форма теперь пересинхронизируется по payout profile updatedAtIso, после чего targeted XCUITest donations tab прошёл успешно.`
+- Текущий `docs_only` sync убрал stale duplicate outcome `TASK-089` из historical `part-39` и выровнял recovery/backlog posture под реальное состояние `EPIC-070 awaiting_user_review`.
 - `EPIC-070` переведён в `awaiting_user_review`; новых product subtasks до explicit user confirmation открывать нельзя.`
 
 ## Возобновление

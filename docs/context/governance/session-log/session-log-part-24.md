@@ -24,3 +24,11 @@
 - Verification: `./gradlew :feature:donations:allTests :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.donations.ui.DonationHubTabContentTest' --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' :composeApp:compileDebugKotlin` и `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:iosAppUITests/iosAppUITests/testDonationTabShowsPayoutAndHistorySurface test` прошли успешно.
 - Security review verdict: delivered client slice остаётся authenticated/provider-agnostic foundation surface без provider secrets, checkout activation, webhook ingestion, payout execution или implicit reuse ticketing PSP credentials.
 - Next: Остановиться на review boundary по `EPIC-070`, удерживать текущую ветку и не открывать новый epic или новую product подзадачу до явного user confirmation.
+
+## 2026-03-26 05:40
+
+- Context: Очередной scheduled executor run стартовал уже после того, как `EPIC-070` был переведён в `awaiting_user_review`; по runbook нельзя было открывать новый epic или product subtask, нужно было только подтвердить recovery posture и убрать stale handoff state.
+- Changes: Удалён дублированный outcome `TASK-089` из `task-request-template-part-39.md`, `active-run.md` переведён с устаревшей цели `завершить TASK-089` на честный review-boundary checkpoint, `00-current-state.md` обновил launch counter/last-run result, `task-request-log.md` и `backlog.md` ещё раз синхронизированы под `EPIC-070 awaiting_user_review`, а traceability `D-081` расширена до текущих delivery artifacts. Runtime/code surface не менялся.
+- Decisions: Новых решений не принималось; активным остаётся `D-081`.
+- Security review verdict: docs-only sync, security-impacting runtime surface change отсутствует.
+- Next: Ровно один следующий шаг остаётся прежним: дождаться explicit user review confirmation по `EPIC-070`; только после этого либо переводить epic в `done`, либо делать review-driven follow-up на той же ветке.

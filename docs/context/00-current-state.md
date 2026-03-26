@@ -10,9 +10,9 @@ AutomationState:
   active_subtask_id: ""
   active_branch: "codex/epic-070-donations-payout-foundation"
   epic_status: "awaiting_user_review"
-  run_slots_used_in_cycle: 20
-  last_run_at: "2026-03-26T05:36:02+03:00"
-  last_run_result: "completed"
+  run_slots_used_in_cycle: 21
+  last_run_at: "2026-03-26T05:40:29+03:00"
+  last_run_result: "docs_only"
 ```
 
 - Последнее принятое решение: `D-081`
