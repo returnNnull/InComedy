@@ -10,6 +10,7 @@ import com.bam.incomedy.feature.donations.viewmodel.DonationsAndroidViewModel
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.lineup.viewmodel.LineupAndroidViewModel
 import com.bam.incomedy.feature.main.ui.MainScreen
+import com.bam.incomedy.feature.notifications.viewmodel.NotificationsAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
@@ -24,6 +25,7 @@ import com.bam.incomedy.navigation.AppGraph
 fun NavGraphBuilder.mainGraph(
     sessionViewModel: SessionAndroidViewModel,
     donationsViewModel: DonationsAndroidViewModel,
+    notificationsViewModel: NotificationsAndroidViewModel,
     eventViewModel: EventAndroidViewModel,
     lineupViewModel: LineupAndroidViewModel,
     ticketingViewModel: TicketingAndroidViewModel,
@@ -33,6 +35,7 @@ fun NavGraphBuilder.mainGraph(
         MainScreen(
             sessionViewModel = sessionViewModel,
             donationsViewModel = donationsViewModel,
+            notificationsViewModel = notificationsViewModel,
             eventViewModel = eventViewModel,
             lineupViewModel = lineupViewModel,
             ticketingViewModel = ticketingViewModel,

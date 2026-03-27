@@ -11,8 +11,8 @@
 ## Текущая очередь
 
 1. `EPIC-071` — notifications / announcements delivery foundation
-   - Status: `in_progress`
-   - Why next: важный `P0` слой уже активирован отдельным automation step-ом после закрытого donations/payout foundation.
+   - Status: `awaiting_user_review`
+   - Why next: текущий `P0` slice уже доставлен по плану `TASK-090 -> TASK-092`, но перед переходом к следующему epic нужен explicit review verdict пользователя.
 2. `EPIC-072` — analytics foundation
    - Status: `planned`
    - Why after EPIC-071: полезный следующий `P0/P1` слой, но он не должен обгонять активный notifications epic.
@@ -20,8 +20,9 @@
 ## Активированный epic
 
 - `EPIC-071`
-  - Status: `in_progress`
-  - Current next task: `TASK-092` — Android/iOS announcement/feed surfaces и executable verification без push-provider activation.
+  - Status: `awaiting_user_review`
+  - Current next step: дождаться explicit user review confirmation; без него не открывать `EPIC-072`.
+  - Latest completed task: `TASK-092` — Android/iOS announcement/feed surfaces и executable verification без push-provider activation.
   - Last completed epic: `EPIC-070` явно подтверждён пользователем и смержен в `main` как завершённый donations/payout foundation slice.
 
 ## Правило

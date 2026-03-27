@@ -42,6 +42,7 @@ kotlin {
             implementation(project(":feature:ticketing"))
             implementation(project(":feature:lineup"))
             implementation(project(":feature:donations"))
+            implementation(project(":feature:notifications"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)
         }

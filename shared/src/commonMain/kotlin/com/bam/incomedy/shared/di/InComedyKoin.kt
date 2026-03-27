@@ -13,6 +13,7 @@ import com.bam.incomedy.feature.auth.mvi.AuthViewModel
 import com.bam.incomedy.feature.donations.DonationsViewModel
 import com.bam.incomedy.feature.event.EventViewModel
 import com.bam.incomedy.feature.lineup.LineupViewModel
+import com.bam.incomedy.feature.notifications.NotificationsViewModel
 import com.bam.incomedy.feature.ticketing.TicketingViewModel
 import com.bam.incomedy.feature.venue.VenueViewModel
 import com.bam.incomedy.shared.session.SessionViewModel
@@ -78,6 +79,12 @@ object InComedyKoin {
                     roleProvider = { get<SessionViewModel>().state.value.roles },
                 )
             }
+            single {
+                NotificationsViewModel(
+                    notificationService = get(),
+                    accessTokenProvider = { get<SessionViewModel>().state.value.accessToken },
+                )
+            }
         },
     )
 
@@ -127,6 +134,12 @@ object InComedyKoin {
 
     /** Возвращает общую модель donation overview и comedian payout surface. */
     fun getDonationsViewModel(): DonationsViewModel {
+        init()
+        return requireNotNull(koinApp).koin.get()
+    }
+
+    /** Возвращает общую модель event announcement feed и organizer publish surface. */
+    fun getNotificationsViewModel(): NotificationsViewModel {
         init()
         return requireNotNull(koinApp).koin.get()
     }

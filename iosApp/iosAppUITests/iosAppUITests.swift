@@ -51,7 +51,7 @@ final class iosAppUITests: XCTestCase {
 
     /// Проверяет organizer venue tab, выбор площадки и доступность действий builder-а.
     func testVenueTabShowsVenueManagementSurface() {
-        app.tabBars.buttons["Площадки"].tap()
+        openTab("Площадки")
 
         XCTAssertTrue(app.staticTexts["venue.root"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["venue.count"].waitForExistence(timeout: 2))
@@ -64,7 +64,7 @@ final class iosAppUITests: XCTestCase {
 
     /// Проверяет organizer event tab, выбор venue/template и доступность lifecycle controls.
     func testEventTabShowsEventManagementSurface() {
-        app.tabBars.buttons["События"].tap()
+        openTab("События")
 
         XCTAssertTrue(app.staticTexts["event.root"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["event.count"].waitForExistence(timeout: 2))
@@ -94,9 +94,41 @@ final class iosAppUITests: XCTestCase {
         XCTAssertTrue(app.buttons["event.update.save"].exists)
     }
 
+    /// Проверяет вкладку announcements/feed и publish surface.
+    func testAnnouncementsTabShowsFeedAndPublishSurface() {
+        openTab("Анонсы")
+
+        let announcementsRoot = app.descendants(matching: .any)
+            .matching(identifier: "announcements.root")
+            .firstMatch
+        let countLabel = app.descendants(matching: .any)
+            .matching(identifier: "announcements.count")
+            .firstMatch
+        let eventButton = app.buttons["announcements.event.event-2"]
+        let messageInput = app.textFields["announcements.message"]
+        let publishButton = app.buttons["announcements.publish"]
+
+        XCTAssertTrue(announcementsRoot.waitForExistence(timeout: 2))
+        XCTAssertTrue(countLabel.waitForExistence(timeout: 2))
+        XCTAssertEqual(countLabel.label, "Анонсов: 1")
+        XCTAssertTrue(scrollUntilVisible(eventButton))
+        eventButton.tap()
+        XCTAssertTrue(scrollUntilVisible(messageInput))
+        messageInput.tap()
+        messageInput.typeText(" Новый анонс")
+        XCTAssertTrue(scrollUntilVisible(publishButton))
+        publishButton.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(identifier: "announcements.card.announcement-local-2")
+                .firstMatch
+                .waitForExistence(timeout: 2)
+        )
+    }
+
     /// Проверяет вкладку лайнапа, organizer review controls и reorder surface.
     func testLineupTabShowsApplicationsAndReorderSurface() {
-        app.tabBars.buttons["Лайнап"].tap()
+        openTab("Лайнап")
 
         let lineupRoot = app.descendants(matching: .any)
             .matching(identifier: "lineup.root")
@@ -148,7 +180,7 @@ final class iosAppUITests: XCTestCase {
 
     /// Проверяет вкладку билетов, раскрытие QR и staff check-in форму.
     func testTicketTabShowsWalletAndCheckInSurface() {
-        app.tabBars.buttons["Билеты"].tap()
+        openTab("Билеты")
 
         let ticketRoot = app.descendants(matching: .any)
             .matching(identifier: "ticketing.root")
@@ -193,7 +225,7 @@ final class iosAppUITests: XCTestCase {
 
     /// Проверяет вкладку донатов, payout profile форму и history surface.
     func testDonationTabShowsPayoutAndHistorySurface() {
-        app.tabBars.buttons["Донаты"].tap()
+        openTab("Донаты")
 
         let donationRoot = app.descendants(matching: .any)
             .matching(identifier: "donations.root")
@@ -230,7 +262,7 @@ final class iosAppUITests: XCTestCase {
 
     /// Проверяет вкладку аккаунта, смену роли и возврат к авторизации после выхода.
     func testAccountTabSwitchesRoleAndSignsOut() {
-        app.tabBars.buttons["Аккаунт"].tap()
+        openTab("Аккаунт")
 
         XCTAssertTrue(app.staticTexts["main.content.account"].waitForExistence(timeout: 2))
         XCTAssertTrue(
@@ -259,6 +291,22 @@ final class iosAppUITests: XCTestCase {
     ///   - element: Целевой UI-элемент.
     ///   - maxSwipes: Максимальное число прокруток вверх.
     /// - Returns: `true`, если элемент найден до исчерпания попыток.
+    private func openTab(_ label: String) {
+        let directTab = app.tabBars.buttons[label]
+        if directTab.exists && directTab.isHittable {
+            directTab.tap()
+            return
+        }
+
+        let moreTab = app.tabBars.buttons["More"]
+        XCTAssertTrue(moreTab.waitForExistence(timeout: 2))
+        moreTab.tap()
+
+        let overflowCell = app.tables.cells.containing(.staticText, identifier: label).firstMatch
+        XCTAssertTrue(overflowCell.waitForExistence(timeout: 2))
+        overflowCell.tap()
+    }
+
     private func scrollUntilVisible(_ element: XCUIElement, maxSwipes: Int = 6) -> Bool {
         if element.waitForExistence(timeout: 2) {
             return true

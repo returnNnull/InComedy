@@ -14,6 +14,9 @@ struct MainGraphView: View {
     /// Модель organizer event management feature.
     @StateObject private var eventModel: EventScreenModel
 
+    /// Модель organizer announcements и audience-safe event feed feature.
+    @StateObject private var announcementModel: AnnouncementFeedModel
+
     /// Модель comedian applications и organizer lineup feature.
     @StateObject private var lineupModel: LineupScreenModel
 
@@ -46,6 +49,13 @@ struct MainGraphView: View {
             )
         }
         let previewLineupEventId = previewEventFixture?.events.first?.id ?? "event-1"
+        let previewAnnouncementEventId = previewEventFixture?
+            .events
+            .first(where: { $0.statusKey == "published" && $0.visibilityKey == "public" })?
+            .id ?? "event-2"
+        let previewAnnouncementFixture = fixture.map { _ in
+            AnnouncementFeedFixture.preview(eventId: previewAnnouncementEventId)
+        }
         _model = StateObject(
             wrappedValue: fixture.map(MainSessionModel.init(fixture:)) ?? MainSessionModel()
         )
@@ -64,6 +74,13 @@ struct MainGraphView: View {
                     fixture: previewEventFixture ?? EventScreenFixture.preview(workspaceId: previewWorkspaceId)
                 )
             } ?? EventScreenModel()
+        )
+        _announcementModel = StateObject(
+            wrappedValue: fixture.map { _ in
+                AnnouncementFeedModel(
+                    fixture: previewAnnouncementFixture ?? AnnouncementFeedFixture.preview(eventId: previewAnnouncementEventId)
+                )
+            } ?? AnnouncementFeedModel()
         )
         _lineupModel = StateObject(
             wrappedValue: fixture.map { _ in
@@ -138,6 +155,17 @@ struct MainGraphView: View {
                 Label("События", systemImage: "calendar")
             }
             .accessibilityIdentifier("main.tab.events")
+
+            NavigationStack {
+                AnnouncementFeedView(
+                    model: announcementModel,
+                    events: eventModel.events
+                )
+            }
+            .tabItem {
+                Label("Анонсы", systemImage: "megaphone")
+            }
+            .accessibilityIdentifier("main.tab.announcements")
 
             NavigationStack {
                 LineupManagementView(

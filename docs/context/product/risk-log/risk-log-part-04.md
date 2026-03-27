@@ -36,15 +36,15 @@
 - Связанные артефакты: `D-081`, `TASK-087`, `TASK-088`, `TASK-089`, `docs/context/handoff/task-request-template/task-request-template-part-37.md`, `docs/context/handoff/task-request-template/task-request-template-part-39.md`, `docs/context/handoff/task-request-template/task-request-template-part-40.md`
 - Статус: open
 
-## R-014 (updated 2026-03-26)
+## R-014 (updated 2026-03-27)
 
-- Дата: 2026-03-26
+- Дата: 2026-03-27
 - Категория: `delivery/technical`
-- Риск: Первый notifications slice пока не является rollout-ready communication layer: backend и shared/data foundation уже доставлены, но `/api/v1/me/notifications`, Android/iOS announcement/feed surfaces, moderation controls, durable outbox и push-provider delivery всё ещё отсутствуют.
-- Текущая экспозиция / триггер: `TASK-090` и `TASK-091` уже покрыли backend organizer announcements/event feed foundation, `:data:notifications` transport, shared `NotificationService` wiring и executable KMP verification, однако app по-прежнему не показывает feed пользователю и не имеет background-critical delivery path.
+- Риск: Первый notifications slice пока не является rollout-ready communication layer: backend, shared/data и Android/iOS announcement/feed surfaces уже доставлены, но `/api/v1/me/notifications`, moderation controls, durable outbox и push/background delivery всё ещё отсутствуют.
+- Текущая экспозиция / триггер: `TASK-092` уже подключил provider-agnostic announcement/feed UI к Android и iOS shell-ам через shared `:feature:notifications`, Swift bridge snapshots и targeted platform verification, однако слой по-прежнему ограничен organizer public-event feed-ом без user-specific inbox, moderation/reporting и background-critical delivery path.
 - Влияние: Medium
 - Вероятность: High
-- Смягчение / следующий шаг: Продолжать `EPIC-071` по плану `TASK-092`, держать push providers в candidate state до отдельного explicit user confirmation, не считать backend + shared/data feed эквивалентом полноценного rollout-ready notifications layer и до rollout добавить platform surfaces, moderation/reporting плюс durable outbox/fanout strategy.
+- Смягчение / следующий шаг: Держать `EPIC-071` на review boundary без ложного rollout-ready verdict, push providers сохранять в candidate state до отдельного explicit user confirmation, а следующий notifications follow-up после review посвятить `/api/v1/me/notifications`, moderation/reporting, durable outbox/fanout/reconnect strategy и только затем push/background activation.
 - Владелец: Engineering + Product
-- Связанные артефакты: `D-082`, `TASK-090`, `TASK-091`, `docs/context/handoff/task-request-template/task-request-template-part-41.md`, `docs/context/engineering/implementation-status/implementation-status-part-01.md`
+- Связанные артефакты: `D-082`, `TASK-090`, `TASK-091`, `TASK-092`, `docs/context/handoff/task-request-template/task-request-template-part-41.md`, `docs/context/engineering/implementation-status/implementation-status-part-01.md`
 - Статус: open

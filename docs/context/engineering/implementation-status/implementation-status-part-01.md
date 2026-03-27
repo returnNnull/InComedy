@@ -1,6 +1,6 @@
 # Implementation Status Part 01
 
-## Current Implementation Status (2026-03-26)
+## Current Implementation Status (2026-03-27)
 
 - Implemented:
   - first-party credential registration/login flow across backend, shared auth MVI, Android Compose UI, and iOS SwiftUI UI;
@@ -21,7 +21,8 @@
   - public live-event channel `/ws/events/{eventId}` with audience-safe `lineup.changed` / `stage.current_changed` payloads and server-local in-memory broadcaster wired to comedian application approval plus lineup reorder/live-state mutations;
   - notifications backend foundation across new `:domain:notifications`, migration-backed `event_announcements` persistence, protected `POST /api/v1/events/{eventId}/announcements`, public `GET /api/v1/public/events/{eventId}/announcements`, audience-safe `announcement.created` live-event payloads, and lineup transport hardening that ignores unsupported live-event types instead of breaking existing consumers;
   - Android/iOS lineup surfaces now consume the public live-event feed through lifecycle-scoped runtime activation, shared lineup-state application of audience-safe live summaries, and organizer application refresh after `application_approved` realtime events;
-  - donations/payout client foundation across shared `:feature:donations`, shared Swift bridge snapshots, Android `Донаты` tab, and iOS `DonationHubView`, covering sent/received donation history plus comedian payout-profile self-service form поверх уже delivered provider-agnostic backend.
+  - donations/payout client foundation across shared `:feature:donations`, shared Swift bridge snapshots, Android `Донаты` tab, and iOS `DonationHubView`, covering sent/received donation history plus comedian payout-profile self-service form поверх уже delivered provider-agnostic backend;
+  - notifications client foundation across shared `:feature:notifications`, shared Swift bridge snapshots, Android `Анонсы` tab, and iOS `AnnouncementFeedView`, covering organizer public-event selection, announcement feed refresh and publish surface поверх уже delivered provider-agnostic backend/shared foundation.
 - Partial:
   - VK ID requires runtime browser/public-callback config, optional dedicated Android SDK client config, Apple associated-domain app-id metadata, and live smoke validation before it can be treated as rollout-ready;
   - legacy phone/Telegram/Google-oriented auth code and docs still exist in parts of the repository and must be removed or archived from the active supported surface;
@@ -31,7 +32,7 @@
   - comedian applications and lineup backend foundation now includes submit/review/list/reorder/live-stage mutation plus public WebSocket live-event delivery for audience-safe lineup/live-stage and announcement updates; staff/private channels, sales/inventory live events, and durable outbox/multi-instance fanout are still missing;
   - comedian applications and lineup shared/mobile foundation now includes dedicated `:domain:lineup`, `:data:lineup`, `:feature:lineup`, and `shared/lineup` modules, Android/iOS live-stage UI surfaces, a KMP realtime subscription contract over the public `/ws/events/{eventId}` channel, and lifecycle-gated product consumption of that feed; reconnect/push fallback, durable outbox/multi-instance fanout, and richer organizer-private synchronization beyond approval-triggered application refresh are still missing;
   - donations/payout foundation now includes dedicated `:domain:donations`, `:data:donations` и `:feature:donations`, migration-backed persistence for `comedian_payout_profiles` and `donation_intents`, protected payout-profile self-service routes, Ktor transport/DTO mapping for payout profile and donation history/create flows, Koin wiring into `shared`, verified-payout gating, donor idempotency, Android Compose and iOS SwiftUI donation/payout surfaces, and manual-settlement-ready provider-agnostic responses; external checkout/webhooks, operator verification workflow, payout automation, and explicit legal/provider confirmation are still missing;
-  - notifications foundation now includes backend organizer announcements/event feed plus dedicated `:data:notifications` transport, shared `NotificationService` wiring through `shared`/Koin, public read surface и audience-safe websocket fanout; `/api/v1/me/notifications`, Android/iOS surfaces, moderation/reporting, durable outbox и push-provider activation всё ещё отсутствуют;
+  - notifications foundation now includes backend organizer announcements/event feed, dedicated `:data:notifications` и `:feature:notifications`, shared `NotificationService` wiring plus Swift bridge snapshots, Android Compose and iOS SwiftUI announcement/feed surfaces, public read surface и audience-safe websocket fanout; `/api/v1/me/notifications`, moderation/reporting, durable outbox и push-provider activation/background delivery всё ещё отсутствуют;
   - current Android/iOS main flow now exposes organizer venue and event surfaces plus audience/staff ticket wallet, donation overview / comedian payout surface, and check-in flows, but deeper organizer operational flows beyond workspaces, venues, events, ticketing, and the first donation foundation slice are still missing.
 
 ## Next Bounded Contexts

@@ -17,6 +17,8 @@ import com.bam.incomedy.domain.lineup.ComedianApplication
 import com.bam.incomedy.domain.lineup.ComedianApplicationStatus
 import com.bam.incomedy.domain.lineup.LineupEntry
 import com.bam.incomedy.domain.lineup.LineupEntryStatus
+import com.bam.incomedy.domain.notifications.EventAnnouncement
+import com.bam.incomedy.domain.notifications.EventAnnouncementAuthorRole
 import com.bam.incomedy.domain.ticketing.IssuedTicket
 import com.bam.incomedy.domain.ticketing.IssuedTicketStatus
 import com.bam.incomedy.domain.session.OrganizerWorkspace
@@ -34,6 +36,7 @@ import com.bam.incomedy.feature.auth.mvi.AuthState
 import com.bam.incomedy.feature.donations.DonationsState
 import com.bam.incomedy.feature.event.EventState
 import com.bam.incomedy.feature.lineup.LineupState
+import com.bam.incomedy.feature.notifications.NotificationsState
 import com.bam.incomedy.feature.ticketing.TicketingState
 import com.bam.incomedy.feature.venue.VenueState
 import com.bam.incomedy.shared.session.SessionState
@@ -217,6 +220,33 @@ object AndroidUiStateFactory {
             hasComedianRole = hasComedianRole,
             isLoading = isLoading,
             isSubmittingPayoutProfile = isSubmittingPayoutProfile,
+            errorMessage = errorMessage,
+        )
+    }
+
+    /**
+     * Возвращает состояние organizer announcements/event feed для Android UI-тестов.
+     */
+    fun notificationsState(
+        selectedEventId: String = "event-2",
+        announcements: List<EventAnnouncement> = listOf(
+            announcement(),
+            announcement(
+                id = "announcement-2",
+                authorRole = EventAnnouncementAuthorRole.HOST,
+                message = "Сет задерживается на 5 минут",
+                createdAtIso = "2026-03-27T19:05:00+03:00",
+            ),
+        ),
+        isLoading: Boolean = false,
+        isSubmitting: Boolean = false,
+        errorMessage: String? = null,
+    ): NotificationsState {
+        return NotificationsState(
+            selectedEventId = selectedEventId,
+            announcements = announcements,
+            isLoading = isLoading,
+            isSubmitting = isSubmitting,
             errorMessage = errorMessage,
         )
     }
@@ -612,6 +642,25 @@ object AndroidUiStateFactory {
             notes = notes,
             createdAtIso = createdAtIso,
             updatedAtIso = updatedAtIso,
+        )
+    }
+
+    /**
+     * Возвращает audience-safe announcement для тестового event feed.
+     */
+    fun announcement(
+        id: String = "announcement-1",
+        eventId: String = "event-2",
+        message: String = "Сбор гостей начинается через 15 минут",
+        authorRole: EventAnnouncementAuthorRole = EventAnnouncementAuthorRole.ORGANIZER,
+        createdAtIso: String = "2026-03-27T19:00:00+03:00",
+    ): EventAnnouncement {
+        return EventAnnouncement(
+            id = id,
+            eventId = eventId,
+            message = message,
+            authorRole = authorRole,
+            createdAtIso = createdAtIso,
         )
     }
 }

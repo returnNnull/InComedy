@@ -65,6 +65,10 @@ import com.bam.incomedy.feature.lineup.ui.LineupManagementTab
 import com.bam.incomedy.feature.lineup.ui.LineupScreenTags
 import com.bam.incomedy.feature.lineup.ui.LineupTabBindings
 import com.bam.incomedy.feature.lineup.viewmodel.LineupAndroidViewModel
+import com.bam.incomedy.feature.notifications.ui.AnnouncementFeedTab
+import com.bam.incomedy.feature.notifications.ui.AnnouncementScreenTags
+import com.bam.incomedy.feature.notifications.ui.NotificationsTabBindings
+import com.bam.incomedy.feature.notifications.viewmodel.NotificationsAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.ticketing.ui.TicketWalletTab
 import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
@@ -93,6 +97,7 @@ import java.net.URL
 fun MainScreen(
     sessionViewModel: SessionAndroidViewModel,
     donationsViewModel: DonationsAndroidViewModel,
+    notificationsViewModel: NotificationsAndroidViewModel,
     eventViewModel: EventAndroidViewModel,
     lineupViewModel: LineupAndroidViewModel,
     ticketingViewModel: TicketingAndroidViewModel,
@@ -101,6 +106,7 @@ fun MainScreen(
 ) {
     val state by sessionViewModel.state.collectAsStateWithLifecycle()
     val donationsState by donationsViewModel.state.collectAsStateWithLifecycle()
+    val notificationsState by notificationsViewModel.state.collectAsStateWithLifecycle()
     val eventState by eventViewModel.state.collectAsStateWithLifecycle()
     val lineupState by lineupViewModel.state.collectAsStateWithLifecycle()
     val ticketingState by ticketingViewModel.state.collectAsStateWithLifecycle()
@@ -113,6 +119,13 @@ fun MainScreen(
             onRefresh = donationsViewModel::refresh,
             onSavePayoutProfile = donationsViewModel::savePayoutProfile,
             onClearError = donationsViewModel::clearError,
+        ),
+        notificationsBindings = NotificationsTabBindings(
+            state = notificationsState,
+            organizerEvents = eventState.events,
+            onLoadAnnouncements = notificationsViewModel::loadAnnouncements,
+            onCreateAnnouncement = notificationsViewModel::createAnnouncement,
+            onClearError = notificationsViewModel::clearError,
         ),
         eventBindings = EventTabBindings(
             state = eventState,
@@ -237,6 +250,7 @@ fun MainScreen(
 internal fun MainScreenContent(
     state: SessionState,
     donationsBindings: DonationsTabBindings = DonationsTabBindings(),
+    notificationsBindings: NotificationsTabBindings = NotificationsTabBindings(),
     eventBindings: EventTabBindings = EventTabBindings(),
     lineupBindings: LineupTabBindings = LineupTabBindings(),
     ticketingBindings: TicketingTabBindings = TicketingTabBindings(),
@@ -311,6 +325,10 @@ internal fun MainScreenContent(
                     sessionState = state,
                     donationsBindings = donationsBindings,
                     modifier = Modifier.testTag(DonationScreenTags.ROOT),
+                )
+                MainTab.ANNOUNCEMENTS -> AnnouncementFeedTab(
+                    notificationsBindings = notificationsBindings,
+                    modifier = Modifier.testTag(AnnouncementScreenTags.ROOT),
                 )
                 MainTab.ACCOUNT -> AccountTab(
                     state = state,
@@ -1033,6 +1051,11 @@ private enum class MainTab(
         iconGlyph = "₽",
         testTag = MainScreenTags.TAB_DONATIONS,
     ),
+    ANNOUNCEMENTS(
+        title = "Анонсы",
+        iconGlyph = "✦",
+        testTag = MainScreenTags.TAB_ANNOUNCEMENTS,
+    ),
     VENUES(
         title = "Площадки",
         iconGlyph = "▦",
@@ -1076,6 +1099,9 @@ object MainScreenTags {
 
     /** Тег вкладки donations/payout overview. */
     const val TAB_DONATIONS = "main.tab.donations"
+
+    /** Тег вкладки organizer announcements/event feed. */
+    const val TAB_ANNOUNCEMENTS = "main.tab.announcements"
 
     /** Тег вкладки площадок. */
     const val TAB_VENUES = "main.tab.venues"

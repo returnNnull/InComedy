@@ -14,14 +14,18 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.bam.incomedy.domain.event.EventStatus
+import com.bam.incomedy.domain.event.EventVisibility
 import com.bam.incomedy.feature.donations.ui.DonationScreenTags
 import com.bam.incomedy.feature.donations.ui.DonationsTabBindings
-import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import com.bam.incomedy.feature.ticketing.ui.TicketingScreenTags
 import com.bam.incomedy.feature.ticketing.ui.TicketingTabBindings
 import com.bam.incomedy.feature.lineup.ui.LineupScreenTags
 import com.bam.incomedy.feature.lineup.ui.LineupTabBindings
 import com.bam.incomedy.feature.event.ui.EventTabBindings
+import com.bam.incomedy.feature.notifications.ui.AnnouncementScreenTags
+import com.bam.incomedy.feature.notifications.ui.NotificationsTabBindings
+import com.bam.incomedy.testsupport.AndroidUiStateFactory
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -223,6 +227,29 @@ class MainScreenContentTest {
         composeRule.onNodeWithTag(DonationScreenTags.SENT_COUNT).assertTextEquals("Отправлено: 1")
     }
 
+    /** Проверяет, что main shell умеет переключаться на вкладку announcements/feed. */
+    @Test
+    fun announcementsTabIsReachableFromBottomBar() {
+        setMainScreenContent(
+            notificationsBindings = NotificationsTabBindings(
+                state = AndroidUiStateFactory.notificationsState(),
+                organizerEvents = listOf(
+                    AndroidUiStateFactory.event(
+                        id = "event-2",
+                        status = EventStatus.PUBLISHED,
+                        visibility = EventVisibility.PUBLIC,
+                    ),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(MainScreenTags.TAB_ANNOUNCEMENTS).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(AnnouncementScreenTags.ROOT).assertIsDisplayed()
+        composeRule.onNodeWithTag(AnnouncementScreenTags.COUNT).assertTextEquals("Анонсов: 2")
+    }
+
     /** Проверяет, что main shell умеет переключаться на вкладку лайнапа и заявок. */
     @Test
     fun lineupTabIsReachableFromBottomBar() {
@@ -404,6 +431,16 @@ class MainScreenContentTest {
         donationsBindings: DonationsTabBindings = DonationsTabBindings(
             state = AndroidUiStateFactory.donationsState(),
         ),
+        notificationsBindings: NotificationsTabBindings = NotificationsTabBindings(
+            state = AndroidUiStateFactory.notificationsState(),
+            organizerEvents = listOf(
+                AndroidUiStateFactory.event(
+                    id = "event-2",
+                    status = EventStatus.PUBLISHED,
+                    visibility = EventVisibility.PUBLIC,
+                ),
+            ),
+        ),
         eventBindings: EventTabBindings = EventTabBindings(
             state = AndroidUiStateFactory.eventState(),
         ),
@@ -428,6 +465,7 @@ class MainScreenContentTest {
                 MainScreenContent(
                     state = state,
                     donationsBindings = donationsBindings,
+                    notificationsBindings = notificationsBindings,
                     eventBindings = eventBindings,
                     lineupBindings = lineupBindings,
                     ticketingBindings = ticketingBindings,

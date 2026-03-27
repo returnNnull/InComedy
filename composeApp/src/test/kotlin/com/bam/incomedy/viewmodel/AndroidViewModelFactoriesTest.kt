@@ -2,6 +2,7 @@ package com.bam.incomedy.viewmodel
 
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
+import com.bam.incomedy.feature.notifications.viewmodel.NotificationsAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -42,5 +43,19 @@ class AndroidViewModelFactoriesTest {
         )
 
         assertEquals(SessionAndroidViewModel::class.java, viewModel.javaClass)
+    }
+
+    /** Проверяет создание Android-адаптера announcements/feed через явную фабрику. */
+    @Test
+    fun notificationsFactoryCreatesNotificationsAndroidViewModel() {
+        val application = RuntimeEnvironment.getApplication()
+        val factory = AndroidViewModelFactories.notifications(application)
+
+        val viewModel = factory.create(
+            NotificationsAndroidViewModel::class.java,
+            CreationExtras.Empty,
+        )
+
+        assertEquals(NotificationsAndroidViewModel::class.java, viewModel.javaClass)
     }
 }

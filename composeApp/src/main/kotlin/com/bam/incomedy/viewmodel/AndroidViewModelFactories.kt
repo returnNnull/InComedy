@@ -8,6 +8,7 @@ import com.bam.incomedy.feature.auth.viewmodel.AuthAndroidViewModel
 import com.bam.incomedy.feature.donations.viewmodel.DonationsAndroidViewModel
 import com.bam.incomedy.feature.event.viewmodel.EventAndroidViewModel
 import com.bam.incomedy.feature.lineup.viewmodel.LineupAndroidViewModel
+import com.bam.incomedy.feature.notifications.viewmodel.NotificationsAndroidViewModel
 import com.bam.incomedy.feature.session.viewmodel.SessionAndroidViewModel
 import com.bam.incomedy.feature.ticketing.viewmodel.TicketingAndroidViewModel
 import com.bam.incomedy.feature.venue.viewmodel.VenueAndroidViewModel
@@ -80,6 +81,17 @@ object AndroidViewModelFactories {
     fun donations(application: Application): ViewModelProvider.Factory {
         return singleViewModelFactory(DonationsAndroidViewModel::class.java) {
             DonationsAndroidViewModel(application)
+        }
+    }
+
+    /**
+     * Возвращает фабрику для Android-адаптера organizer announcements/event feed feature.
+     *
+     * @param application Android application context, необходимый `NotificationsAndroidViewModel`.
+     */
+    fun notifications(application: Application): ViewModelProvider.Factory {
+        return singleViewModelFactory(NotificationsAndroidViewModel::class.java) {
+            NotificationsAndroidViewModel(application)
         }
     }
 
