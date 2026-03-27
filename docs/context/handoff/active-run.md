@@ -21,18 +21,18 @@ Crash-safe recovery checkpoint for the current automation run or the latest inte
 
 ## Цель
 
-- Закрыть последний bounded шаг `TASK-092` для organizer announcements/event feed foundation: доставить Android/iOS announcement/feed surfaces и executable verification без push-provider activation.
+- Run закрыт после delivery последнего bounded шага `TASK-092`: Android/iOS announcement/feed surfaces и executable verification доставлены без push-provider activation, дальше остаётся только review boundary по `EPIC-071`.
 
 ## Итог
 
 - Добавлен новый shared client слой `:feature:notifications` с `NotificationsViewModel`, `NotificationsState`, common tests и Swift-export snapshots/bridge, чтобы Android и iOS использовали один provider-agnostic announcement/feed state seam поверх уже delivered backend/shared foundation.
 - Android main shell теперь показывает вкладку `Анонсы`: `MainScreen`, `AppNavHost`, `AndroidViewModelFactories` и `MainGraph` подключают `NotificationsAndroidViewModel`, а `AnnouncementFeedTab` получает organizer public-event selector, refresh/publish controls и executable Compose coverage.
 - iOS main shell теперь показывает `AnnouncementFeedView` через `AnnouncementFeedModel` в `MainGraphView`, а `iosAppUITests` получили overflow-safe tab helper для `TabView -> More` и targeted coverage на read/publish flow.
-- Verification is green на последовательном repair-safe path: `./gradlew --no-daemon --no-build-cache --max-workers=1 :feature:notifications:allTests :shared:compileCommonMainKotlinMetadata :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.notifications.ui.AnnouncementFeedTabContentTest' --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' --tests 'com.bam.incomedy.viewmodel.AndroidViewModelFactoriesTest' :composeApp:compileDebugKotlin`, `JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' xcodebuild -quiet -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO` и `JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:iosAppUITests/iosAppUITests/testAnnouncementsTabShowsFeedAndPublishSurface test CODE_SIGNING_ALLOWED=NO`; `R-014` остаётся open уже не из-за platform UI gap-а, а из-за отсутствующих `/api/v1/me/notifications`, moderation/reporting, durable outbox и push/background delivery.
+- Verification is green на последовательном repair-safe path: `./gradlew --no-daemon --no-build-cache --max-workers=1 :feature:notifications:allTests :composeApp:testDebugUnitTest --tests 'com.bam.incomedy.feature.notifications.ui.*' --tests 'com.bam.incomedy.feature.main.ui.MainScreenContentTest' :composeApp:compileDebugKotlin` и `JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -destination 'id=5EC0AE38-9521-40C0-B43F-874924578A0F' -derivedDataPath /tmp/incomedy-uitest-deriveddata-task092 -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:iosAppUITests/iosAppUITests/testAnnouncementsTabShowsFeedAndPublishSurface test CODE_SIGNING_ALLOWED=NO`; при мягком симптоме зависшего старта runner-а reuse `I-001` через `open -a Xcode` и `open -a Simulator` снова сработал. `R-014` остаётся open уже не из-за platform UI gap-а, а из-за отсутствующих `/api/v1/me/notifications`, moderation/reporting, durable outbox и push/background delivery.
 
 ## Возобновление
 
-- Если чат оборвется, сверить branch и `git status`. Если локальная commit boundary этого run уже закрыта, остановиться на review boundary `EPIC-071`; если worktree ещё dirty, сначала завершить docs sync + local commit boundary `TASK-092`, а не открывать новый scope поверх него.
+- Если чат оборвется, сверить branch и `git status`. При чистом worktree остановиться на review boundary `EPIC-071`; если появятся review-driven follow-up изменения, продолжать только на этой же ветке и не открывать новый epic поверх `awaiting_user_review`.
 
 ## Если сессия оборвётся
 

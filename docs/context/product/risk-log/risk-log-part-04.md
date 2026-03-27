@@ -43,8 +43,8 @@
 - Риск: Первый notifications slice пока не является rollout-ready communication layer: backend, shared/data и Android/iOS announcement/feed surfaces уже доставлены, но `/api/v1/me/notifications`, moderation controls, durable outbox и push/background delivery всё ещё отсутствуют.
 - Текущая экспозиция / триггер: `TASK-092` уже подключил provider-agnostic announcement/feed UI к Android и iOS shell-ам через shared `:feature:notifications`, Swift bridge snapshots и targeted platform verification, однако слой по-прежнему ограничен organizer public-event feed-ом без user-specific inbox, moderation/reporting и background-critical delivery path.
 - Влияние: Medium
-- Вероятность: High
+- Вероятность: Medium
 - Смягчение / следующий шаг: Держать `EPIC-071` на review boundary без ложного rollout-ready verdict, push providers сохранять в candidate state до отдельного explicit user confirmation, а следующий notifications follow-up после review посвятить `/api/v1/me/notifications`, moderation/reporting, durable outbox/fanout/reconnect strategy и только затем push/background activation.
 - Владелец: Engineering + Product
-- Связанные артефакты: `D-082`, `TASK-090`, `TASK-091`, `TASK-092`, `docs/context/handoff/task-request-template/task-request-template-part-41.md`, `docs/context/engineering/implementation-status/implementation-status-part-01.md`
+- Связанные артефакты: `D-082`, `TASK-090`, `TASK-091`, `TASK-092`, `docs/context/handoff/task-request-template/task-request-template-part-42.md`, `docs/context/engineering/implementation-status/implementation-status-part-01.md`
 - Статус: open

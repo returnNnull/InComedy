@@ -16,7 +16,7 @@ AutomationState:
 ```
 
 - Последнее принятое решение: `D-082`
-- Актуальные связанные части: `governance/decisions-log/decisions-log-part-08.md`, `governance/session-log/session-log-part-26.md`, `governance/decision-traceability/decision-traceability-part-08.md`, `handoff/task-request-template/task-request-template-part-41.md`, `engineering/verification-memory/verification-memory-part-02.md`, `engineering/issue-resolution-log/issue-resolution-log-part-02.md`
+- Актуальные связанные части: `governance/decisions-log/decisions-log-part-08.md`, `governance/session-log/session-log-part-26.md`, `governance/decision-traceability/decision-traceability-part-08.md`, `handoff/task-request-template/task-request-template-part-42.md`, `engineering/verification-memory/verification-memory-part-02.md`, `engineering/issue-resolution-log/issue-resolution-log-part-01.md`
 - Активный auth baseline: `login + password` плюс `VK ID`
 - Текущий `P0` focus: `EPIC-071` — notifications / announcements delivery foundation — весь ordered plan `TASK-090 -> TASK-092` уже доставлен на текущей ветке, а epic остановлен на review boundary в статусе `awaiting_user_review`
 - Следующий bounded step: дождаться explicit user review confirmation по `EPIC-071`; не открывать `EPIC-072` автоматически без отдельного подтверждения

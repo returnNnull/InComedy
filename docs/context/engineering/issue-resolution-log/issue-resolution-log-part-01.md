@@ -5,7 +5,7 @@
 - Заголовок: `CoreSimulatorService` недоступен, `xcodebuild -showdestinations` показывает только placeholder destinations, targeted iOS XCUITest не может выбрать устройство.
 - Категория: iOS simulator / Xcode host environment.
 - Впервые зафиксировано: 2026-03-25.
-- Последний раз подтверждено: 2026-03-25.
+- Последний раз подтверждено: 2026-03-27.
 - Затронутые контуры: `iosApp`, `iosAppUITests`, `EPIC-068`, `TASK-073`.
 - Статус: resolved.
 
@@ -51,12 +51,17 @@ xcodebuild -project iosApp/iosApp.xcodeproj \
   - `xcrun simctl list devices available` снова вернул реальный список simulator-устройств;
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -showdestinations` снова увидел реальные iOS Simulator destinations;
   - targeted XCUITest `testLineupTabShowsApplicationsAndReorderSurface` на `iPhone 17 Pro (iOS 26.2)` прошёл успешно без дополнительных repo-side code changes.
+- Повторный rerun `2026-03-27 09:04-09:07 MSK` подтвердил ту же repair memory для более мягкой формы симптома:
+  - targeted `xcodebuild ... testAnnouncementsTabShowsFeedAndPublishSurface` после успешной сборки сначала молчал до старта runner-а;
+  - `open -a Xcode` и `open -a Simulator` сразу разблокировали запуск automation session;
+  - после этого тот же targeted XCUITest `testAnnouncementsTabShowsFeedAndPublishSurface` на `iPhone 17 Pro (iOS 26.2)` прошёл успешно.
 
 ### Рекомендуемый порядок действий
 
 1. Сначала открыть эту запись и не начинать диагностику с нуля, если симптоматика совпадает.
 2. Проверить, что ветка и recovery state соответствуют активному `TASK-073`.
 3. Первым делом убедиться, что Xcode запущен и отвечает; если Xcode завис или не открыт, запустить его либо перезапустить.
+   - Если `xcodebuild` уже собрал app/test bundle, но UITest runner долго не стартует и вывод молчит, всё равно сначала применить этот шаг для Xcode/Simulator, а не сразу углубляться в host-level triage.
 4. После этого подтвердить текущий статус simulator stack:
    - `xcrun simctl list devices available`
    - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppUITests -showdestinations`
