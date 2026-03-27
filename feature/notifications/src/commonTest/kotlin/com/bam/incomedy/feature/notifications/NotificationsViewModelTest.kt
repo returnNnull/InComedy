@@ -52,8 +52,52 @@ class NotificationsViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Начинаем через 10 минут", service.lastCreatedMessage)
-        assertEquals("announcement-3", viewModel.state.value.announcements.first().id)
+        assertEquals("announcement-4", viewModel.state.value.announcements.first().id)
         assertEquals(null, viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun createEventAnnouncementForDifferentEventDoesNotMixPreviousFeed() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeNotificationService()
+        val viewModel = NotificationsViewModel(
+            notificationService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadEventFeed("event-1")
+        advanceUntilIdle()
+        viewModel.createEventAnnouncement(
+            eventId = "event-2",
+            message = "Новый анонс для второго события",
+        )
+        advanceUntilIdle()
+
+        assertEquals("event-2", viewModel.state.value.selectedEventId)
+        assertEquals(listOf("announcement-4"), viewModel.state.value.announcements.map(EventAnnouncement::id))
+    }
+
+    @Test
+    fun failedLoadForDifferentEventClearsPreviousFeed() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val service = FakeNotificationService(
+            failingEventIds = setOf("event-2"),
+        )
+        val viewModel = NotificationsViewModel(
+            notificationService = service,
+            accessTokenProvider = { "access-token" },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.loadEventFeed("event-1")
+        advanceUntilIdle()
+        viewModel.loadEventFeed("event-2")
+        advanceUntilIdle()
+
+        assertEquals("event-2", viewModel.state.value.selectedEventId)
+        assertEquals(emptyList(), viewModel.state.value.announcements)
+        assertEquals("Не удалось загрузить event-2", viewModel.state.value.errorMessage)
     }
 
     @Test
@@ -98,6 +142,12 @@ class NotificationsViewModelTest {
 }
 
 private class FakeNotificationService : NotificationService {
+    constructor(
+        failingEventIds: Set<String> = emptySet(),
+    ) {
+        this.failingEventIds = failingEventIds
+    }
+
     private val announcements = mutableListOf(
         announcement(
             id = "announcement-1",
@@ -109,7 +159,14 @@ private class FakeNotificationService : NotificationService {
             createdAtIso = "2026-03-26T21:05:00+03:00",
             message = "Комик уже на площадке",
         ),
+        announcement(
+            id = "announcement-event-2-1",
+            eventId = "event-2",
+            createdAtIso = "2026-03-26T22:00:00+03:00",
+            message = "Разогрев начнется через 20 минут",
+        ),
     )
+    private val failingEventIds: Set<String>
 
     var createCalls: Int = 0
         private set
@@ -120,6 +177,9 @@ private class FakeNotificationService : NotificationService {
     override suspend fun listPublicEventAnnouncements(
         eventId: String,
     ): Result<List<EventAnnouncement>> {
+        if (eventId in failingEventIds) {
+            return Result.failure(IllegalStateException("Не удалось загрузить $eventId"))
+        }
         return Result.success(announcements.filter { it.eventId == eventId })
     }
 

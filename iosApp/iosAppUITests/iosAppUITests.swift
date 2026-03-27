@@ -298,7 +298,7 @@ final class iosAppUITests: XCTestCase {
             return
         }
 
-        let moreTab = app.tabBars.buttons["More"]
+        let moreTab = app.tabBars.buttons.element(boundBy: app.tabBars.buttons.count - 1)
         XCTAssertTrue(moreTab.waitForExistence(timeout: 2))
         moreTab.tap()
 

@@ -18,7 +18,7 @@ Priority scale:
 - Android/iOS UI wiring for organizer live controls and audience-facing current/next state on top of the delivered shared foundation завершены в `EPIC-068`, который теперь принят пользователем и закрыт как `done`.
 - `EPIC-069` realtime/WebSocket delivery для live stage updates завершён, принят пользователем и смержен в `main`.
 - `EPIC-070` donations/payout foundation уже доставлен по плану `TASK-087 -> TASK-088 -> TASK-089`, явно подтверждён пользователем, смержен в `main` и закрыт как `done`; donations scope по-прежнему нельзя расширять к checkout/webhooks/payout automation без отдельного provider/legal confirmation.
-- `EPIC-071` notifications / announcements delivery foundation уже доставлен по плану `TASK-090 -> TASK-092` и остановлен на review boundary; без explicit user confirmation нельзя автоматически открывать `EPIC-072`, а `R-014` остаётся open до follow-up по `/api/v1/me/notifications`, moderation/reporting, durable outbox и push/background delivery.
+- `EPIC-071` notifications / announcements delivery foundation уже доставлен по плану `TASK-090 -> TASK-092`, review-driven follow-up закрыт, epic явно подтверждён пользователем, смержен в `main` и закрыт как `done`; `R-014` остаётся open до follow-up по `/api/v1/me/notifications`, moderation/reporting, durable outbox и push/background delivery.
 - После старта текущего active epic оперативная очередь следующих epic-ов и их порядок ведутся в `product/next-epic-queue.md`.
 
 - Multi-role identity model (Audience, Comedian, Organizer on one account).

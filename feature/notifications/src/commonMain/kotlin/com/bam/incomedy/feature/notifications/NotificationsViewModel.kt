@@ -39,33 +39,41 @@ class NotificationsViewModel(
             _state.update { it.copy(errorMessage = "Не выбран event для загрузки announcement feed") }
             return
         }
+        val shouldPreserveCurrentFeed = _state.value.selectedEventId == normalizedEventId
 
         scope.launch {
             _state.update {
                 it.copy(
                     selectedEventId = normalizedEventId,
+                    announcements = if (shouldPreserveCurrentFeed) it.announcements else emptyList(),
                     isLoading = true,
                     errorMessage = null,
                 )
             }
             notificationService.listPublicEventAnnouncements(normalizedEventId).fold(
                 onSuccess = { announcements ->
-                    _state.update {
-                        it.copy(
-                            selectedEventId = normalizedEventId,
-                            announcements = sortAnnouncements(announcements),
-                            isLoading = false,
-                            errorMessage = null,
-                        )
+                    _state.update { currentState ->
+                        if (currentState.selectedEventId != normalizedEventId) {
+                            currentState
+                        } else {
+                            currentState.copy(
+                                announcements = sortAnnouncements(announcements),
+                                isLoading = false,
+                                errorMessage = null,
+                            )
+                        }
                     }
                 },
                 onFailure = { error ->
-                    _state.update {
-                        it.copy(
-                            selectedEventId = normalizedEventId,
-                            isLoading = false,
-                            errorMessage = error.message?.take(200) ?: "Не удалось загрузить announcement feed",
-                        )
+                    _state.update { currentState ->
+                        if (currentState.selectedEventId != normalizedEventId) {
+                            currentState
+                        } else {
+                            currentState.copy(
+                                isLoading = false,
+                                errorMessage = error.message?.take(200) ?: "Не удалось загрузить announcement feed",
+                            )
+                        }
                     }
                 },
             )
@@ -93,10 +101,12 @@ class NotificationsViewModel(
         }
 
         val accessToken = requireAccessToken() ?: return
+        val shouldMergeIntoCurrentFeed = _state.value.selectedEventId == normalizedEventId
         scope.launch {
             _state.update {
                 it.copy(
                     selectedEventId = normalizedEventId,
+                    announcements = if (shouldMergeIntoCurrentFeed) it.announcements else emptyList(),
                     isSubmitting = true,
                     errorMessage = null,
                 )
@@ -107,29 +117,31 @@ class NotificationsViewModel(
                 message = normalizedMessage,
             ).fold(
                 onSuccess = { announcement ->
-                    _state.update {
-                        val mergedAnnouncements = when (it.selectedEventId) {
-                            normalizedEventId -> sortAnnouncements(
-                                (it.announcements + announcement).distinctBy(EventAnnouncement::id),
+                    _state.update { currentState ->
+                        if (currentState.selectedEventId != normalizedEventId) {
+                            currentState.copy(isSubmitting = false)
+                        } else {
+                            val mergedAnnouncements = sortAnnouncements(
+                                (currentState.announcements + announcement).distinctBy(EventAnnouncement::id),
                             )
-
-                            else -> listOf(announcement)
+                            currentState.copy(
+                                announcements = mergedAnnouncements,
+                                isSubmitting = false,
+                                errorMessage = null,
+                            )
                         }
-                        it.copy(
-                            selectedEventId = normalizedEventId,
-                            announcements = mergedAnnouncements,
-                            isSubmitting = false,
-                            errorMessage = null,
-                        )
                     }
                 },
                 onFailure = { error ->
-                    _state.update {
-                        it.copy(
-                            selectedEventId = normalizedEventId,
-                            isSubmitting = false,
-                            errorMessage = error.message?.take(200) ?: "Не удалось опубликовать announcement",
-                        )
+                    _state.update { currentState ->
+                        if (currentState.selectedEventId != normalizedEventId) {
+                            currentState.copy(isSubmitting = false)
+                        } else {
+                            currentState.copy(
+                                isSubmitting = false,
+                                errorMessage = error.message?.take(200) ?: "Не удалось опубликовать announcement",
+                            )
+                        }
                     }
                 },
             )
